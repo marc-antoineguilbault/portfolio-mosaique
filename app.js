@@ -144,15 +144,11 @@ function createTile(item, pos, label) {
   const color = colorFromSeed(item.seed);
   el.style.setProperty('--tile-glow-color', color);
 
-  const frame = document.createElement('div');
-  frame.className = 'tile-frame';
-
   const inner = document.createElement('div');
   inner.className = 'tile-inner';
   inner.style.background = color;
   inner.textContent = label;
-  frame.appendChild(inner);
-  el.appendChild(frame);
+  el.appendChild(inner);
   attachTilt(inner);
 
   scroller.appendChild(el);
