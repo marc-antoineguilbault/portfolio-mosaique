@@ -266,17 +266,10 @@ void main() {
   vec2 sampleUv = vec2(vUv.x, 1.0 - vUv.y) + (dir * ampPx) / uResolution;
   vec3 tex = texture2D(uTexture, vec2(sampleUv.x, 1.0 - sampleUv.y)).rgb;
 
-  // Halo coloré diffus : gaussienne 3× plus large que les rings de distortion
-  float glow1 = exp(-pow((sdShape - front1) / (thick1 * 3.0), 2.0)) * 0.55;
-  float glow2 = exp(-pow((sdShape - front2) / (thick2 * 3.0), 2.0)) * 0.35;
-  float glow3 = exp(-pow((sdShape - front3) / (thick3 * 3.0), 2.0)) * 0.25;
-  float tintGlow = clamp(glow1 + glow2 + glow3, 0.0, 1.0);
-
-  // Onde en blanc — le blend mode plus-lighter additionne avec la mosaïque dessous
-  vec3 col = mix(tex, vec3(1.0), tintGlow);
-
-  // Alpha = combiné ring (distortion) + halo coloré (étendu), pour que le hard-light s'étale
-  float alpha = clamp(combinedRing + tintGlow * 0.7, 0.0, 1.0) * (1.0 - smoothstep(0.75, 1.0, uTime));
+  // Pas de coloration ajoutée : on affiche juste les pixels du snapshot déformés.
+  // Hors anneau alpha → 0, donc la vraie mosaïque live transparait sans modification.
+  vec3 col = tex;
+  float alpha = combinedRing * (1.0 - smoothstep(0.75, 1.0, uTime));
   gl_FragColor = vec4(col, alpha);
 }
 `;
@@ -284,7 +277,7 @@ void main() {
 const rippleRenderer = new Renderer({ alpha: true, premultipliedAlpha: false });
 const rippleGl = rippleRenderer.gl;
 const rippleCanvas = rippleGl.canvas;
-rippleCanvas.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:9999;display:none;mix-blend-mode:plus-lighter';
+rippleCanvas.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:9999;display:none';
 document.body.appendChild(rippleCanvas);
 const rippleSharedTexture = new Texture(rippleGl);
 const rippleProgram = new Program(rippleGl, {
