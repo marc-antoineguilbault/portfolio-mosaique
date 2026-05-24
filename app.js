@@ -71,8 +71,8 @@ function placeNext(item) {
   }
 }
 
-const TILT_MAX_DEG = 5;
-const TILT_PERSPECTIVE = 1000;
+const TILT_MAX_DEG = 2.5;
+const TILT_PERSPECTIVE = 1400;
 const CONTENT_HEIGHT_RATIO = 2.5;
 const SCROLL_DOWN_DURATION = 8000;
 const SCROLL_UP_DURATION = 1500;
