@@ -77,6 +77,7 @@ html, body {
   transform-style: preserve-3d;
   cursor: none;
   overflow: hidden;
+  clip-path: inset(0 round 20px);
 }
 
 .tile-inner::after {
@@ -106,6 +107,7 @@ html, body {
   overflow-y: scroll;
   overflow-x: hidden;
   scrollbar-width: none;
+  border-radius: inherit;
 }
 
 .tile-scroll::-webkit-scrollbar {
