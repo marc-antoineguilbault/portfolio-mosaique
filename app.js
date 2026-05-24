@@ -75,36 +75,14 @@ const TILT_MAX_DEG = 5;
 const TILT_PERSPECTIVE = 1000;
 
 const cursorEl = document.getElementById('cursor');
-let mouseX = 0;
-let mouseY = 0;
-let lockedTile = null;
 
 window.addEventListener('mousemove', (e) => {
-  mouseX = e.clientX;
-  mouseY = e.clientY;
-  if (!lockedTile) {
-    cursorEl.style.left = `${mouseX}px`;
-    cursorEl.style.top = `${mouseY}px`;
-  }
+  cursorEl.style.left = `${e.clientX}px`;
+  cursorEl.style.top = `${e.clientY}px`;
 });
-
-function trackLockedCursor() {
-  if (lockedTile) {
-    const rect = lockedTile.getBoundingClientRect();
-    cursorEl.style.left = `${rect.left + rect.width / 2}px`;
-    cursorEl.style.top = `${rect.top + rect.height / 2}px`;
-  }
-  requestAnimationFrame(trackLockedCursor);
-}
-requestAnimationFrame(trackLockedCursor);
 
 function attachTilt(inner) {
   inner.addEventListener('mouseenter', () => {
-    lockedTile = inner;
-    const rect = inner.getBoundingClientRect();
-    cursorEl.style.width = `${rect.width}px`;
-    cursorEl.style.height = `${rect.height}px`;
-    cursorEl.style.borderRadius = '20px';
     cursorEl.classList.add('locked');
   });
   inner.addEventListener('mousemove', (e) => {
@@ -123,12 +101,6 @@ function attachTilt(inner) {
   });
   inner.addEventListener('mouseleave', () => {
     inner.style.transform = '';
-    lockedTile = null;
-    cursorEl.style.left = `${mouseX}px`;
-    cursorEl.style.top = `${mouseY}px`;
-    cursorEl.style.width = '';
-    cursorEl.style.height = '';
-    cursorEl.style.borderRadius = '';
     cursorEl.classList.remove('locked');
   });
 }

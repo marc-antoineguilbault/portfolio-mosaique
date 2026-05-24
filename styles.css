@@ -24,19 +24,11 @@ html, body {
   pointer-events: none;
   z-index: 1000;
   transform: translate(-50%, -50%);
-  transition:
-    width 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-    height 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-    border-radius 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-    background 0.35s ease,
-    opacity 0.8s cubic-bezier(0.4, 0, 0.4, 1),
-    left 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-    top 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: left, top, width, height, opacity;
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.4, 1);
+  will-change: left, top, opacity;
 }
 
 #cursor.locked {
-  background: rgba(255, 255, 255, 0.04);
   opacity: 0;
 }
 
