@@ -19,6 +19,13 @@ export const projects = [
   { id: 'pompidou',       name: 'Pompidou',       images: buildImages('pompidou',       3, 3, 'png') },
   { id: 'gobelins',       name: 'Gobelins',       images: buildImages('gobelins',       5, 3) },
   { id: 'liquides',       name: 'Liquides',       images: buildImages('liquides',       5, 7) },
+  { id: 'placeholders',   name: 'Placeholders',   images: [
+    { type: 'fullwidth', seed: 'fw01' },
+    { type: 'fullwidth', seed: 'fw02' },
+    { type: 'square',    seed: 'sq01' },
+    { type: 'square',    seed: 'sq02' },
+    { type: 'square',    seed: 'sq03' },
+  ]},
 ];
 
 export const pool = projects.flatMap(p => p.images);
@@ -40,4 +47,6 @@ export function colorFromSeed(seed) {
 export const RATIOS = {
   mobile: 9 / 19.5,
   tablet: 3024 / 1964,
+  fullwidth: 3024 / 1964,
+  square: 1,
 };

@@ -51,7 +51,7 @@ function computeLayout() {
 }
 
 function placeNext(item) {
-  if (item.type === 'mobile') {
+  if (item.type === 'mobile' || item.type === 'square') {
     let i = 0;
     for (let k = 1; k < cols; k++) {
       if (colHeights[k] < colHeights[i]) i = k;
@@ -59,9 +59,16 @@ function placeNext(item) {
     const x = GAP + i * (colWidth + GAP);
     const y = colHeights[i];
     const w = colWidth;
-    const h = w / RATIOS.mobile;
+    const h = item.type === 'square' ? w : w / RATIOS.mobile;
     colHeights[i] = y + h + GAP_Y;
     return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[i], colIdx: i };
+  } else if (item.type === 'fullwidth') {
+    const y = Math.max(...colHeights);
+    const x = GAP;
+    const w = cols * colWidth + (cols - 1) * GAP;
+    const h = w / RATIOS.fullwidth;
+    for (let k = 0; k < cols; k++) colHeights[k] = y + h + GAP_Y;
+    return { x, y, w, h, velocityMultiplier: 1, colIdx: 0 };
   } else {
     let bestI = 0;
     let bestScore = Infinity;
@@ -211,29 +218,41 @@ function createTile(item, pos, label) {
   return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
 }
 
-const mobilePool = pool.filter(p => p.type === 'mobile');
-const tabletPool = pool.filter(p => p.type === 'tablet');
-let mobileIdx = 0;
-let tabletIdx = 0;
-let lastType = null;
+// Shuffle déterministe (PRNG linéaire seedé) — entrelace les projets dès la 1ère tuile
+// sans casser la propriété "grille identique à chaque reload".
+function seededShuffle(arr, seed) {
+  const a = [...arr];
+  let s = seed >>> 0;
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    const j = s % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+const poolByType = {
+  mobile:    seededShuffle(pool.filter(p => p.type === 'mobile'),    42),
+  tablet:    seededShuffle(pool.filter(p => p.type === 'tablet'),    1337),
+  square:    seededShuffle(pool.filter(p => p.type === 'square'),    7),
+  fullwidth: seededShuffle(pool.filter(p => p.type === 'fullwidth'), 99),
+};
+const poolIndices = { mobile: 0, tablet: 0, square: 0, fullwidth: 0 };
+
+// Cycle de 8 tuiles : 3 mobile + 3 tablet + 1 square + 1 fullwidth.
+const TYPE_CYCLE = ['mobile', 'tablet', 'mobile', 'square', 'tablet', 'mobile', 'tablet', 'fullwidth'];
+let cycleIdx = 0;
 
 function pickRandom() {
   let desiredType;
-  if (lastType === 'mobile') desiredType = 'tablet';
-  else if (lastType === 'tablet') desiredType = 'mobile';
-  else desiredType = 'mobile';
-
-  let item;
-  if (desiredType === 'mobile' && mobilePool.length > 0) {
-    item = mobilePool[mobileIdx % mobilePool.length];
-    mobileIdx++;
-  } else if (desiredType === 'tablet' && tabletPool.length > 0) {
-    item = tabletPool[tabletIdx % tabletPool.length];
-    tabletIdx++;
-  } else {
-    item = pool[(mobileIdx + tabletIdx) % pool.length];
+  for (let attempt = 0; attempt < TYPE_CYCLE.length; attempt++) {
+    desiredType = TYPE_CYCLE[(cycleIdx + attempt) % TYPE_CYCLE.length];
+    if (poolByType[desiredType].length > 0) break;
   }
-  lastType = item.type;
+  cycleIdx++;
+  const p = poolByType[desiredType];
+  const item = p[poolIndices[desiredType] % p.length];
+  poolIndices[desiredType]++;
   return item;
 }
 
