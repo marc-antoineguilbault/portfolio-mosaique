@@ -222,28 +222,46 @@ void main() {
   float morph = smoothstep(0.0, 0.6, uTime);
   float sdShape = mix(sdRect, sdCirc, morph);
 
-  float maxRadius = max(uResolution.x, uResolution.y);
-  float front = uTime * maxRadius * 0.9;
-  float sd = sdShape - front;
-
-  float thickness = 80.0 + uTime * 220.0;
-  float ring = exp(-pow(sd / thickness, 2.0));
-
   // Cutout : tile cliquée intacte (vraie tile derrière le canvas)
   if (sdRect < 0.0) discard;
 
-  // Distortion radiale : déplace les UV du snapshot vers l'extérieur dans l'épaisseur du ring
+  float maxRadius = max(uResolution.x, uResolution.y);
+
+  // 3 ondes en cascade (échos), chacune avec son front, son épaisseur, son opacité, son amplitude.
+  // t1 part au clic, t2 est retardée de 0.18s, t3 de 0.36s — donne l'illusion de ricochets.
+  float t1 = uTime;
+  float t2 = max(0.0, uTime - 0.18);
+  float t3 = max(0.0, uTime - 0.36);
+
+  float front1 = t1 * maxRadius * 1.05;
+  float front2 = t2 * maxRadius * 0.85;
+  float front3 = t3 * maxRadius * 0.65;
+
+  float thick1 = 120.0 + t1 * 200.0;   // onde principale épaisse
+  float thick2 = 70.0  + t2 * 130.0;   // écho médian
+  float thick3 = 40.0  + t3 * 90.0;    // écho fin
+
+  float ring1 = exp(-pow((sdShape - front1) / thick1, 2.0));
+  float ring2 = exp(-pow((sdShape - front2) / thick2, 2.0));
+  float ring3 = exp(-pow((sdShape - front3) / thick3, 2.0));
+
+  // Pondérations d'opacité distinctes
+  float a1 = ring1 * 0.9;
+  float a2 = ring2 * 0.55;
+  float a3 = ring3 * 0.35;
+  float combinedRing = clamp(a1 + a2 + a3, 0.0, 1.0);
+
+  // Distortion radiale : amplitudes additives, l'onde principale pousse le plus, les échos ajoutent
   vec2 dir = normalize(p + vec2(1e-5));
-  float amplitude = ring * 45.0 * (1.0 - uTime * 0.3); // pixels
-  vec2 sampleUv = vec2(vUv.x, 1.0 - vUv.y) + (dir * amplitude) / uResolution;
-  // sample texture (snapshot orienté top-left, on inverse Y pour matcher WebGL)
+  float ampPx = (ring1 * 60.0 + ring2 * 35.0 + ring3 * 22.0) * (1.0 - uTime * 0.25);
+  vec2 sampleUv = vec2(vUv.x, 1.0 - vUv.y) + (dir * ampPx) / uResolution;
   vec3 tex = texture2D(uTexture, vec2(sampleUv.x, 1.0 - sampleUv.y)).rgb;
 
-  // Teinte projet sur le cœur de l'anneau
-  vec3 col = mix(tex, uTint, ring * 0.35);
+  // Tint progressif selon l'intensité combinée
+  vec3 col = mix(tex, uTint, combinedRing * 0.35);
 
-  // Alpha : visible uniquement dans l'anneau (transparent ailleurs → mosaïque réelle visible)
-  float alpha = ring * (1.0 - smoothstep(0.7, 1.0, uTime));
+  // Alpha : visible dans n'importe lequel des 3 anneaux
+  float alpha = combinedRing * (1.0 - smoothstep(0.75, 1.0, uTime));
   gl_FragColor = vec4(col, alpha);
 }
 `;
@@ -277,7 +295,7 @@ function setRippleSize() {
 setRippleSize();
 window.addEventListener('resize', setRippleSize);
 
-const RIPPLE_DURATION = 1500;
+const RIPPLE_DURATION = 2000;
 let rippleAnimStart = 0;
 let rippleActive = false;
 let rippleTrackedTile = null; // DOM .tile à suivre pour repositionner uMouse
