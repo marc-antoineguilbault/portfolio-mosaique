@@ -169,6 +169,31 @@ function attachFrameGlow(frame) {
   });
 }
 
+// Water ripple WebGL (jquery.ripples) — activé au 1er clic sur l'image.
+// Reste actif après ; les clics/mousemove suivants génèrent les ondes.
+function attachRippleOnClick(inner, src) {
+  inner.addEventListener('click', () => {
+    if (inner.dataset.rippleActive) return;
+    if (typeof window.jQuery !== 'function') return;
+    inner.dataset.rippleActive = '1';
+    // Masque le contenu original ; le plugin va injecter un canvas qui le remplace visuellement.
+    const scroll = inner.querySelector('.tile-scroll');
+    if (scroll) scroll.style.visibility = 'hidden';
+    try {
+      window.jQuery(inner).ripples({
+        imageUrl: src,
+        resolution: 256,
+        perturbance: 0.04,
+        interactive: true,
+      });
+    } catch (e) {
+      console.warn('ripples init failed', e);
+      delete inner.dataset.rippleActive;
+      if (scroll) scroll.style.visibility = '';
+    }
+  });
+}
+
 // Extrait la couleur dominante d'une image pour piloter le glow.
 // Échantillonne 32×32 px, ignore blanc/noir purs (UI chrome, fonds), moyenne RGB,
 // puis convertit en HSL pour booster la saturation et plafonner la luminosité.
@@ -272,6 +297,7 @@ function createTile(item, pos, label) {
   attachTilt(inner);
   attachFrameGlow(frame);
   attachScroll(tileScroll, inner);
+  if (item.src) attachRippleOnClick(inner, item.src);
 
   scroller.appendChild(el);
   return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
