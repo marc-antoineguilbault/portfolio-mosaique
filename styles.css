@@ -16,6 +16,36 @@
   color: rgba(255, 255, 255, 0.85);
 }
 
+/* Bandes sombres top/bottom — assurent la lisibilité des textes des coins,
+   et déforment (blur backdrop) les projets qui défilent dessous. */
+.ui-overlay::before,
+.ui-overlay::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 160px;
+  pointer-events: none;
+  z-index: -1;
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  /* Le mask fait fader le bloc entier (background ET backdrop-filter) vers le centre */
+}
+
+.ui-overlay::before {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.6) 50%, rgba(0, 0, 0, 0.2) 85%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 75%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 75%, transparent 100%);
+}
+
+.ui-overlay::after {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.6) 50%, rgba(0, 0, 0, 0.2) 85%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 75%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 0%, #000 75%, transparent 100%);
+}
+
 /* Dégradé "qui vient de l'extérieur" — 4 ellipses radiales depuis chaque coin
    qui s'estompent vers le centre, esprit visuel proche de l'onde au clic. */
 .ui-grad-bg {
