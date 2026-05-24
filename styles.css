@@ -59,6 +59,19 @@ html, body {
   border-radius: var(--tile-radius-outer, 32px);
 }
 
+/* @property nécessaire pour animer/transitioner une custom property numérique */
+@property --glow-alpha {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+/* Respiration au hover : intensité oscille entre 50% et 100% */
+@keyframes glow-breathe {
+  0%, 100% { --glow-alpha: 0.5; }
+  50%      { --glow-alpha: 1; }
+}
+
 .tile-frame {
   position: relative;
   width: 100%;
@@ -66,9 +79,11 @@ html, body {
   background: #000;
   padding: 12px;
   border-radius: var(--tile-radius-outer, 32px);
-  box-shadow: 0 24px 70px -30px transparent;
+  box-shadow: 0 24px 70px -30px color-mix(in srgb,
+    var(--tile-glow-color, transparent) calc(var(--glow-alpha) * 100%),
+    transparent);
   transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 1s cubic-bezier(0.4, 0, 0.4, 1);
+              --glow-alpha 0.6s ease-out;
 }
 
 /* Anneau de bordure 1px (constant). ::before = couleur de repos, ::after = highlight liquid glass
@@ -107,7 +122,7 @@ html, body {
 }
 
 .tile:hover .tile-frame {
-  box-shadow: 0 24px 70px -30px var(--tile-glow-color, transparent);
+  animation: glow-breathe 2.6s ease-in-out infinite;
 }
 
 .tile:hover .tile-frame::after {
