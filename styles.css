@@ -45,11 +45,7 @@ html, body {
   font-size: 24px;
   font-weight: 500;
   box-shadow: 0 0 0 12px #000, 0 0 0 13px #999A9A;
-  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-style: preserve-3d;
   cursor: pointer;
-}
-
-.tile:hover .tile-inner {
-  transform: scale(1.07);
-  box-shadow: 0 0 0 12px #000, 0 0 0 13px #999A9A, 0 30px 60px -10px rgba(0, 0, 0, 0.85);
 }

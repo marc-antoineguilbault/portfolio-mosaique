@@ -71,6 +71,29 @@ function placeNext(item) {
   }
 }
 
+const TILT_MAX_DEG = 12;
+const TILT_PERSPECTIVE = 800;
+
+function attachTilt(inner) {
+  inner.addEventListener('mouseenter', () => {
+    inner.style.transition = 'none';
+  });
+  inner.addEventListener('mousemove', (e) => {
+    const rect = inner.getBoundingClientRect();
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    const dx = (e.clientX - rect.left - cx) / cx;
+    const dy = (e.clientY - rect.top - cy) / cy;
+    const rotateY = dx * TILT_MAX_DEG;
+    const rotateX = -dy * TILT_MAX_DEG;
+    inner.style.transform = `perspective(${TILT_PERSPECTIVE}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+  });
+  inner.addEventListener('mouseleave', () => {
+    inner.style.transition = '';
+    inner.style.transform = '';
+  });
+}
+
 function createTile(item, pos, label) {
   const el = document.createElement('div');
   el.className = 'tile';
@@ -84,6 +107,7 @@ function createTile(item, pos, label) {
   inner.style.background = colorFromSeed(item.seed);
   inner.textContent = label;
   el.appendChild(inner);
+  attachTilt(inner);
 
   scroller.appendChild(el);
   return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
