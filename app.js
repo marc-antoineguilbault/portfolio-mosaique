@@ -188,8 +188,12 @@ function unlockAll() {
   unlockedAll = true;
   for (const entry of lockedEntries) {
     entry.imgEl.classList.remove('tile-img--locked');
-    entry.lockSvg.remove();
-    if (entry.inputEl) entry.inputEl.remove();
+    entry.lockSvg.style.opacity = '0';
+    if (entry.inputEl) entry.inputEl.style.opacity = '0';
+    setTimeout(() => {
+      entry.lockSvg.remove();
+      if (entry.inputEl) entry.inputEl.remove();
+    }, 700);
   }
   lockedEntries.clear();
 }
@@ -200,7 +204,6 @@ function showPasswordInput(entry, inner) {
   const input = document.createElement('input');
   input.type = 'text';
   input.className = 'tile-pw';
-  input.placeholder = 'Mot de passe';
   input.autocomplete = 'off';
   input.spellcheck = false;
   entry.inputEl = input;

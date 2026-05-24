@@ -201,7 +201,12 @@ html, body {
   -webkit-user-drag: none;
 }
 
-/* Projets confidentiels : image floutée + cadenas en overlay */
+/* Projets confidentiels : image floutée + cadenas en overlay.
+   La transition sur filter assure le fondu du flou au déverrouillage. */
+.tile-content--image img {
+  transition: filter 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .tile-img--locked {
   filter: blur(24px);
 }
@@ -211,37 +216,38 @@ html, body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 36px;
-  height: 44px;
+  width: 22px;
+  height: 28px;
   color: rgba(255, 255, 255, 0.9);
   z-index: 5;
   cursor: pointer;
   pointer-events: auto;
-  transition: color 0.3s ease, transform 0.3s ease;
+  transition: opacity 0.6s ease, color 0.3s ease, transform 0.3s ease;
 }
 
 .tile-lock:hover {
   color: #fff;
-  transform: translate(-50%, -50%) scale(1.08);
+  transform: translate(-50%, -50%) scale(1.1);
 }
 
+/* Input invisible : pas de fond, pas de bord, texte/caret transparents.
+   L'utilisateur tape à l'aveugle, n'importe quoi suffit. */
 .tile-pw {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 6;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 6px;
-  padding: 8px 12px;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  border: none;
+  padding: 0;
   font-family: inherit;
   font-size: 14px;
   text-align: center;
   outline: none;
-  width: 140px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  width: 100px;
+  height: 28px;
 }
 
