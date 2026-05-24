@@ -374,10 +374,25 @@ function createTile(item, pos, label) {
   attachTilt(inner);
   attachScroll(tileScroll, inner);
   inner.addEventListener('click', () => {
+    // Très léger bump sur le frame (le glow sur tile root n'est pas touché)
+    el.classList.remove('tile-bump-light');
+    void el.offsetWidth;
+    el.classList.add('tile-bump-light');
+
+    // Onde Siri : blob coloré derrière les tuiles
     const ripple = document.createElement('div');
     ripple.className = 'tile-ripple';
-    el.appendChild(ripple);
+    ripple.style.width = el.style.width;
+    ripple.style.height = el.style.height;
+    ripple.style.borderRadius = getComputedStyle(el).borderRadius;
+    // Copie la position visuelle actuelle de la tuile (translate3d)
+    ripple.style.transform = el.style.transform;
+    // Propage la couleur du projet (extraite de l'image)
+    const glow = el.style.getPropertyValue('--tile-glow-color');
+    if (glow) ripple.style.setProperty('--tile-glow-color', glow);
+    scroller.appendChild(ripple);
     ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
+
     if (el.dataset.project) focusProject(el.dataset.project);
   });
   applyDimming(el); // au cas où une nouvelle tuile arrive après un focus

@@ -57,6 +57,7 @@ html, body {
   will-change: transform;
   user-select: none;
   border-radius: var(--tile-radius-outer, 32px);
+  z-index: 1; /* devant les .tile-ripple (qui restent en arrière) */
   /* Glow (lueur diffuse) sur la tile root → NON scalé par le bump (qui s'applique sur .tile-frame). */
   box-shadow: 0 24px 70px -30px color-mix(in srgb,
     var(--tile-glow-color, transparent) calc(var(--glow-alpha) * 100%),
@@ -111,22 +112,37 @@ html, body {
   isolation: isolate;
 }
 
-/* Onde de clic : un clone vide qui adopte la silhouette de la tuile (inset:0 + border-radius
-   inherit hérité du conteneur), part de scale(1) et explose au-delà du viewport en s'effaçant. */
+/* Onde de clic façon Siri : blob coloré (couleur du projet via --tile-glow-color)
+   très diffus (blur), passe DERRIÈRE les tuiles (z-index 0 vs tile z-index 1),
+   se propage en grossissant et s'éteint en s'effaçant.
+   Posée dans .scroller, position copiée depuis le transform de la tile au moment du clic. */
 .tile-ripple {
   position: absolute;
-  inset: 0;
   pointer-events: none;
-  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  background: var(--tile-glow-color, rgba(255, 255, 255, 0.6));
   border-radius: inherit;
-  z-index: 10;
+  z-index: 0;
+  filter: blur(28px);
   transform-origin: center center;
-  animation: tile-ripple 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  scale: 1;
+  animation: tile-ripple 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes tile-ripple {
-  0%   { transform: scale(1);   opacity: 0.75; }
-  100% { transform: scale(7);   opacity: 0; }
+  0%   { scale: 1;   opacity: 0.7; }
+  60%  { opacity: 0.35; }
+  100% { scale: 5;   opacity: 0; }
+}
+
+/* Bump léger sur le frame de la tuile cliquée (le glow box-shadow étant sur .tile root,
+   il n'est pas affecté par le scale). */
+@keyframes tile-bump-light {
+  0%, 100% { scale: 1; }
+  45%      { scale: 0.97; }
+}
+
+.tile-bump-light .tile-frame {
+  animation: tile-bump-light 0.28s ease-out;
 }
 
 
