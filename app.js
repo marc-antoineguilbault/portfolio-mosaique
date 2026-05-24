@@ -71,7 +71,17 @@ function placeNext(item) {
   }
 }
 
-const RADIUS_RATIO = 0.1;
+// Radius corner ratio relatif à la largeur écran, selon Apple :
+// iPhone 16/17 : ~55px sur 1179px = ~4.7%
+// iPad Pro 11"/13" : ~18-24px sur 1668-2064px = ~1.1%
+const RADIUS_RATIOS = {
+  mobile: 0.047,
+  tablet: 0.011,
+};
+
+function radiusFor(item, w) {
+  return w * (RADIUS_RATIOS[item.type] ?? 0.02);
+}
 
 function createTile(item, pos, label) {
   const el = document.createElement('div');
@@ -80,7 +90,7 @@ function createTile(item, pos, label) {
   el.style.background = colorFromSeed(item.seed);
   el.style.width = `${pos.w}px`;
   el.style.height = `${pos.h}px`;
-  el.style.borderRadius = `${pos.w * RADIUS_RATIO}px`;
+  el.style.borderRadius = `${radiusFor(item, pos.w)}px`;
   el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
   el.textContent = label;
   scroller.appendChild(el);
@@ -191,7 +201,7 @@ function rebuildLayout() {
     tile.colIdx = pos.colIdx;
     tile.el.style.width = `${pos.w}px`;
     tile.el.style.height = `${pos.h}px`;
-    tile.el.style.borderRadius = `${pos.w * RADIUS_RATIO}px`;
+    tile.el.style.borderRadius = `${radiusFor(tile.item, pos.w)}px`;
   }
   fillUntil(h * 2);
   offset = 0;
