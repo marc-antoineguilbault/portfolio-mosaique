@@ -1,5 +1,5 @@
 import { pool, colorFromSeed, RATIOS } from './data.js';
-import { Renderer, Program, Mesh, Triangle, Texture, Vec2 } from 'https://cdn.jsdelivr.net/npm/ogl/+esm';
+import { Renderer, Program, Mesh, Triangle, Vec2 } from 'https://cdn.jsdelivr.net/npm/ogl/+esm';
 
 const GAP = 48;
 const GAP_Y = 160;
@@ -198,39 +198,46 @@ void main() {
 const RIPPLE_FRAG = `
 precision highp float;
 varying vec2 vUv;
-uniform float uTime;
-uniform vec2 uMouse;
-uniform vec2 uResolution;
-uniform sampler2D uTexture;
-uniform vec2 uTextureResolution;
-uniform vec3 uTint;
+uniform float uTime;            // 0 → 1
+uniform vec2 uMouse;            // center of clicked tile in pixels (viewport coords, top-left origin)
+uniform vec2 uResolution;       // viewport size in pixels
+uniform vec2 uTileHalfSize;     // half-width, half-height of clicked tile in pixels
+uniform float uTileRadius;      // tile border-radius in pixels
+uniform vec3 uTint;             // project color (rgb 0..1)
 
-vec2 coverUv(vec2 uv, vec2 texRes, vec2 res) {
-  vec2 ratio = vec2(
-    min((res.x / res.y) / (texRes.x / texRes.y), 1.0),
-    min((res.y / res.x) / (texRes.y / texRes.x), 1.0)
-  );
-  return vec2(uv.x * ratio.x + (1.0 - ratio.x) * 0.5,
-              uv.y * ratio.y + (1.0 - ratio.y) * 0.5);
+// SDF d'un rectangle arrondi centré à l'origine
+float sdRoundedRect(vec2 p, vec2 s, float r) {
+  vec2 q = abs(p) - s + r;
+  return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 }
 
 void main() {
-  float aspect = uResolution.x / uResolution.y;
-  vec2 p = (vUv - uMouse) * vec2(aspect, 1.0);
-  float dist = length(p);
-  float front = uTime * 1.6;
-  // Onde concentrique : sin atténué par enveloppe gaussienne autour du front
-  float wave = sin((dist - front) * 22.0) * exp(-pow((dist - front) * 5.5, 2.0));
-  float amplitude = 0.06 * (1.0 - uTime);
-  vec2 dir = normalize(p + 1e-5);
-  vec2 imageUv = coverUv(vUv, uTextureResolution, uResolution);
-  vec2 displaced = imageUv + dir * wave * amplitude;
-  vec4 tex = texture2D(uTexture, displaced);
-  // Anneau lumineux sur le front, teinté couleur projet
-  float ring = exp(-pow((dist - front) * 8.0, 2.0)) * (1.0 - uTime * 0.7);
-  vec3 col = mix(tex.rgb, uTint, ring * 0.55);
-  float alpha = 1.0 - smoothstep(0.75, 1.0, uTime);
-  gl_FragColor = vec4(col, alpha);
+  // Convertit vUv (0..1, Y inversé en WebGL) en coords pixel viewport (top-left origin)
+  vec2 fragPx = vec2(vUv.x, 1.0 - vUv.y) * uResolution;
+  vec2 p = fragPx - uMouse;
+
+  // Forme initiale = tile (rect arrondi). Morph vers cercle (length(p)) avec le temps.
+  float sdRect = sdRoundedRect(p, uTileHalfSize, uTileRadius);
+  float meanHalf = (uTileHalfSize.x + uTileHalfSize.y) * 0.5;
+  float sdCirc = length(p) - meanHalf;
+  float morph = smoothstep(0.0, 0.6, uTime); // 0 = pure rect, 1 = pure circle (atteint à uTime=0.6)
+  float sdShape = mix(sdRect, sdCirc, morph);
+
+  // L'onde se propage vers l'extérieur (sd diminue avec le temps)
+  float maxRadius = max(uResolution.x, uResolution.y); // suffit à couvrir le viewport
+  float front = uTime * maxRadius * 0.9;
+  float sd = sdShape - front;
+
+  // Anneau lumineux centré sur sd = 0, épaisseur variable
+  float thickness = 8.0 + uTime * 40.0;
+  float ring = exp(-pow(sd / thickness, 2.0));
+
+  // Cutout : pas de rendu dans la silhouette de la tile cliquée (la vraie tile reste visible derrière)
+  if (sdRect < 0.0) discard;
+
+  // Fade-out en fin d'animation
+  float alpha = ring * (1.0 - smoothstep(0.7, 1.0, uTime)) * 0.7;
+  gl_FragColor = vec4(uTint, alpha);
 }
 `;
 
@@ -245,10 +252,10 @@ const rippleProgram = new Program(rippleGl, {
   transparent: true,
   uniforms: {
     uTime: { value: 0 },
-    uMouse: { value: new Vec2(0.5, 0.5) },
+    uMouse: { value: new Vec2(0, 0) },
     uResolution: { value: new Vec2(1, 1) },
-    uTexture: { value: new Texture(rippleGl) },
-    uTextureResolution: { value: new Vec2(1, 1) },
+    uTileHalfSize: { value: new Vec2(150, 300) },
+    uTileRadius: { value: 32 },
     uTint: { value: new Float32Array([1, 1, 1]) },
   },
 });
@@ -262,9 +269,9 @@ setRippleSize();
 window.addEventListener('resize', setRippleSize);
 
 const RIPPLE_DURATION = 1500;
-const rippleTextureCache = new Map();
 let rippleAnimStart = 0;
 let rippleActive = false;
+let rippleTrackedTile = null; // DOM .tile à suivre pour repositionner uMouse
 
 function hslToRgb(str) {
   const m = str.match(/hsl\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)/);
@@ -283,28 +290,27 @@ function renderRipple(now) {
   if (progress >= 1) {
     rippleCanvas.style.display = 'none';
     rippleActive = false;
+    rippleTrackedTile = null;
     return;
+  }
+  // Tracking : la tuile défile (translate3d animé dans rAF). On recalcule sa position
+  // visuelle pour que le cutout reste collé à la tuile pendant l'animation.
+  if (rippleTrackedTile) {
+    const r = rippleTrackedTile.getBoundingClientRect();
+    rippleProgram.uniforms.uMouse.value.set(r.left + r.width / 2, r.top + r.height / 2);
   }
   rippleProgram.uniforms.uTime.value = progress;
   rippleRenderer.render({ scene: rippleMesh });
   requestAnimationFrame(renderRipple);
 }
 
-function fireRipple(clickX, clickY, img, glowStr) {
-  if (!img || !(img.complete && img.naturalWidth > 0)) return;
-  let entry = rippleTextureCache.get(img.src);
-  if (!entry) {
-    const tex = new Texture(rippleGl);
-    tex.image = img;
-    entry = { tex, w: img.naturalWidth, h: img.naturalHeight };
-    rippleTextureCache.set(img.src, entry);
-  }
-  rippleProgram.uniforms.uTexture.value = entry.tex;
-  rippleProgram.uniforms.uTextureResolution.value.set(entry.w, entry.h);
-  rippleProgram.uniforms.uMouse.value.set(
-    clickX / window.innerWidth,
-    1 - clickY / window.innerHeight,
-  );
+function fireRipple(tileEl, glowStr) {
+  const r = tileEl.getBoundingClientRect();
+  const radius = parseFloat(getComputedStyle(tileEl).borderTopLeftRadius) || 32;
+  rippleTrackedTile = tileEl;
+  rippleProgram.uniforms.uMouse.value.set(r.left + r.width / 2, r.top + r.height / 2);
+  rippleProgram.uniforms.uTileHalfSize.value.set(r.width / 2, r.height / 2);
+  rippleProgram.uniforms.uTileRadius.value = radius;
   rippleProgram.uniforms.uTint.value = new Float32Array(hslToRgb(glowStr || 'hsl(0, 0%, 50%)'));
   rippleCanvas.style.display = 'block';
   rippleAnimStart = performance.now();
@@ -506,10 +512,9 @@ function createTile(item, pos, label) {
   el.appendChild(frame);
   attachTilt(inner);
   attachScroll(tileScroll, inner);
-  inner.addEventListener('click', (e) => {
-    const img = el.querySelector('img');
+  inner.addEventListener('click', () => {
     const glow = el.style.getPropertyValue('--tile-glow-color');
-    fireRipple(e.clientX, e.clientY, img, glow);
+    fireRipple(el, glow);
     if (el.dataset.project) focusProject(el.dataset.project);
   });
   applyDimming(el); // au cas où une nouvelle tuile arrive après un focus
