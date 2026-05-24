@@ -164,3 +164,27 @@ function init() {
 }
 
 requestAnimationFrame(init);
+
+function rebuildLayout() {
+  const { h } = getViewportSize();
+  computeLayout();
+  for (const tile of liveTiles) {
+    const pos = placeNext(tile.item);
+    tile.x = pos.x;
+    tile.y = pos.y;
+    tile.w = pos.w;
+    tile.h = pos.h;
+    tile.el.style.width = `${pos.w}px`;
+    tile.el.style.height = `${pos.h}px`;
+    tile.el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
+  }
+  fillUntil(h * 2);
+  offset = 0;
+  scroller.style.transform = 'translate3d(0, 0, 0)';
+}
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(rebuildLayout, 150);
+});
