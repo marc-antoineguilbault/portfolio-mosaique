@@ -1,47 +1,24 @@
+function buildImages(slug, mobileCount, tabletCount, ext = 'jpg') {
+  const images = [];
+  for (let i = 1; i <= mobileCount; i++) {
+    const n = String(i).padStart(2, '0');
+    images.push({ type: 'mobile', seed: `${slug}-m${n}`, src: `assets/${slug}/m${n}.${ext}` });
+  }
+  for (let i = 1; i <= tabletCount; i++) {
+    const n = String(i).padStart(2, '0');
+    images.push({ type: 'tablet', seed: `${slug}-t${n}`, src: `assets/${slug}/t${n}.${ext}` });
+  }
+  return images;
+}
+
 export const projects = [
-  { id: 'quintessence', name: 'Quintessence', images: [
-    { type: 'mobile', seed: 'qm1', src: 'assets/quintessence/01-boutique.jpg' },
-    { type: 'mobile', seed: 'qm2', src: 'assets/quintessence/02-figue.jpg' },
-    { type: 'tablet', seed: 'qt1', src: 'assets/quintessence/03-visite-guidee.jpg' },
-    { type: 'tablet', seed: 'qt2', src: 'assets/quintessence/04-bibliotheque.jpg' },
-  ]},
-  { id: 'p1', name: 'Project Alpha', images: [
-    { type: 'mobile', seed: 'a1' },
-    { type: 'mobile', seed: 'a2' },
-    { type: 'tablet', seed: 'a3' },
-  ]},
-  { id: 'p2', name: 'Project Beta', images: [
-    { type: 'tablet', seed: 'b1' },
-    { type: 'mobile', seed: 'b2' },
-    { type: 'mobile', seed: 'b3' },
-    { type: 'mobile', seed: 'b4' },
-  ]},
-  { id: 'p3', name: 'Project Gamma', images: [
-    { type: 'mobile', seed: 'c1' },
-    { type: 'tablet', seed: 'c2' },
-    { type: 'tablet', seed: 'c3' },
-  ]},
-  { id: 'p4', name: 'Project Delta', images: [
-    { type: 'mobile', seed: 'd1' },
-    { type: 'mobile', seed: 'd2' },
-    { type: 'mobile', seed: 'd3' },
-    { type: 'tablet', seed: 'd4' },
-  ]},
-  { id: 'p5', name: 'Project Epsilon', images: [
-    { type: 'tablet', seed: 'e1' },
-    { type: 'mobile', seed: 'e2' },
-    { type: 'tablet', seed: 'e3' },
-  ]},
-  { id: 'p6', name: 'Project Zeta', images: [
-    { type: 'mobile', seed: 'f1' },
-    { type: 'mobile', seed: 'f2' },
-    { type: 'tablet', seed: 'f3' },
-  ]},
-  { id: 'p7', name: 'Project Eta', images: [
-    { type: 'mobile', seed: 'g1' },
-    { type: 'tablet', seed: 'g2' },
-    { type: 'mobile', seed: 'g3' },
-  ]},
+  { id: 'quintessence',   name: 'Quintessence',   images: buildImages('quintessence',   7, 2) },
+  { id: 'pozzo-di-borgo', name: 'Pozzo di Borgo', images: buildImages('pozzo-di-borgo', 5, 8) },
+  { id: 'mcdo',           name: 'McDonald’s',     images: buildImages('mcdo',           3, 7) },
+  { id: 'loreal',         name: 'L’Oréal',        images: buildImages('loreal',         4, 8) },
+  { id: 'pompidou',       name: 'Pompidou',       images: buildImages('pompidou',       3, 3, 'png') },
+  { id: 'gobelins',       name: 'Gobelins',       images: buildImages('gobelins',       5, 3) },
+  { id: 'liquides',       name: 'Liquides',       images: buildImages('liquides',       5, 7) },
 ];
 
 export const pool = projects.flatMap(p => p.images);
@@ -62,5 +39,5 @@ export function colorFromSeed(seed) {
 
 export const RATIOS = {
   mobile: 9 / 19.5,
-  tablet: 4 / 3,
+  tablet: 3024 / 1964,
 };
