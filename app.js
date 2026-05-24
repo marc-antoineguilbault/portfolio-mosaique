@@ -4,7 +4,6 @@ const GAP = 48;
 const GAP_Y = 160;
 const BASE_VELOCITY = 30;
 const WHEEL_GAIN = 0.5;
-const RECYCLE_MARGIN_VH = 3;
 
 // Patterns déterministes — la grille est identique à chaque reload.
 const INITIAL_OFFSETS = [-50, -320, -180, -240];   // décalage Y de départ par colonne
@@ -111,28 +110,6 @@ function pickRandom() {
   return item;
 }
 
-function recycleIfNeeded() {
-  const { h: vh } = getViewportSize();
-  const margin = vh * RECYCLE_MARGIN_VH;
-  for (const tile of liveTiles) {
-    if (tile.y + tile.h - offset * tile.velocityMultiplier < -margin) {
-      const newItem = pickRandom();
-      const pos = placeNext(newItem);
-      tile.item = newItem;
-      tile.x = pos.x;
-      tile.y = pos.y;
-      tile.w = pos.w;
-      tile.h = pos.h;
-      tile.velocityMultiplier = pos.velocityMultiplier;
-      tile.colIdx = pos.colIdx;
-      tile.el.dataset.type = newItem.type;
-      tile.el.style.background = colorFromSeed(newItem.seed);
-      tile.el.style.width = `${pos.w}px`;
-      tile.el.style.height = `${pos.h}px`;
-    }
-  }
-}
-
 function fillUntil(targetHeight) {
   let counter = liveTiles.length;
   while (Math.min(...colHeights) < targetHeight) {
@@ -181,7 +158,6 @@ function frame(t) {
     tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y - tileOffset + stagger}px, 0)`;
   }
   topUpIfNeeded();
-  recycleIfNeeded();
   requestAnimationFrame(frame);
 }
 
