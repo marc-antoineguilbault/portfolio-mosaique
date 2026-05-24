@@ -45,11 +45,23 @@ html, body {
   color: rgba(255, 255, 255, 0.2);
   font-size: 24px;
   font-weight: 500;
-  box-shadow: 0 0 0 12px #000, 0 0 0 13px #999A9A;
-  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow:
+    0 0 0 12px #000,
+    0 0 0 13px #999A9A,
+    0 0 0 0 transparent;
+  transition:
+    transform 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 2.5s cubic-bezier(0.4, 0, 0.4, 1);
   transform-style: preserve-3d;
   cursor: pointer;
   overflow: hidden;
+}
+
+.tile-inner:hover {
+  box-shadow:
+    0 0 0 12px #000,
+    0 0 0 13px #999A9A,
+    0 0 80px 8px var(--glow-color, transparent);
 }
 
 .tile-inner::after {

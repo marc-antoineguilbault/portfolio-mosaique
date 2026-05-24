@@ -104,7 +104,9 @@ function createTile(item, pos, label) {
 
   const inner = document.createElement('div');
   inner.className = 'tile-inner';
-  inner.style.background = colorFromSeed(item.seed);
+  const color = colorFromSeed(item.seed);
+  inner.style.background = color;
+  inner.style.setProperty('--glow-color', color);
   inner.textContent = label;
   el.appendChild(inner);
   attachTilt(inner);
