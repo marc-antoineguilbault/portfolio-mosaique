@@ -1,11 +1,13 @@
 import { pool, colorFromSeed, RATIOS } from './data.js';
 
 const GAP = 24;
+const GAP_Y = 80;
 const INITIAL_OFFSET_RANGE = 400;
 const BASE_VELOCITY = 30;
 const WHEEL_GAIN = 0.5;
 const RECYCLE_MARGIN_VH = 1.5;
 const ANTI_REPEAT = 8;
+const VELOCITY_VARIANCE = 0.5;
 
 const viewport = document.getElementById('viewport');
 const scroller = document.getElementById('scroller');
@@ -13,10 +15,10 @@ const scroller = document.getElementById('scroller');
 let cols = 4;
 let colWidth = 0;
 let colHeights = [];
+let colVelocityMultipliers = [];
 let liveTiles = [];
 
 function getColsForViewport(w) {
-  if (w >= 1400) return 5;
   if (w >= 900) return 4;
   if (w >= 600) return 3;
   return 2;
@@ -33,6 +35,7 @@ function computeLayout() {
   cols = getColsForViewport(vw);
   colWidth = (vw - (cols + 1) * GAP) / cols;
   colHeights = new Array(cols).fill(0).map(() => GAP - Math.random() * INITIAL_OFFSET_RANGE);
+  colVelocityMultipliers = new Array(cols).fill(0).map(() => 1 - VELOCITY_VARIANCE / 2 + Math.random() * VELOCITY_VARIANCE);
 }
 
 function placeNext(item) {
@@ -45,8 +48,8 @@ function placeNext(item) {
     const y = colHeights[i];
     const w = colWidth;
     const h = w / RATIOS.mobile;
-    colHeights[i] = y + h + GAP;
-    return { x, y, w, h };
+    colHeights[i] = y + h + GAP_Y;
+    return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[i] };
   } else {
     let bestI = 0;
     let bestScore = Infinity;
@@ -61,9 +64,10 @@ function placeNext(item) {
     const y = Math.max(colHeights[bestI], colHeights[bestI + 1]);
     const w = 2 * colWidth + GAP;
     const h = w / RATIOS.tablet;
-    colHeights[bestI] = y + h + GAP;
-    colHeights[bestI + 1] = y + h + GAP;
-    return { x, y, w, h };
+    colHeights[bestI] = y + h + GAP_Y;
+    colHeights[bestI + 1] = y + h + GAP_Y;
+    const velocityMultiplier = (colVelocityMultipliers[bestI] + colVelocityMultipliers[bestI + 1]) / 2;
+    return { x, y, w, h, velocityMultiplier };
   }
 }
 
@@ -77,7 +81,7 @@ function createTile(item, pos, label) {
   el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
   el.textContent = label;
   scroller.appendChild(el);
-  return { el, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h };
+  return { el, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier };
 }
 
 const recentHistory = [];
@@ -100,7 +104,7 @@ function recycleIfNeeded() {
   const { h: vh } = getViewportSize();
   const margin = vh * RECYCLE_MARGIN_VH;
   for (const tile of liveTiles) {
-    if (tile.y + tile.h - offset < -margin) {
+    if (tile.y + tile.h - offset * tile.velocityMultiplier < -margin) {
       const newItem = pickRandom();
       const pos = placeNext(newItem);
       tile.item = newItem;
@@ -108,11 +112,11 @@ function recycleIfNeeded() {
       tile.y = pos.y;
       tile.w = pos.w;
       tile.h = pos.h;
+      tile.velocityMultiplier = pos.velocityMultiplier;
       tile.el.dataset.type = newItem.type;
       tile.el.style.background = colorFromSeed(newItem.seed);
       tile.el.style.width = `${pos.w}px`;
       tile.el.style.height = `${pos.h}px`;
-      tile.el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
     }
   }
 }
@@ -147,7 +151,10 @@ function frame(t) {
   if (!paused) {
     offset += velocity * dt;
   }
-  scroller.style.transform = `translate3d(0, ${-offset}px, 0)`;
+  for (const tile of liveTiles) {
+    const tileOffset = offset * tile.velocityMultiplier;
+    tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y - tileOffset}px, 0)`;
+  }
   recycleIfNeeded();
   requestAnimationFrame(frame);
 }
@@ -177,13 +184,12 @@ function rebuildLayout() {
     tile.y = pos.y;
     tile.w = pos.w;
     tile.h = pos.h;
+    tile.velocityMultiplier = pos.velocityMultiplier;
     tile.el.style.width = `${pos.w}px`;
     tile.el.style.height = `${pos.h}px`;
-    tile.el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
   }
   fillUntil(h * 2);
   offset = 0;
-  scroller.style.transform = 'translate3d(0, 0, 0)';
 }
 
 let resizeTimer;
