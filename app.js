@@ -204,12 +204,21 @@ uniform vec2 uMouse;
 uniform vec2 uResolution;
 uniform vec2 uTileHalfSize;
 uniform float uTileRadius;
-uniform vec3 uTint;
+uniform vec3 uTint; // conservé pour rétro-compatibilité, non utilisé pour le halo
 uniform sampler2D uTexture;       // snapshot html2canvas du viewport au moment du clic
 
 float sdRoundedRect(vec2 p, vec2 s, float r) {
   vec2 q = abs(p) - s + r;
   return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+}
+
+// Palette iridescente (Inigo Quilez cosine palette) — t module la position dans le spectre.
+vec3 iridescent(float t) {
+  vec3 a = vec3(0.5);
+  vec3 b = vec3(0.5);
+  vec3 c = vec3(1.0);
+  vec3 d = vec3(0.00, 0.33, 0.67); // déphasages RGB → arc-en-ciel doux
+  return a + b * cos(6.28318 * (c * t + d));
 }
 
 void main() {
@@ -262,7 +271,13 @@ void main() {
   float glow2 = exp(-pow((sdShape - front2) / (thick2 * 3.0), 2.0)) * 0.35;
   float glow3 = exp(-pow((sdShape - front3) / (thick3 * 3.0), 2.0)) * 0.25;
   float tintGlow = clamp(glow1 + glow2 + glow3, 0.0, 1.0);
-  vec3 col = mix(tex, uTint, tintGlow);
+
+  // Couleur irisée — module selon l'angle radial + distance + temps pour un dégradé multicolore
+  float angle = atan(p.y, p.x) / 6.28318;             // -0.5 → 0.5
+  float distNorm = length(p) / max(uResolution.x, uResolution.y);
+  float paletteT = angle + distNorm * 0.45 + uTime * 0.25;
+  vec3 iridescentColor = iridescent(paletteT);
+  vec3 col = mix(tex, iridescentColor, tintGlow);
 
   // Alpha = combiné ring (distortion) + halo coloré (étendu), pour que le hard-light s'étale
   float alpha = clamp(combinedRing + tintGlow * 0.7, 0.0, 1.0) * (1.0 - smoothstep(0.75, 1.0, uTime));
