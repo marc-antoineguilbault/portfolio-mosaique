@@ -10,7 +10,30 @@ html, body {
   overflow: hidden;
   background: #000;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  cursor: default;
+  cursor: none;
+}
+
+#cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+  z-index: 1000;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: left, top;
+}
+
+#cursor.over-tile {
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 
 .viewport {
