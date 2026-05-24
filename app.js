@@ -155,10 +155,6 @@ function topUpIfNeeded() {
 let offset = 0;
 let velocity = BASE_VELOCITY;
 let lastFrameTime = 0;
-let paused = false;
-
-scroller.addEventListener('mouseenter', () => { paused = true; });
-scroller.addEventListener('mouseleave', () => { paused = false; });
 
 viewport.addEventListener('wheel', (e) => {
   e.preventDefault();
@@ -169,9 +165,7 @@ viewport.addEventListener('wheel', (e) => {
 function frame(t) {
   const dt = Math.min((t - lastFrameTime) / 1000, 0.1);
   lastFrameTime = t;
-  if (!paused) {
-    offset += velocity * dt;
-  }
+  offset += velocity * dt;
   for (const tile of liveTiles) {
     const tileOffset = offset * tile.velocityMultiplier;
     const stagger = COL_STAGGER[tile.colIdx] ?? 0;
