@@ -81,17 +81,17 @@ function easeInOutQuad(t) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
 
-function attachScroll(inner) {
+function attachScroll(scroller, host) {
   let animId = null;
   function animateScrollTo(target, duration, onDone) {
     cancelAnimationFrame(animId);
-    const start = inner.scrollTop;
+    const start = scroller.scrollTop;
     const delta = target - start;
     const startTime = performance.now();
     function step(t) {
       const elapsed = t - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      inner.scrollTop = start + delta * easeInOutQuad(progress);
+      scroller.scrollTop = start + delta * easeInOutQuad(progress);
       if (progress < 1) {
         animId = requestAnimationFrame(step);
       } else if (onDone) {
@@ -100,19 +100,19 @@ function attachScroll(inner) {
     }
     animId = requestAnimationFrame(step);
   }
-  inner.addEventListener('mouseenter', () => {
-    inner.classList.remove('scrolling-up');
-    const maxScroll = inner.scrollHeight - inner.clientHeight;
-    const distance = Math.max(maxScroll - inner.scrollTop, 0);
+  host.addEventListener('mouseenter', () => {
+    scroller.classList.remove('scrolling-up');
+    const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+    const distance = Math.max(maxScroll - scroller.scrollTop, 0);
     const duration = (distance / SCROLL_DOWN_SPEED) * 1000;
     animateScrollTo(maxScroll, duration);
   });
-  inner.addEventListener('mouseleave', () => {
-    inner.classList.add('scrolling-up');
-    const distance = inner.scrollTop;
+  host.addEventListener('mouseleave', () => {
+    scroller.classList.add('scrolling-up');
+    const distance = scroller.scrollTop;
     const duration = (distance / SCROLL_UP_SPEED) * 1000;
     animateScrollTo(0, duration, () => {
-      inner.classList.remove('scrolling-up');
+      scroller.classList.remove('scrolling-up');
     });
   });
 }
@@ -162,6 +162,9 @@ function createTile(item, pos, label) {
   const inner = document.createElement('div');
   inner.className = 'tile-inner';
 
+  const tileScroll = document.createElement('div');
+  tileScroll.className = 'tile-scroll';
+
   const content = document.createElement('div');
   content.className = 'tile-content';
 
@@ -182,11 +185,12 @@ function createTile(item, pos, label) {
     content.textContent = label;
   }
 
-  inner.appendChild(content);
+  tileScroll.appendChild(content);
+  inner.appendChild(tileScroll);
 
   el.appendChild(inner);
   attachTilt(inner);
-  attachScroll(inner);
+  attachScroll(tileScroll, inner);
 
   scroller.appendChild(el);
   return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
