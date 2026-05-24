@@ -29,13 +29,15 @@ html, body {
     height 0.35s cubic-bezier(0.16, 1, 0.3, 1),
     border-radius 0.35s cubic-bezier(0.16, 1, 0.3, 1),
     background 0.35s ease,
+    opacity 0.8s cubic-bezier(0.4, 0, 0.4, 1),
     left 0.22s cubic-bezier(0.16, 1, 0.3, 1),
     top 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: left, top, width, height;
+  will-change: left, top, width, height, opacity;
 }
 
 #cursor.locked {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  opacity: 0;
 }
 
 .viewport {
@@ -97,31 +99,6 @@ html, body {
   overflow: hidden;
 }
 
-.tile-frame::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(120deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.35) 50%,
-    transparent 70%
-  );
-  background-size: 220% 100%;
-  background-position: -120% 0;
-  mix-blend-mode: screen;
-  pointer-events: none;
-  border-radius: inherit;
-}
-
-.tile:hover .tile-frame::before {
-  animation: bezel-shine 1.1s ease-out;
-}
-
-@keyframes bezel-shine {
-  0% { background-position: -120% 0; }
-  100% { background-position: 220% 0; }
-}
-
 .tile-inner {
   position: relative;
   width: 100%;
@@ -135,7 +112,7 @@ html, body {
   font-weight: 500;
   transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
   transform-style: preserve-3d;
-  cursor: pointer;
+  cursor: none;
   overflow: hidden;
 }
 
