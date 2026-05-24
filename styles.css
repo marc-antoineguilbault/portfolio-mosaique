@@ -123,23 +123,23 @@ html, body {
 
 .tile-inner:hover .tile-scroll::-webkit-scrollbar,
 .tile-scroll.scrolling-up::-webkit-scrollbar {
-  width: 7px;
+  width: 8px;
 }
 
 .tile-inner:hover .tile-scroll::-webkit-scrollbar-track,
 .tile-scroll.scrolling-up::-webkit-scrollbar-track {
   background: transparent;
-  margin-top: 24px;
-  margin-bottom: 16px;
+  margin-top: 20px;
+  margin-bottom: 20px;
 }
 
 .tile-inner:hover .tile-scroll::-webkit-scrollbar-thumb,
 .tile-scroll.scrolling-up::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.55);
-  border: 2px solid transparent;
-  border-right-width: 4px;
+  border: 0 solid transparent;
+  border-right-width: 5px;
   background-clip: padding-box;
-  border-radius: 7px;
+  border-radius: 8px;
 }
 
 .tile-content {
