@@ -57,12 +57,12 @@ html, body {
   will-change: transform;
   user-select: none;
   border-radius: 32px;
-  box-shadow: 0 24px 70px -30px transparent;
+  box-shadow: 0 12px 50px 4px transparent;
   transition: box-shadow 1s cubic-bezier(0.4, 0, 0.4, 1);
 }
 
 .tile:hover {
-  box-shadow: 0 24px 70px -30px var(--tile-glow-color, transparent);
+  box-shadow: 0 12px 50px 4px var(--tile-glow-color, transparent);
 }
 
 .tile-frame {
