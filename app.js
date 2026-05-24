@@ -212,13 +212,25 @@ float sdRoundedRect(vec2 p, vec2 s, float r) {
   return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 }
 
-// Palette iridescente (Inigo Quilez cosine palette) — t module la position dans le spectre.
+// Palette iridescente (inerte, conservée au cas où) — non utilisée actuellement.
 vec3 iridescent(float t) {
   vec3 a = vec3(0.5);
   vec3 b = vec3(0.5);
   vec3 c = vec3(1.0);
-  vec3 d = vec3(0.00, 0.33, 0.67); // déphasages RGB → arc-en-ciel doux
+  vec3 d = vec3(0.00, 0.33, 0.67);
   return a + b * cos(6.28318 * (c * t + d));
+}
+
+// Box-blur 4-sample autour d'un UV, rayon en pixels.
+vec3 sampleBlurred(vec2 uv, float radiusPx) {
+  if (radiusPx < 0.5) return texture2D(uTexture, uv).rgb;
+  vec2 o = vec2(radiusPx) / uResolution;
+  vec3 s = vec3(0.0);
+  s += texture2D(uTexture, uv + vec2(-o.x, -o.y)).rgb;
+  s += texture2D(uTexture, uv + vec2( o.x, -o.y)).rgb;
+  s += texture2D(uTexture, uv + vec2(-o.x,  o.y)).rgb;
+  s += texture2D(uTexture, uv + vec2( o.x,  o.y)).rgb;
+  return s * 0.25;
 }
 
 void main() {
@@ -254,22 +266,37 @@ void main() {
   float ring2 = exp(-pow((sdShape - front2) / thick2, 2.0));
   float ring3 = exp(-pow((sdShape - front3) / thick3, 2.0));
 
-  // Pondérations d'opacité distinctes
-  float a1 = ring1 * 0.9;
-  float a2 = ring2 * 0.55;
-  float a3 = ring3 * 0.35;
+  // Transparence non uniforme entre les 3 anneaux dans le temps
+  //   Ring 1 (principal) : pulse rapide (oscille pendant sa vie)
+  //   Ring 2 (écho médian) : fade-out lent et continu
+  //   Ring 3 (écho fin) : fade-in puis fade-out (apparait au milieu, disparait à la fin)
+  float pulse1 = 0.6 + 0.4 * sin(t1 * 11.0);
+  float fadeOut2 = 1.0 - smoothstep(0.0, 0.9, t2);
+  float fadeInOut3 = smoothstep(0.0, 0.25, t3) * (1.0 - smoothstep(0.55, 0.9, t3));
+  float a1 = ring1 * pulse1 * 0.9;
+  float a2 = ring2 * fadeOut2 * 0.65;
+  float a3 = ring3 * fadeInOut3 * 0.5;
   float combinedRing = clamp(a1 + a2 + a3, 0.0, 1.0);
 
-  // Distortion radiale : amplitudes additives, l'onde principale pousse le plus, les échos ajoutent
+  // Distortion radiale : amplitudes additives
   vec2 dir = normalize(p + vec2(1e-5));
   float ampPx = (ring1 * 60.0 + ring2 * 35.0 + ring3 * 22.0) * (1.0 - uTime * 0.25);
   vec2 sampleUv = vec2(vUv.x, 1.0 - vUv.y) + (dir * ampPx) / uResolution;
-  vec3 tex = texture2D(uTexture, vec2(sampleUv.x, 1.0 - sampleUv.y)).rgb;
 
-  // Pas de coloration ajoutée : on affiche juste les pixels du snapshot déformés.
-  // Hors anneau alpha → 0, donc la vraie mosaïque live transparait sans modification.
+  // Flou non uniforme par anneau, pondéré par leur contribution alpha à ce pixel
+  //   Ring 1 : 0 → 9 px (devient flou en s'éloignant)
+  //   Ring 2 : 6 → 0 px (commence flou, devient net)
+  //   Ring 3 : constant 5 px (toujours doux)
+  float b1 = mix(0.0, 9.0, t1);
+  float b2 = mix(6.0, 0.0, t2);
+  float b3 = 5.0;
+  float blurTotal = a1 + a2 + a3 + 0.001;
+  float blurPx = (a1 * b1 + a2 * b2 + a3 * b3) / blurTotal;
+
+  vec3 tex = sampleBlurred(vec2(sampleUv.x, 1.0 - sampleUv.y), blurPx);
+
   vec3 col = tex;
-  float alpha = combinedRing * (1.0 - smoothstep(0.75, 1.0, uTime));
+  float alpha = combinedRing * (1.0 - smoothstep(0.78, 1.0, uTime));
   gl_FragColor = vec4(col, alpha);
 }
 `;
