@@ -125,6 +125,7 @@ window.addEventListener('mousemove', (e) => {
 });
 
 function attachTilt(inner) {
+  const frame = inner.parentElement;
   inner.addEventListener('mouseenter', () => {
     cursorEl.classList.add('locked');
   });
@@ -138,12 +139,12 @@ function attachTilt(inner) {
     const dy = (py - cy) / cy;
     const rotateY = dx * TILT_MAX_DEG;
     const rotateX = -dy * TILT_MAX_DEG;
-    inner.style.transform = `perspective(${TILT_PERSPECTIVE}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+    frame.style.transform = `perspective(${TILT_PERSPECTIVE}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
     inner.style.setProperty('--gx', (px / rect.width) * 100 + '%');
     inner.style.setProperty('--gy', (py / rect.height) * 100 + '%');
   });
   inner.addEventListener('mouseleave', () => {
-    inner.style.transform = '';
+    frame.style.transform = '';
     cursorEl.classList.remove('locked');
   });
 }
