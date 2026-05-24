@@ -57,12 +57,6 @@ html, body {
   will-change: transform;
   user-select: none;
   border-radius: 32px;
-  box-shadow: 0 24px 70px -30px transparent;
-  transition: box-shadow 1s cubic-bezier(0.4, 0, 0.4, 1);
-}
-
-.tile:hover {
-  box-shadow: 0 24px 70px -30px var(--tile-glow-color, transparent);
 }
 
 .tile-frame {
@@ -72,8 +66,13 @@ html, body {
   background: #000;
   padding: 12px;
   border-radius: 32px;
-  box-shadow: 0 0 0 1px #999A9A;
-  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 0 1px #999A9A, 0 24px 70px -30px transparent;
+  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 1s cubic-bezier(0.4, 0, 0.4, 1);
+}
+
+.tile:hover .tile-frame {
+  box-shadow: 0 0 0 1px #999A9A, 0 24px 70px -30px var(--tile-glow-color, transparent);
 }
 
 
