@@ -112,16 +112,23 @@ html, body {
   isolation: isolate;
 }
 
-/* Onde de clic façon Siri : blob coloré (couleur du projet via --tile-glow-color)
-   très diffus (blur), passe DERRIÈRE les tuiles (z-index 0 vs tile z-index 1),
-   se propage en grossissant et s'éteint en s'effaçant.
-   Posée dans .scroller, position copiée depuis le transform de la tile au moment du clic. */
+/* Onde de clic façon Siri : blob coloré derrière les tuiles, grossit en place
+   (le wrapper porte le translate pour suivre la tuile, le blob enfant porte le scale
+   → le pivot du scale est dans l'espace local du blob, donc reste centré sur la tuile
+   même quand le wrapper est translaté). */
 .tile-ripple {
   position: absolute;
   pointer-events: none;
-  background: var(--tile-glow-color, rgba(255, 255, 255, 0.6));
-  border-radius: inherit;
   z-index: 0;
+  top: 0;
+  left: 0;
+}
+
+.tile-ripple-blob {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--tile-glow-color, rgba(255, 255, 255, 0.6));
   filter: blur(28px);
   transform-origin: center center;
   scale: 1;
@@ -129,9 +136,9 @@ html, body {
 }
 
 @keyframes tile-ripple {
-  0%   { scale: 1;   opacity: 0.7; }
+  0%   { scale: 1; opacity: 0.7; }
   60%  { opacity: 0.35; }
-  100% { scale: 5;   opacity: 0; }
+  100% { scale: 5; opacity: 0; }
 }
 
 /* Bump léger sur le frame de la tuile cliquée (le glow box-shadow étant sur .tile root,

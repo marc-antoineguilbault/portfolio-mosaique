@@ -383,21 +383,22 @@ function createTile(item, pos, label) {
     void el.offsetWidth;
     el.classList.add('tile-bump-light');
 
-    // Onde Siri : blob coloré derrière les tuiles
+    // Onde Siri : wrapper porte le translate (suit la tuile), blob enfant porte le scale.
     const ripple = document.createElement('div');
     ripple.className = 'tile-ripple';
     ripple.style.width = el.style.width;
     ripple.style.height = el.style.height;
     ripple.style.borderRadius = getComputedStyle(el).borderRadius;
-    // Copie la position visuelle actuelle de la tuile (translate3d)
     ripple.style.transform = el.style.transform;
-    // Propage la couleur du projet (extraite de l'image)
     const glow = el.style.getPropertyValue('--tile-glow-color');
     if (glow) ripple.style.setProperty('--tile-glow-color', glow);
+    const blob = document.createElement('div');
+    blob.className = 'tile-ripple-blob';
+    ripple.appendChild(blob);
     scroller.appendChild(ripple);
     const entry = { ripple, tile: el };
     activeRipples.push(entry);
-    ripple.addEventListener('animationend', () => {
+    blob.addEventListener('animationend', () => {
       ripple.remove();
       const idx = activeRipples.indexOf(entry);
       if (idx >= 0) activeRipples.splice(idx, 1);
