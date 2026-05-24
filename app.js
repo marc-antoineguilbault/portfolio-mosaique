@@ -348,6 +348,11 @@ function createTile(item, pos, label) {
   el.appendChild(frame);
   attachTilt(inner);
   attachScroll(tileScroll, inner);
+  inner.addEventListener('click', () => {
+    inner.classList.remove('tile-bump-animate');
+    void inner.offsetWidth; // force reflow → relance l'animation au prochain clic
+    inner.classList.add('tile-bump-animate');
+  });
 
   scroller.appendChild(el);
   return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
