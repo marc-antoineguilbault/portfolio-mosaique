@@ -228,15 +228,15 @@ void main() {
   float front = uTime * maxRadius * 0.9;
   float sd = sdShape - front;
 
-  // Anneau lumineux centré sur sd = 0, épaisseur variable
-  float thickness = 8.0 + uTime * 40.0;
+  // Anneau lumineux centré sur sd = 0, épaisseur généreuse qui s'élargit
+  float thickness = 80.0 + uTime * 220.0;
   float ring = exp(-pow(sd / thickness, 2.0));
 
   // Cutout : pas de rendu dans la silhouette de la tile cliquée (la vraie tile reste visible derrière)
   if (sdRect < 0.0) discard;
 
   // Fade-out en fin d'animation
-  float alpha = ring * (1.0 - smoothstep(0.7, 1.0, uTime)) * 0.7;
+  float alpha = ring * (1.0 - smoothstep(0.65, 1.0, uTime)) * 0.9;
   gl_FragColor = vec4(uTint, alpha);
 }
 `;
