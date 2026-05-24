@@ -170,20 +170,6 @@ function attachTilt(inner) {
   });
 }
 
-// ─── Focus projet au clic : dim les autres ─────────────────────────────────
-let focusedProject = null;
-
-function applyDimming(tileEl) {
-  if (!focusedProject) return;
-  if (tileEl.dataset.project === focusedProject) tileEl.classList.remove('tile--dimmed');
-  else tileEl.classList.add('tile--dimmed');
-}
-
-function focusProject(slug) {
-  focusedProject = slug;
-  document.querySelectorAll('.tile').forEach(applyDimming);
-}
-
 // ─── WebGL ripple fullscreen (inspiré Codrops Texture Ripples) ─────────────
 // Canvas overlay plein écran. Au clic : shader propage des ondes depuis la position
 // du clic, distord l'image cliquée comme texture, tinte la couleur projet.
@@ -596,9 +582,7 @@ function createTile(item, pos, label) {
   inner.addEventListener('click', () => {
     const glow = el.style.getPropertyValue('--tile-glow-color');
     fireRipple(el, glow);
-    if (el.dataset.project) focusProject(el.dataset.project);
   });
-  applyDimming(el); // au cas où une nouvelle tuile arrive après un focus
 
   scroller.appendChild(el);
   return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };

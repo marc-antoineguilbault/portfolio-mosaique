@@ -125,11 +125,6 @@ html, body {
   transition: --glow-alpha 0.6s ease-out, opacity 0.6s ease;
 }
 
-/* Mise en retrait des tuiles n'appartenant pas au projet focus (après click). */
-.tile--dimmed {
-  opacity: 0.35;
-}
-
 .tile:hover {
   animation: glow-breathe 2.6s ease-in-out infinite;
 }
