@@ -169,6 +169,53 @@ function attachFrameGlow(frame) {
   });
 }
 
+// Extrait la couleur dominante d'une image pour piloter le glow.
+// Échantillonne 32×32 px, ignore blanc/noir purs (UI chrome, fonds), moyenne RGB,
+// puis convertit en HSL pour booster la saturation et plafonner la luminosité.
+const _glowCanvas = document.createElement('canvas');
+_glowCanvas.width = 32;
+_glowCanvas.height = 32;
+const _glowCtx = _glowCanvas.getContext('2d', { willReadFrequently: true });
+
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h;
+  switch (max) {
+    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+    case g: h = (b - r) / d + 2; break;
+    case b: h = (r - g) / d + 4; break;
+  }
+  return [h * 60, s, l];
+}
+
+function extractGlowColor(img) {
+  try {
+    _glowCtx.clearRect(0, 0, 32, 32);
+    _glowCtx.drawImage(img, 0, 0, 32, 32);
+    const data = _glowCtx.getImageData(0, 0, 32, 32).data;
+    let r = 0, g = 0, b = 0, count = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 128) continue;
+      const lum = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      if (lum > 240 || lum < 16) continue;
+      r += data[i]; g += data[i + 1]; b += data[i + 2]; count++;
+    }
+    if (count === 0) return null;
+    r /= count; g /= count; b /= count;
+    const [h, s, l] = rgbToHsl(r, g, b);
+    const sBoosted = Math.min(s * 1.8, 0.85);
+    const lClamped = Math.max(0.42, Math.min(0.58, l));
+    return `hsl(${h.toFixed(0)}, ${(sBoosted * 100).toFixed(0)}%, ${(lClamped * 100).toFixed(0)}%)`;
+  } catch (e) {
+    return null;
+  }
+}
+
 function createTile(item, pos, label) {
   const el = document.createElement('div');
   el.className = 'tile';
@@ -197,6 +244,12 @@ function createTile(item, pos, label) {
     img.src = item.src;
     img.alt = '';
     img.draggable = false;
+    const applyGlow = () => {
+      const c = extractGlowColor(img);
+      if (c) el.style.setProperty('--tile-glow-color', c);
+    };
+    if (img.complete && img.naturalWidth > 0) applyGlow();
+    else img.addEventListener('load', applyGlow, { once: true });
     content.appendChild(img);
     content.classList.add('tile-content--image');
   } else {
