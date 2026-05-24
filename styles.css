@@ -102,16 +102,17 @@ html, body {
 
 
 
-/* Bump du contour 1px au clic : le box-shadow spread s'épaissit vers l'extérieur puis
-   revient. La tile ne bouge pas, seul le halo de bordure s'élargit brièvement. */
+/* Bump doux du contour 1px au clic : le box-shadow spread s'épaissit légèrement,
+   passe par un blanc semi-transparent (effet lumineux), puis revient au gris d'origine. */
 @keyframes tile-contour-bump {
-  0%   { box-shadow: 0 0 0 1px #999A9A; }
-  35%  { box-shadow: 0 0 0 6px #999A9A; }
-  100% { box-shadow: 0 0 0 1px #999A9A; }
+  0%   { box-shadow: 0 0 0 1px rgba(153, 154, 154, 1); }
+  30%  { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55); }
+  55%  { box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3); }
+  100% { box-shadow: 0 0 0 1px rgba(153, 154, 154, 1); }
 }
 
 .tile-contour-bump .tile-frame {
-  animation: tile-contour-bump 0.45s cubic-bezier(0.34, 1.4, 0.64, 1);
+  animation: tile-contour-bump 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .tile-inner {
