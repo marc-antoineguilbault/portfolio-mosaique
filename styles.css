@@ -24,12 +24,17 @@ html, body {
   pointer-events: none;
   z-index: 1000;
   transform: translate(-50%, -50%);
-  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.4, 1);
-  will-change: left, top, opacity;
+  transition:
+    width 0.4s cubic-bezier(0.4, 0, 0.4, 1),
+    height 0.4s cubic-bezier(0.4, 0, 0.4, 1),
+    background 0.4s ease;
+  will-change: left, top, width, height, background;
 }
 
 #cursor.locked {
-  opacity: 0;
+  width: 8px;
+  height: 8px;
+  background: #fff;
 }
 
 .viewport {
