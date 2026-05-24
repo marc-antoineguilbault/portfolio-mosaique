@@ -188,12 +188,14 @@ function unlockAll() {
   unlockedAll = true;
   for (const entry of lockedEntries) {
     entry.imgEl.classList.remove('tile-img--locked');
+    entry.overlayEl.style.opacity = '0';
     entry.lockSvg.style.opacity = '0';
     if (entry.inputEl) entry.inputEl.style.opacity = '0';
     setTimeout(() => {
+      entry.overlayEl.remove();
       entry.lockSvg.remove();
       if (entry.inputEl) entry.inputEl.remove();
-    }, 700);
+    }, 900);
   }
   lockedEntries.clear();
 }
@@ -228,9 +230,12 @@ function showPasswordInput(entry, inner) {
 function attachLock(inner, imgEl) {
   if (unlockedAll) return;
   imgEl.classList.add('tile-img--locked');
+  const overlay = document.createElement('div');
+  overlay.className = 'tile-overlay-locked';
+  inner.appendChild(overlay);
   const lockSvg = createLockSvg();
   inner.appendChild(lockSvg);
-  const entry = { imgEl, lockSvg, inputEl: null };
+  const entry = { imgEl, overlayEl: overlay, lockSvg, inputEl: null };
   lockedEntries.add(entry);
   lockSvg.addEventListener('click', (ev) => {
     ev.stopPropagation();

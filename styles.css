@@ -211,6 +211,18 @@ html, body {
   filter: blur(24px);
 }
 
+/* Overlay noir 20% par-dessus l'image floutée, sous le cadenas/input.
+   Fondu au déverrouillage. */
+.tile-overlay-locked {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.2);
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .tile-lock {
   position: absolute;
   top: 50%;
