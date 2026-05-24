@@ -26,6 +26,15 @@ const borderLayer = document.createElement('div');
 borderLayer.id = 'tile-borders';
 document.body.appendChild(borderLayer);
 
+// Hover sur un texte UI (corners) → assombrit tous les projets via l'overlay
+const darkenOverlay = document.querySelector('.tile-darken-overlay');
+if (darkenOverlay) {
+  document.querySelectorAll('.ui-corner').forEach((corner) => {
+    corner.addEventListener('mouseenter', () => darkenOverlay.classList.add('is-active'));
+    corner.addEventListener('mouseleave', () => darkenOverlay.classList.remove('is-active'));
+  });
+}
+
 let cols = 4;
 let colWidth = 0;
 let colHeights = [];

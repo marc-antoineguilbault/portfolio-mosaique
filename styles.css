@@ -9,11 +9,28 @@
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 100;
+  /* z-index supérieur au canvas onde (9999) et au layer des contours (10000)
+     → les textes des coins passent au-dessus de l'onde au clic. */
+  z-index: 10001;
   font-family: 'Suisse Int\'l', 'Suisse Intl', 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 13px;
   letter-spacing: 0.01em;
   color: rgba(255, 255, 255, 0.85);
+}
+
+/* Assombrissement global des projets au survol d'un texte UI. */
+.tile-darken-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  z-index: 50; /* au-dessus des tiles (z 1), en-dessous du canvas onde + UI overlay */
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+
+.tile-darken-overlay.is-active {
+  opacity: 1;
 }
 
 /* Bandes sombres top/bottom — assurent la lisibilité des textes des coins,
@@ -61,7 +78,8 @@
 
 .ui-corner {
   position: absolute;
-  padding: 28px 36px;
+  /* Padding horizontal = 48px (= GAP entre tuiles dans app.js) → textes alignés sur la grille */
+  padding: 28px 48px;
   display: flex;
   align-items: center;
   gap: 10px;
