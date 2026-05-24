@@ -62,13 +62,6 @@ function placeNext(item) {
     const h = w / RATIOS.mobile;
     colHeights[i] = y + h + GAP_Y;
     return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[i], colIdx: i };
-  } else if (item.type === 'fullwidth') {
-    const y = Math.max(...colHeights);
-    const x = GAP;
-    const w = cols * colWidth + (cols - 1) * GAP;
-    const h = w / RATIOS.fullwidth;
-    for (let k = 0; k < cols; k++) colHeights[k] = y + h + GAP_Y;
-    return { x, y, w, h, velocityMultiplier: 1, colIdx: 0 };
   } else {
     let bestI = 0;
     let bestScore = Infinity;
@@ -243,14 +236,12 @@ function seededShuffle(arr, seed) {
 }
 
 const poolByType = {
-  mobile:    seededShuffle(pool.filter(p => p.type === 'mobile'),    42),
-  tablet:    seededShuffle(pool.filter(p => p.type === 'tablet'),    1337),
-  fullwidth: seededShuffle(pool.filter(p => p.type === 'fullwidth'), 99),
+  mobile: seededShuffle(pool.filter(p => p.type === 'mobile'), 42),
+  tablet: seededShuffle(pool.filter(p => p.type === 'tablet'), 1337),
 };
-const poolIndices = { mobile: 0, tablet: 0, fullwidth: 0 };
+const poolIndices = { mobile: 0, tablet: 0 };
 
-// Cycle de 7 tuiles : 4 mobile + 2 tablet + 1 fullwidth.
-const TYPE_CYCLE = ['mobile', 'tablet', 'mobile', 'tablet', 'mobile', 'fullwidth', 'mobile'];
+const TYPE_CYCLE = ['mobile', 'tablet'];
 let cycleIdx = 0;
 
 function pickRandom() {
