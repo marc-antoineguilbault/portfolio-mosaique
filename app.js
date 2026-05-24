@@ -348,13 +348,6 @@ function createTile(item, pos, label) {
   el.appendChild(frame);
   attachTilt(inner);
   attachScroll(tileScroll, inner);
-  inner.addEventListener('click', () => {
-    // Class sur tile (pas inner) car --bump-scale est composé dans le transform de tile,
-    // qui contient frame + contour. Le scale englobe donc l'image ET les bords.
-    el.classList.remove('tile-bump-animate');
-    void el.offsetWidth; // force reflow → relance l'animation au prochain clic
-    el.classList.add('tile-bump-animate');
-  });
 
   scroller.appendChild(el);
   return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
