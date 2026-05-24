@@ -114,6 +114,18 @@ html, body {
   font-weight: 500;
 }
 
+.tile-content--image {
+  display: block;
+}
+
+.tile-content--image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 .tile-inner::after {
   content: '';
   position: absolute;

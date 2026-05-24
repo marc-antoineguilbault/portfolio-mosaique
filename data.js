@@ -1,4 +1,10 @@
 export const projects = [
+  { id: 'quintessence', name: 'Quintessence', images: [
+    { type: 'mobile', seed: 'qm1', src: 'assets/quintessence/01-boutique.jpg' },
+    { type: 'mobile', seed: 'qm2', src: 'assets/quintessence/02-figue.jpg' },
+    { type: 'tablet', seed: 'qt1', src: 'assets/quintessence/03-visite-guidee.jpg' },
+    { type: 'tablet', seed: 'qt2', src: 'assets/quintessence/04-bibliotheque.jpg' },
+  ]},
   { id: 'p1', name: 'Project Alpha', images: [
     { type: 'mobile', seed: 'a1' },
     { type: 'mobile', seed: 'a2' },

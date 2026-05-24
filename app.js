@@ -146,19 +146,30 @@ function createTile(item, pos, label) {
 
   const color = colorFromSeed(item.seed);
   el.style.setProperty('--tile-glow-color', color);
-  const hueMatch = color.match(/hsl\((\d+)/);
-  const hue = hueMatch ? hueMatch[1] : 0;
-  const lighter = `hsl(${hue}, 35%, 62%)`;
-  const darker = `hsl(${hue}, 35%, 32%)`;
 
   const inner = document.createElement('div');
   inner.className = 'tile-inner';
 
   const content = document.createElement('div');
   content.className = 'tile-content';
-  content.style.background = `linear-gradient(180deg, ${lighter} 0%, ${color} 50%, ${darker} 100%)`;
-  content.style.height = `${pos.h * CONTENT_HEIGHT_RATIO}px`;
-  content.textContent = label;
+
+  if (item.src) {
+    const img = document.createElement('img');
+    img.src = item.src;
+    img.alt = '';
+    img.draggable = false;
+    content.appendChild(img);
+    content.classList.add('tile-content--image');
+  } else {
+    const hueMatch = color.match(/hsl\((\d+)/);
+    const hue = hueMatch ? hueMatch[1] : 0;
+    const lighter = `hsl(${hue}, 35%, 62%)`;
+    const darker = `hsl(${hue}, 35%, 32%)`;
+    content.style.background = `linear-gradient(180deg, ${lighter} 0%, ${color} 50%, ${darker} 100%)`;
+    content.style.height = `${pos.h * CONTENT_HEIGHT_RATIO}px`;
+    content.textContent = label;
+  }
+
   inner.appendChild(content);
 
   el.appendChild(inner);
