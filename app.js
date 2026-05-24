@@ -182,13 +182,11 @@ function init() {
   }
   computeLayout();
   fillUntil(h * 2);
-  requestAnimationFrame((t) => {
-    lastFrameTime = t;
-    requestAnimationFrame(frame);
-  });
+  lastFrameTime = performance.now();
+  requestAnimationFrame(frame);
 }
 
-requestAnimationFrame(init);
+init();
 
 function rebuildLayout() {
   const { h } = getViewportSize();
