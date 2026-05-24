@@ -9,6 +9,7 @@ const RECYCLE_MARGIN_VH = 3;
 // Patterns déterministes — la grille est identique à chaque reload.
 const INITIAL_OFFSETS = [-50, -320, -180, -240];   // décalage Y de départ par colonne
 const GROUP_VELOCITIES = [0.85, 1.15];             // une vitesse par paire de colonnes
+const COL_STAGGER = [0, 80, 0, 80];                // décalage visuel permanent par colonne (briser l'alignement vertical entre cols)
 
 const viewport = document.getElementById('viewport');
 const scroller = document.getElementById('scroller');
@@ -50,7 +51,7 @@ function placeNext(item) {
     const w = colWidth;
     const h = w / RATIOS.mobile;
     colHeights[i] = y + h + GAP_Y;
-    return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[i] };
+    return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[i], colIdx: i };
   } else {
     let bestI = 0;
     let bestScore = Infinity;
@@ -67,7 +68,7 @@ function placeNext(item) {
     const h = w / RATIOS.tablet;
     colHeights[bestI] = y + h + GAP_Y;
     colHeights[bestI + 1] = y + h + GAP_Y;
-    return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[bestI] };
+    return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[bestI], colIdx: bestI };
   }
 }
 
@@ -81,7 +82,7 @@ function createTile(item, pos, label) {
   el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
   el.textContent = label;
   scroller.appendChild(el);
-  return { el, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier };
+  return { el, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
 }
 
 const mobilePool = pool.filter(p => p.type === 'mobile');
@@ -123,6 +124,7 @@ function recycleIfNeeded() {
       tile.w = pos.w;
       tile.h = pos.h;
       tile.velocityMultiplier = pos.velocityMultiplier;
+      tile.colIdx = pos.colIdx;
       tile.el.dataset.type = newItem.type;
       tile.el.style.background = colorFromSeed(newItem.seed);
       tile.el.style.width = `${pos.w}px`;
@@ -172,7 +174,8 @@ function frame(t) {
   }
   for (const tile of liveTiles) {
     const tileOffset = offset * tile.velocityMultiplier;
-    tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y - tileOffset}px, 0)`;
+    const stagger = COL_STAGGER[tile.colIdx] ?? 0;
+    tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y - tileOffset + stagger}px, 0)`;
   }
   topUpIfNeeded();
   recycleIfNeeded();
@@ -203,6 +206,7 @@ function rebuildLayout() {
     tile.w = pos.w;
     tile.h = pos.h;
     tile.velocityMultiplier = pos.velocityMultiplier;
+    tile.colIdx = pos.colIdx;
     tile.el.style.width = `${pos.w}px`;
     tile.el.style.height = `${pos.h}px`;
   }
