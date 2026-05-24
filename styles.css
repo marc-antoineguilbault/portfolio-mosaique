@@ -133,10 +133,9 @@ html, body {
   transition: --glow-alpha 0.6s ease-out, opacity 0.6s ease;
 }
 
-/* Glow breathing en permanence sur chaque tile (delay aléatoire posé en JS via --glow-delay). */
-.tile {
+/* Glow breathing uniquement au survol de la tile. */
+.tile:hover {
   animation: glow-breathe 2.6s ease-in-out infinite;
-  animation-delay: var(--glow-delay, 0s);
 }
 
 /* @property nécessaire pour animer/transitioner une custom property numérique */
