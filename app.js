@@ -1,4 +1,5 @@
 import { pool, colorFromSeed, RATIOS } from './data.js';
+import { Renderer, Program, Mesh, Triangle, Texture, Vec2 } from 'https://cdn.jsdelivr.net/npm/ogl/+esm';
 
 const GAP = 48;
 const GAP_Y = 160;
@@ -158,6 +159,123 @@ function attachTilt(inner) {
     cursorEl.classList.remove('locked');
   });
 }
+
+// ─── WebGL Bulge (Codrops/Tympanus) ────────────────────────────────────────
+// Un seul canvas WebGL partagé, déplacé dans la tuile au hover. Évite ~70
+// contextes WebGL simultanés (limite browser ≈ 16).
+const BULGE_VERT = `
+  attribute vec2 uv;
+  attribute vec2 position;
+  uniform vec2 uResolution;
+  uniform vec2 uTextureResolution;
+  varying vec2 vUv;
+  vec2 resizeUvCover(vec2 uv, vec2 size, vec2 resolution) {
+    vec2 ratio = vec2(
+      min((resolution.x / resolution.y) / (size.x / size.y), 1.0),
+      min((resolution.y / resolution.x) / (size.y / size.x), 1.0)
+    );
+    return vec2(
+      uv.x * ratio.x + (1.0 - ratio.x) * 0.5,
+      uv.y * ratio.y + (1.0 - ratio.y) * 0.5
+    );
+  }
+  void main() {
+    vUv = resizeUvCover(uv, uTextureResolution, uResolution);
+    gl_Position = vec4(position, 0, 1);
+  }
+`;
+const BULGE_FRAG = `
+  precision highp float;
+  uniform sampler2D uTexture;
+  uniform vec2 uMouse;
+  varying vec2 vUv;
+  const float radius = 0.6;
+  const float strength = 1.1;
+  vec2 bulge(vec2 uv, vec2 center) {
+    uv -= center;
+    float dist = length(uv) / radius;
+    float distPow = pow(dist, 2.0);
+    float strengthAmount = strength / (1.0 + distPow);
+    uv *= strengthAmount;
+    uv += center;
+    return uv;
+  }
+  void main() {
+    vec2 bulgeUV = bulge(vUv, uMouse);
+    vec4 tex = texture2D(uTexture, bulgeUV);
+    gl_FragColor = vec4(tex.rgb, 1.0);
+  }
+`;
+
+const bulgeRenderer = new Renderer({ alpha: true, premultipliedAlpha: false });
+const bulgeCanvas = bulgeRenderer.gl.canvas;
+bulgeCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;border-radius:inherit;display:none;z-index:3';
+const bulgeGeometry = new Triangle(bulgeRenderer.gl);
+const bulgeProgram = new Program(bulgeRenderer.gl, {
+  vertex: BULGE_VERT,
+  fragment: BULGE_FRAG,
+  uniforms: {
+    uTexture: { value: new Texture(bulgeRenderer.gl) },
+    uMouse: { value: new Vec2(0.5, 0.5) },
+    uResolution: { value: new Vec2(1, 1) },
+    uTextureResolution: { value: new Vec2(1, 1) },
+  },
+});
+const bulgeMesh = new Mesh(bulgeRenderer.gl, { geometry: bulgeGeometry, program: bulgeProgram });
+const textureCache = new Map(); // src → { tex, w, h }
+let bulgeActiveInner = null;
+let bulgeAnimId = null;
+
+function renderBulge() {
+  bulgeRenderer.render({ scene: bulgeMesh });
+  bulgeAnimId = requestAnimationFrame(renderBulge);
+}
+
+function stopBulge() {
+  if (bulgeAnimId) cancelAnimationFrame(bulgeAnimId);
+  bulgeAnimId = null;
+  bulgeCanvas.style.display = 'none';
+  if (bulgeCanvas.parentElement) bulgeCanvas.parentElement.removeChild(bulgeCanvas);
+  bulgeActiveInner = null;
+}
+
+function attachBulgeOnHover(inner, img) {
+  inner.addEventListener('mouseenter', () => {
+    if (img.classList.contains('tile-img--locked')) return; // ne révèle pas le contenu confidentiel
+    if (bulgeActiveInner === inner) return;
+    if (bulgeActiveInner) stopBulge();
+    bulgeActiveInner = inner;
+    const rect = inner.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    bulgeRenderer.setSize(rect.width, rect.height);
+    bulgeRenderer.dpr = dpr;
+    bulgeProgram.uniforms.uResolution.value.set(rect.width, rect.height);
+    let entry = textureCache.get(img.src);
+    if (!entry) {
+      const tex = new Texture(bulgeRenderer.gl);
+      tex.image = img;
+      entry = { tex, w: img.naturalWidth, h: img.naturalHeight };
+      textureCache.set(img.src, entry);
+    }
+    bulgeProgram.uniforms.uTexture.value = entry.tex;
+    bulgeProgram.uniforms.uTextureResolution.value.set(entry.w, entry.h);
+    bulgeProgram.uniforms.uMouse.value.set(0.5, 0.5);
+    inner.appendChild(bulgeCanvas);
+    bulgeCanvas.style.display = 'block';
+    if (!bulgeAnimId) renderBulge();
+  });
+  inner.addEventListener('mousemove', (e) => {
+    if (bulgeActiveInner !== inner) return;
+    const rect = inner.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = 1 - (e.clientY - rect.top) / rect.height;
+    bulgeProgram.uniforms.uMouse.value.set(x, y);
+  });
+  inner.addEventListener('mouseleave', () => {
+    if (bulgeActiveInner === inner) stopBulge();
+  });
+}
+// ──────────────────────────────────────────────────────────────────────────
 
 // ─── Verrouillage des projets confidentiels ────────────────────────────────
 // Un seul mot de passe global : n'importe quelle saisie + Entrée débloque
@@ -348,6 +466,10 @@ function createTile(item, pos, label) {
   el.appendChild(frame);
   attachTilt(inner);
   attachScroll(tileScroll, inner);
+  if (item.src) {
+    const imgEl = content.querySelector('img');
+    if (imgEl) attachBulgeOnHover(inner, imgEl);
+  }
 
   scroller.appendChild(el);
   return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
