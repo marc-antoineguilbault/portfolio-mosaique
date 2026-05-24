@@ -5,6 +5,12 @@ const GAP_Y = 160;
 const BASE_VELOCITY = 30;
 const WHEEL_GAIN = 0.5;
 
+// Radius ancré à la grille de référence : vw=1470, 4 cols, gap=48 → colWidth=307.5, radius=32.
+const REF_COL_WIDTH = (1470 - 5 * GAP) / 4;
+const REF_RADIUS_OUTER = 32;
+const RADIUS_RATIO = REF_RADIUS_OUTER / REF_COL_WIDTH;
+const FRAME_PADDING = 12;
+
 // Patterns déterministes — la grille est identique à chaque reload.
 const INITIAL_OFFSETS = [-50, -320, -180, -240];   // décalage Y de départ par colonne
 const GROUP_VELOCITIES = [0.85, 1.15];             // une vitesse par paire de colonnes
@@ -37,6 +43,11 @@ function computeLayout() {
   colWidth = (vw - (cols + 1) * GAP) / cols;
   colHeights = new Array(cols).fill(0).map((_, i) => GAP + (INITIAL_OFFSETS[i] ?? -100));
   colVelocityMultipliers = new Array(cols).fill(0).map((_, i) => GROUP_VELOCITIES[Math.floor(i / 2) % GROUP_VELOCITIES.length]);
+
+  const radiusOuter = colWidth * RADIUS_RATIO;
+  const radiusInner = Math.max(0, radiusOuter - FRAME_PADDING);
+  document.documentElement.style.setProperty('--tile-radius-outer', `${radiusOuter}px`);
+  document.documentElement.style.setProperty('--tile-radius-inner', `${radiusInner}px`);
 }
 
 function placeNext(item) {

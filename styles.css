@@ -56,7 +56,7 @@ html, body {
   position: absolute;
   will-change: transform;
   user-select: none;
-  border-radius: 32px;
+  border-radius: var(--tile-radius-outer, 32px);
 }
 
 .tile-frame {
@@ -65,7 +65,7 @@ html, body {
   height: 100%;
   background: #000;
   padding: 12px;
-  border-radius: 32px;
+  border-radius: var(--tile-radius-outer, 32px);
   box-shadow: 0 0 0 1px #999A9A, 0 24px 70px -30px transparent;
   transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1),
               box-shadow 1s cubic-bezier(0.4, 0, 0.4, 1);
@@ -80,7 +80,7 @@ html, body {
   position: relative;
   width: 100%;
   height: 100%;
-  border-radius: 20px;
+  border-radius: var(--tile-radius-inner, 20px);
   cursor: none;
   overflow: hidden;
   isolation: isolate;
@@ -114,7 +114,7 @@ html, body {
   overflow-x: hidden;
   scrollbar-width: none;
   border-radius: inherit;
-  clip-path: inset(0 round 20px);
+  clip-path: inset(0 round var(--tile-radius-inner, 20px));
 }
 
 .tile-scroll::-webkit-scrollbar {
