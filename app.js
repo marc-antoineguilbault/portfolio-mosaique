@@ -141,6 +141,15 @@ function fillUntil(targetHeight) {
   }
 }
 
+function topUpIfNeeded() {
+  const { h: vh } = getViewportSize();
+  const maxVel = Math.max(...colVelocityMultipliers);
+  const target = offset * maxVel + vh * 3;
+  if (Math.min(...colHeights) < target) {
+    fillUntil(target);
+  }
+}
+
 let offset = 0;
 let velocity = BASE_VELOCITY;
 let lastFrameTime = 0;
@@ -165,6 +174,7 @@ function frame(t) {
     const tileOffset = offset * tile.velocityMultiplier;
     tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y - tileOffset}px, 0)`;
   }
+  topUpIfNeeded();
   recycleIfNeeded();
   requestAnimationFrame(frame);
 }
@@ -176,7 +186,7 @@ function init() {
     return;
   }
   computeLayout();
-  fillUntil(h * 2);
+  fillUntil(h * 3);
   lastFrameTime = performance.now();
   requestAnimationFrame(frame);
 }
