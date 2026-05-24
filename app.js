@@ -112,11 +112,12 @@ function createTile(item, pos, label) {
   el.style.height = `${pos.h}px`;
   el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
 
+  const color = colorFromSeed(item.seed);
+  el.style.setProperty('--tile-glow-color', color);
+
   const inner = document.createElement('div');
   inner.className = 'tile-inner';
-  const color = colorFromSeed(item.seed);
   inner.style.background = color;
-  inner.style.setProperty('--glow-color', color);
   inner.textContent = label;
   el.appendChild(inner);
   attachTilt(inner);
