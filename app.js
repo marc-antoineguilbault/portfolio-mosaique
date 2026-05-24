@@ -73,6 +73,37 @@ function placeNext(item) {
 
 const TILT_MAX_DEG = 5;
 const TILT_PERSPECTIVE = 1000;
+const CONTENT_HEIGHT_RATIO = 2.5;
+const SCROLL_DOWN_DURATION = 7000;
+const SCROLL_UP_DURATION = 1400;
+
+function easeInOutQuad(t) {
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+
+function attachScroll(inner) {
+  let animId = null;
+  function animateScrollTo(target, duration) {
+    cancelAnimationFrame(animId);
+    const start = inner.scrollTop;
+    const delta = target - start;
+    const startTime = performance.now();
+    function step(t) {
+      const elapsed = t - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      inner.scrollTop = start + delta * easeInOutQuad(progress);
+      if (progress < 1) animId = requestAnimationFrame(step);
+    }
+    animId = requestAnimationFrame(step);
+  }
+  inner.addEventListener('mouseenter', () => {
+    const maxScroll = inner.scrollHeight - inner.clientHeight;
+    animateScrollTo(maxScroll, SCROLL_DOWN_DURATION);
+  });
+  inner.addEventListener('mouseleave', () => {
+    animateScrollTo(0, SCROLL_UP_DURATION);
+  });
+}
 
 const cursorEl = document.getElementById('cursor');
 
@@ -115,13 +146,24 @@ function createTile(item, pos, label) {
 
   const color = colorFromSeed(item.seed);
   el.style.setProperty('--tile-glow-color', color);
+  const hueMatch = color.match(/hsl\((\d+)/);
+  const hue = hueMatch ? hueMatch[1] : 0;
+  const lighter = `hsl(${hue}, 35%, 62%)`;
+  const darker = `hsl(${hue}, 35%, 32%)`;
 
   const inner = document.createElement('div');
   inner.className = 'tile-inner';
-  inner.style.background = color;
-  inner.textContent = label;
+
+  const content = document.createElement('div');
+  content.className = 'tile-content';
+  content.style.background = `linear-gradient(180deg, ${lighter} 0%, ${color} 50%, ${darker} 100%)`;
+  content.style.height = `${pos.h * CONTENT_HEIGHT_RATIO}px`;
+  content.textContent = label;
+  inner.appendChild(content);
+
   el.appendChild(inner);
   attachTilt(inner);
+  attachScroll(inner);
 
   scroller.appendChild(el);
   return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
