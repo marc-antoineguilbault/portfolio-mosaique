@@ -549,6 +549,8 @@ function createTile(item, pos, label) {
 
   const color = colorFromSeed(item.seed);
   el.style.setProperty('--tile-glow-color', color);
+  // Décale la respiration de chaque tuile (delay négatif → animation déjà en cours au mount)
+  el.style.setProperty('--glow-delay', `-${(Math.random() * 2.6).toFixed(2)}s`);
 
   const frame = document.createElement('div');
   frame.className = 'tile-frame';
