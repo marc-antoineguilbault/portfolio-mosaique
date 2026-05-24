@@ -1,5 +1,6 @@
 import { pool, colorFromSeed, RATIOS } from './data.js';
-import { Renderer, Program, Mesh, Triangle, Vec2 } from 'https://cdn.jsdelivr.net/npm/ogl/+esm';
+import { Renderer, Program, Mesh, Triangle, Texture, Vec2 } from 'https://cdn.jsdelivr.net/npm/ogl/+esm';
+import html2canvas from 'https://cdn.jsdelivr.net/npm/html2canvas-pro/+esm';
 
 const GAP = 48;
 const GAP_Y = 160;
@@ -198,46 +199,52 @@ void main() {
 const RIPPLE_FRAG = `
 precision highp float;
 varying vec2 vUv;
-uniform float uTime;            // 0 → 1
-uniform vec2 uMouse;            // center of clicked tile in pixels (viewport coords, top-left origin)
-uniform vec2 uResolution;       // viewport size in pixels
-uniform vec2 uTileHalfSize;     // half-width, half-height of clicked tile in pixels
-uniform float uTileRadius;      // tile border-radius in pixels
-uniform vec3 uTint;             // project color (rgb 0..1)
+uniform float uTime;
+uniform vec2 uMouse;
+uniform vec2 uResolution;
+uniform vec2 uTileHalfSize;
+uniform float uTileRadius;
+uniform vec3 uTint;
+uniform sampler2D uTexture;       // snapshot html2canvas du viewport au moment du clic
 
-// SDF d'un rectangle arrondi centré à l'origine
 float sdRoundedRect(vec2 p, vec2 s, float r) {
   vec2 q = abs(p) - s + r;
   return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 }
 
 void main() {
-  // Convertit vUv (0..1, Y inversé en WebGL) en coords pixel viewport (top-left origin)
   vec2 fragPx = vec2(vUv.x, 1.0 - vUv.y) * uResolution;
   vec2 p = fragPx - uMouse;
 
-  // Forme initiale = tile (rect arrondi). Morph vers cercle (length(p)) avec le temps.
   float sdRect = sdRoundedRect(p, uTileHalfSize, uTileRadius);
   float meanHalf = (uTileHalfSize.x + uTileHalfSize.y) * 0.5;
   float sdCirc = length(p) - meanHalf;
-  float morph = smoothstep(0.0, 0.6, uTime); // 0 = pure rect, 1 = pure circle (atteint à uTime=0.6)
+  float morph = smoothstep(0.0, 0.6, uTime);
   float sdShape = mix(sdRect, sdCirc, morph);
 
-  // L'onde se propage vers l'extérieur (sd diminue avec le temps)
-  float maxRadius = max(uResolution.x, uResolution.y); // suffit à couvrir le viewport
+  float maxRadius = max(uResolution.x, uResolution.y);
   float front = uTime * maxRadius * 0.9;
   float sd = sdShape - front;
 
-  // Anneau lumineux centré sur sd = 0, épaisseur généreuse qui s'élargit
   float thickness = 80.0 + uTime * 220.0;
   float ring = exp(-pow(sd / thickness, 2.0));
 
-  // Cutout : pas de rendu dans la silhouette de la tile cliquée (la vraie tile reste visible derrière)
+  // Cutout : tile cliquée intacte (vraie tile derrière le canvas)
   if (sdRect < 0.0) discard;
 
-  // Fade-out en fin d'animation
-  float alpha = ring * (1.0 - smoothstep(0.65, 1.0, uTime)) * 0.9;
-  gl_FragColor = vec4(uTint, alpha);
+  // Distortion radiale : déplace les UV du snapshot vers l'extérieur dans l'épaisseur du ring
+  vec2 dir = normalize(p + vec2(1e-5));
+  float amplitude = ring * 45.0 * (1.0 - uTime * 0.3); // pixels
+  vec2 sampleUv = vec2(vUv.x, 1.0 - vUv.y) + (dir * amplitude) / uResolution;
+  // sample texture (snapshot orienté top-left, on inverse Y pour matcher WebGL)
+  vec3 tex = texture2D(uTexture, vec2(sampleUv.x, 1.0 - sampleUv.y)).rgb;
+
+  // Teinte projet sur le cœur de l'anneau
+  vec3 col = mix(tex, uTint, ring * 0.35);
+
+  // Alpha : visible uniquement dans l'anneau (transparent ailleurs → mosaïque réelle visible)
+  float alpha = ring * (1.0 - smoothstep(0.7, 1.0, uTime));
+  gl_FragColor = vec4(col, alpha);
 }
 `;
 
@@ -246,6 +253,7 @@ const rippleGl = rippleRenderer.gl;
 const rippleCanvas = rippleGl.canvas;
 rippleCanvas.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:9999;display:none';
 document.body.appendChild(rippleCanvas);
+const rippleSharedTexture = new Texture(rippleGl);
 const rippleProgram = new Program(rippleGl, {
   vertex: RIPPLE_VERT,
   fragment: RIPPLE_FRAG,
@@ -257,6 +265,7 @@ const rippleProgram = new Program(rippleGl, {
     uTileHalfSize: { value: new Vec2(150, 300) },
     uTileRadius: { value: 32 },
     uTint: { value: new Float32Array([1, 1, 1]) },
+    uTexture: { value: rippleSharedTexture },
   },
 });
 const rippleMesh = new Mesh(rippleGl, { geometry: new Triangle(rippleGl), program: rippleProgram });
@@ -304,14 +313,33 @@ function renderRipple(now) {
   requestAnimationFrame(renderRipple);
 }
 
-function fireRipple(tileEl, glowStr) {
+async function fireRipple(tileEl, glowStr) {
   const r = tileEl.getBoundingClientRect();
   const radius = parseFloat(getComputedStyle(tileEl).borderTopLeftRadius) || 32;
-  rippleTrackedTile = tileEl;
-  rippleProgram.uniforms.uMouse.value.set(r.left + r.width / 2, r.top + r.height / 2);
   rippleProgram.uniforms.uTileHalfSize.value.set(r.width / 2, r.height / 2);
   rippleProgram.uniforms.uTileRadius.value = radius;
   rippleProgram.uniforms.uTint.value = new Float32Array(hslToRgb(glowStr || 'hsl(0, 0%, 50%)'));
+  rippleProgram.uniforms.uMouse.value.set(r.left + r.width / 2, r.top + r.height / 2);
+
+  // Snapshot du viewport (la mosaïque + tiles voisines) pour pouvoir le déformer dans le shader.
+  // Async ~50-200ms ; on capture AVANT d'afficher le canvas pour ne pas se snapshooter soi-même.
+  let snapshot;
+  try {
+    snapshot = await html2canvas(viewport, {
+      backgroundColor: '#000',
+      logging: false,
+      scale: Math.min(window.devicePixelRatio || 1, 1.5),
+      ignoreElements: (el) => el === rippleCanvas,
+    });
+  } catch (e) {
+    console.warn('html2canvas failed', e);
+    return;
+  }
+  rippleSharedTexture.image = snapshot;
+  rippleSharedTexture.needsUpdate = true;
+  rippleProgram.uniforms.uTexture.value = rippleSharedTexture;
+
+  rippleTrackedTile = tileEl;
   rippleCanvas.style.display = 'block';
   rippleAnimStart = performance.now();
   if (!rippleActive) {
