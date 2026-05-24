@@ -71,8 +71,8 @@ function placeNext(item) {
   }
 }
 
-const TILT_MAX_DEG = 12;
-const TILT_PERSPECTIVE = 800;
+const TILT_MAX_DEG = 5;
+const TILT_PERSPECTIVE = 1000;
 
 function attachTilt(inner) {
   inner.addEventListener('mouseenter', () => {
@@ -82,11 +82,15 @@ function attachTilt(inner) {
     const rect = inner.getBoundingClientRect();
     const cx = rect.width / 2;
     const cy = rect.height / 2;
-    const dx = (e.clientX - rect.left - cx) / cx;
-    const dy = (e.clientY - rect.top - cy) / cy;
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    const dx = (px - cx) / cx;
+    const dy = (py - cy) / cy;
     const rotateY = dx * TILT_MAX_DEG;
     const rotateX = -dy * TILT_MAX_DEG;
     inner.style.transform = `perspective(${TILT_PERSPECTIVE}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+    inner.style.setProperty('--gx', (px / rect.width) * 100 + '%');
+    inner.style.setProperty('--gy', (py / rect.height) * 100 + '%');
   });
   inner.addEventListener('mouseleave', () => {
     inner.style.transition = '';

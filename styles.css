@@ -35,6 +35,7 @@ html, body {
 }
 
 .tile-inner {
+  position: relative;
   width: 100%;
   height: 100%;
   border-radius: 20px;
@@ -48,4 +49,24 @@ html, body {
   transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
   transform-style: preserve-3d;
   cursor: pointer;
+  overflow: hidden;
+}
+
+.tile-inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at var(--gx, 50%) var(--gy, 50%),
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0) 55%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.tile-inner:hover::after {
+  opacity: 1;
 }
