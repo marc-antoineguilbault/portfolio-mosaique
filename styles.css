@@ -30,7 +30,7 @@ html, body {
 
 .tile {
   position: absolute;
-  border-radius: 30px;
+  border-radius: 20px;
   will-change: transform;
   display: flex;
   align-items: center;
