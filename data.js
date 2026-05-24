@@ -2,11 +2,11 @@ function buildImages(slug, mobileCount, tabletCount, ext = 'jpg', locked = false
   const images = [];
   for (let i = 1; i <= mobileCount; i++) {
     const n = String(i).padStart(2, '0');
-    images.push({ type: 'mobile', seed: `${slug}-m${n}`, src: `assets/${slug}/m${n}.${ext}`, locked });
+    images.push({ type: 'mobile', seed: `${slug}-m${n}`, src: `assets/${slug}/m${n}.${ext}`, locked, project: slug });
   }
   for (let i = 1; i <= tabletCount; i++) {
     const n = String(i).padStart(2, '0');
-    images.push({ type: 'tablet', seed: `${slug}-t${n}`, src: `assets/${slug}/t${n}.${ext}`, locked });
+    images.push({ type: 'tablet', seed: `${slug}-t${n}`, src: `assets/${slug}/t${n}.${ext}`, locked, project: slug });
   }
   return images;
 }

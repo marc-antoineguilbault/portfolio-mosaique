@@ -168,6 +168,21 @@ function attachTilt(inner) {
   });
 }
 
+// ─── Focus projet au clic : dim les autres ─────────────────────────────────
+let focusedProject = null;
+
+function applyDimming(tileEl) {
+  if (!focusedProject) return;
+  if (tileEl.dataset.project === focusedProject) tileEl.classList.remove('tile--dimmed');
+  else tileEl.classList.add('tile--dimmed');
+}
+
+function focusProject(slug) {
+  focusedProject = slug;
+  document.querySelectorAll('.tile').forEach(applyDimming);
+}
+// ──────────────────────────────────────────────────────────────────────────
+
 // ─── Verrouillage des projets confidentiels ────────────────────────────────
 // Un seul mot de passe global : n'importe quelle saisie + Entrée débloque
 // toutes les tuiles verrouillées (passées et futures).
@@ -307,6 +322,7 @@ function createTile(item, pos, label) {
   const el = document.createElement('div');
   el.className = 'tile';
   el.dataset.type = item.type;
+  if (item.project) el.dataset.project = item.project;
   el.style.width = `${pos.w}px`;
   el.style.height = `${pos.h}px`;
   el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
@@ -362,7 +378,9 @@ function createTile(item, pos, label) {
     ripple.className = 'tile-ripple';
     el.appendChild(ripple);
     ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
+    if (el.dataset.project) focusProject(el.dataset.project);
   });
+  applyDimming(el); // au cas où une nouvelle tuile arrive après un focus
 
   scroller.appendChild(el);
   return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };

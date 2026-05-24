@@ -61,7 +61,12 @@ html, body {
   box-shadow: 0 24px 70px -30px color-mix(in srgb,
     var(--tile-glow-color, transparent) calc(var(--glow-alpha) * 100%),
     transparent);
-  transition: --glow-alpha 0.6s ease-out;
+  transition: --glow-alpha 0.6s ease-out, opacity 0.6s ease;
+}
+
+/* Mise en retrait des tuiles n'appartenant pas au projet focus (après click). */
+.tile--dimmed {
+  opacity: 0.35;
 }
 
 .tile:hover {
