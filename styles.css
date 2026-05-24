@@ -71,8 +71,39 @@ html, body {
               box-shadow 1s cubic-bezier(0.4, 0, 0.4, 1);
 }
 
+/* Liquid glass : halo lumineux qui glisse uniquement sur le contour 1px, au hover.
+   Rayon en % pour rester proportionnel à la tuile (mobile, square, tablet, fullwidth). */
+.tile-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: radial-gradient(
+    45% 45% at var(--frame-x, 50%) var(--frame-y, 50%),
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 255, 255, 0.5) 40%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .tile:hover .tile-frame {
   box-shadow: 0 0 0 1px #999A9A, 0 24px 70px -30px var(--tile-glow-color, transparent);
+}
+
+.tile:hover .tile-frame::before {
+  opacity: 1;
 }
 
 

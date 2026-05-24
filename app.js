@@ -166,6 +166,16 @@ function attachTilt(inner) {
   });
 }
 
+function attachFrameGlow(frame) {
+  frame.addEventListener('mousemove', (e) => {
+    const rect = frame.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    frame.style.setProperty('--frame-x', x + '%');
+    frame.style.setProperty('--frame-y', y + '%');
+  });
+}
+
 function createTile(item, pos, label) {
   const el = document.createElement('div');
   el.className = 'tile';
@@ -212,6 +222,7 @@ function createTile(item, pos, label) {
 
   el.appendChild(frame);
   attachTilt(inner);
+  attachFrameGlow(frame);
   attachScroll(tileScroll, inner);
 
   scroller.appendChild(el);
