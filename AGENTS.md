@@ -5,15 +5,24 @@ Onepage contemplatif : mosaïque type Pinterest qui défile lentement de haut en
 ## Stack
 
 - HTML/CSS/JS vanilla, zéro dépendance
-- Servi en statique pendant la maquette via `mcp__Claude_Preview__preview_start` (cwd = `portfolio-mosaique`)
-- Phase 1 : placeholders colorés (pas de vraies images)
+- Servi en statique pendant la maquette via `mcp__Claude_Preview__preview_start` (cwd = `portfolio-mosaique`) ou `python -m http.server 8000` à la racine
+- Phase 1 : placeholders colorés + premières images réelles (`assets/quintessence/`)
 
 ## Fichiers
 
 - `index.html` — squelette `viewport > scroller`
 - `styles.css` — fond noir, viewport fixed, tuile = div absolute
-- `data.js` — pool de projets (id, name, images avec type+seed)
+- `data.js` — pool de projets (id, name, images avec type+seed+src)
 - `app.js` — moteur : layout masonry, boucle rAF, wrap-around, interactions
+- `assets/` — vraies images des projets
+
+## Lancer
+
+```bash
+cd "portfolio-mosaique"
+python -m http.server 8000
+# Ouvrir http://localhost:8000
+```
 
 ## Statut
 
@@ -21,5 +30,6 @@ Projet en phase de **maquettage UI**. Vit temporairement dans le worktree `~/.cl
 
 ## Spec & Plan
 
-- Spec : `../docs/superpowers/specs/2026-05-24-portfolio-mosaique-design.md`
-- Plan : `../docs/superpowers/plans/2026-05-24-portfolio-mosaique.md`
+Voir le worktree d'orchestration `~/.claude` pour les docs de design :
+- Spec : `docs/superpowers/specs/2026-05-24-portfolio-mosaique-design.md`
+- Plan : `docs/superpowers/plans/2026-05-24-portfolio-mosaique.md`
