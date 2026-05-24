@@ -4,7 +4,7 @@ const GAP = 24;
 const INITIAL_OFFSET_RANGE = 400;
 const BASE_VELOCITY = 30;
 const WHEEL_GAIN = 0.5;
-const RECYCLE_MARGIN = 100;
+const RECYCLE_MARGIN_VH = 1.5;
 const ANTI_REPEAT = 8;
 
 const viewport = document.getElementById('viewport');
@@ -97,8 +97,10 @@ function pickRandom() {
 }
 
 function recycleIfNeeded() {
+  const { h: vh } = getViewportSize();
+  const margin = vh * RECYCLE_MARGIN_VH;
   for (const tile of liveTiles) {
-    if (tile.y + tile.h - offset < -RECYCLE_MARGIN) {
+    if (tile.y + tile.h - offset < -margin) {
       const newItem = pickRandom();
       const pos = placeNext(newItem);
       tile.item = newItem;
@@ -136,6 +138,7 @@ scroller.addEventListener('mouseleave', () => { paused = false; });
 viewport.addEventListener('wheel', (e) => {
   e.preventDefault();
   offset += e.deltaY * WHEEL_GAIN;
+  if (offset < 0) offset = 0;
 }, { passive: false });
 
 function frame(t) {
