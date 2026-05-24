@@ -5,7 +5,6 @@ const GAP_Y = 160;
 const BASE_VELOCITY = 30;
 const WHEEL_GAIN = 0.5;
 const RECYCLE_MARGIN_VH = 3;
-const MOBILE_SCALE = 0.8;
 
 // Patterns déterministes — la grille est identique à chaque reload.
 const INITIAL_OFFSETS = [-50, -320, -180, -240];   // décalage Y de départ par colonne
@@ -46,9 +45,9 @@ function placeNext(item) {
     for (let k = 1; k < cols; k++) {
       if (colHeights[k] < colHeights[i]) i = k;
     }
-    const w = colWidth * MOBILE_SCALE;
-    const x = GAP + i * (colWidth + GAP) + (colWidth - w) / 2;
+    const x = GAP + i * (colWidth + GAP);
     const y = colHeights[i];
+    const w = colWidth;
     const h = w / RATIOS.mobile;
     colHeights[i] = y + h + GAP_Y;
     return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[i] };
