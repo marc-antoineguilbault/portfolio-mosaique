@@ -159,6 +159,9 @@ function createTile(item, pos, label) {
   const color = colorFromSeed(item.seed);
   el.style.setProperty('--tile-glow-color', color);
 
+  const frame = document.createElement('div');
+  frame.className = 'tile-frame';
+
   const inner = document.createElement('div');
   inner.className = 'tile-inner';
 
@@ -187,8 +190,9 @@ function createTile(item, pos, label) {
 
   tileScroll.appendChild(content);
   inner.appendChild(tileScroll);
+  frame.appendChild(inner);
 
-  el.appendChild(inner);
+  el.appendChild(frame);
   attachTilt(inner);
   attachScroll(tileScroll, inner);
 
