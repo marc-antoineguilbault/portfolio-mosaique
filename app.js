@@ -93,6 +93,18 @@ function fillUntil(targetHeight) {
   }
 }
 
+let offset = 0;
+let velocity = BASE_VELOCITY;
+let lastFrameTime = 0;
+
+function frame(t) {
+  const dt = Math.min((t - lastFrameTime) / 1000, 0.1);
+  lastFrameTime = t;
+  offset += velocity * dt;
+  scroller.style.transform = `translate3d(0, ${-offset}px, 0)`;
+  requestAnimationFrame(frame);
+}
+
 function init() {
   const { w, h } = getViewportSize();
   if (w === 0 || h === 0) {
@@ -101,6 +113,10 @@ function init() {
   }
   computeLayout();
   fillUntil(h * 2);
+  requestAnimationFrame((t) => {
+    lastFrameTime = t;
+    requestAnimationFrame(frame);
+  });
 }
 
 requestAnimationFrame(init);
