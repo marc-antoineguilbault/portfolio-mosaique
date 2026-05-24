@@ -71,6 +71,8 @@ function placeNext(item) {
   }
 }
 
+const RADIUS_RATIO = 0.1;
+
 function createTile(item, pos, label) {
   const el = document.createElement('div');
   el.className = 'tile';
@@ -78,6 +80,7 @@ function createTile(item, pos, label) {
   el.style.background = colorFromSeed(item.seed);
   el.style.width = `${pos.w}px`;
   el.style.height = `${pos.h}px`;
+  el.style.borderRadius = `${pos.w * RADIUS_RATIO}px`;
   el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
   el.textContent = label;
   scroller.appendChild(el);
@@ -188,6 +191,7 @@ function rebuildLayout() {
     tile.colIdx = pos.colIdx;
     tile.el.style.width = `${pos.w}px`;
     tile.el.style.height = `${pos.h}px`;
+    tile.el.style.borderRadius = `${pos.w * RADIUS_RATIO}px`;
   }
   fillUntil(h * 2);
   offset = 0;
