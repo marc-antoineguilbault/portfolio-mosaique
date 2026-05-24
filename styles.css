@@ -17,23 +17,25 @@ html, body {
   position: fixed;
   top: 0;
   left: 0;
-  width: 14px;
-  height: 14px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(180, 180, 180, 0.55);
   pointer-events: none;
   z-index: 1000;
   transform: translate(-50%, -50%);
-  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: left, top;
+  transition:
+    width 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    height 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    border-radius 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.35s ease,
+    left 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    top 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: left, top, width, height;
 }
 
-#cursor.over-tile {
-  opacity: 0;
-  width: 0;
-  height: 0;
+#cursor.locked {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .viewport {
