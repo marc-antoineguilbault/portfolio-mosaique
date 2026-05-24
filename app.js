@@ -90,18 +90,28 @@ function createTile(item, pos, label) {
 }
 
 const recentHistory = [];
+let lastType = null;
+const mobilePool = pool.filter(p => p.type === 'mobile');
+const tabletPool = pool.filter(p => p.type === 'tablet');
+
 function pickRandom() {
-  if (pool.length <= ANTI_REPEAT) {
-    return pool[Math.floor(Math.random() * pool.length)];
-  }
+  let desiredType;
+  if (lastType === 'mobile') desiredType = 'tablet';
+  else if (lastType === 'tablet') desiredType = 'mobile';
+  else desiredType = Math.random() < 0.5 ? 'mobile' : 'tablet';
+
+  let candidates = desiredType === 'mobile' ? mobilePool : tabletPool;
+  if (candidates.length === 0) candidates = pool;
+
   let item;
   let tries = 0;
   do {
-    item = pool[Math.floor(Math.random() * pool.length)];
+    item = candidates[Math.floor(Math.random() * candidates.length)];
     tries++;
   } while (recentHistory.includes(item.seed) && tries < 20);
   recentHistory.push(item.seed);
   if (recentHistory.length > ANTI_REPEAT) recentHistory.shift();
+  lastType = item.type;
   return item;
 }
 
