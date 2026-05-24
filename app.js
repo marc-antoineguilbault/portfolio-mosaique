@@ -87,6 +87,8 @@ const TILT_PERSPECTIVE = 1400;
 const CONTENT_HEIGHT_RATIO = 2.5;
 const SCROLL_DOWN_DURATION = 8000;
 const SCROLL_UP_DURATION = 1500;
+// Survol < ce délai → l'auto-scroll ne se déclenche pas. Au-delà, intention manifeste.
+const SCROLL_DOWN_DELAY = 500;
 
 function easeInOutQuad(t) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
@@ -94,6 +96,7 @@ function easeInOutQuad(t) {
 
 function attachScroll(scroller, host) {
   let animId = null;
+  let startTimer = null;
   function animateScrollTo(target, duration, onDone) {
     cancelAnimationFrame(animId);
     const start = scroller.scrollTop;
@@ -112,13 +115,19 @@ function attachScroll(scroller, host) {
     animId = requestAnimationFrame(step);
   }
   host.addEventListener('mouseenter', () => {
-    const maxScroll = scroller.scrollHeight - scroller.clientHeight;
-    if (maxScroll <= 0) return;
-    const distance = Math.max(maxScroll - scroller.scrollTop, 0);
-    const duration = SCROLL_DOWN_DURATION * (distance / maxScroll);
-    animateScrollTo(maxScroll, duration);
+    clearTimeout(startTimer);
+    startTimer = setTimeout(() => {
+      startTimer = null;
+      const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+      if (maxScroll <= 0) return;
+      const distance = Math.max(maxScroll - scroller.scrollTop, 0);
+      const duration = SCROLL_DOWN_DURATION * (distance / maxScroll);
+      animateScrollTo(maxScroll, duration);
+    }, SCROLL_DOWN_DELAY);
   });
   host.addEventListener('mouseleave', () => {
+    clearTimeout(startTimer);
+    startTimer = null;
     const maxScroll = scroller.scrollHeight - scroller.clientHeight;
     if (maxScroll <= 0) return;
     const distance = scroller.scrollTop;
@@ -348,6 +357,12 @@ function createTile(item, pos, label) {
   el.appendChild(frame);
   attachTilt(inner);
   attachScroll(tileScroll, inner);
+  inner.addEventListener('click', () => {
+    const ripple = document.createElement('div');
+    ripple.className = 'tile-ripple';
+    el.appendChild(ripple);
+    ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
+  });
 
   scroller.appendChild(el);
   return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
