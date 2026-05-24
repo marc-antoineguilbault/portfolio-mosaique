@@ -272,12 +272,8 @@ void main() {
   float glow3 = exp(-pow((sdShape - front3) / (thick3 * 3.0), 2.0)) * 0.25;
   float tintGlow = clamp(glow1 + glow2 + glow3, 0.0, 1.0);
 
-  // Couleur irisée — module selon l'angle radial + distance + temps pour un dégradé multicolore
-  float angle = atan(p.y, p.x) / 6.28318;             // -0.5 → 0.5
-  float distNorm = length(p) / max(uResolution.x, uResolution.y);
-  float paletteT = angle + distNorm * 0.45 + uTime * 0.25;
-  vec3 iridescentColor = iridescent(paletteT);
-  vec3 col = mix(tex, iridescentColor, tintGlow);
+  // Onde en blanc — le blend mode plus-lighter additionne avec la mosaïque dessous
+  vec3 col = mix(tex, vec3(1.0), tintGlow);
 
   // Alpha = combiné ring (distortion) + halo coloré (étendu), pour que le hard-light s'étale
   float alpha = clamp(combinedRing + tintGlow * 0.7, 0.0, 1.0) * (1.0 - smoothstep(0.75, 1.0, uTime));
@@ -288,7 +284,7 @@ void main() {
 const rippleRenderer = new Renderer({ alpha: true, premultipliedAlpha: false });
 const rippleGl = rippleRenderer.gl;
 const rippleCanvas = rippleGl.canvas;
-rippleCanvas.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:9999;display:none;mix-blend-mode:hard-light';
+rippleCanvas.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:9999;display:none;mix-blend-mode:plus-lighter';
 document.body.appendChild(rippleCanvas);
 const rippleSharedTexture = new Texture(rippleGl);
 const rippleProgram = new Program(rippleGl, {
