@@ -1,12 +1,12 @@
-function buildImages(slug, mobileCount, tabletCount, ext = 'jpg') {
+function buildImages(slug, mobileCount, tabletCount, ext = 'jpg', locked = false) {
   const images = [];
   for (let i = 1; i <= mobileCount; i++) {
     const n = String(i).padStart(2, '0');
-    images.push({ type: 'mobile', seed: `${slug}-m${n}`, src: `assets/${slug}/m${n}.${ext}` });
+    images.push({ type: 'mobile', seed: `${slug}-m${n}`, src: `assets/${slug}/m${n}.${ext}`, locked });
   }
   for (let i = 1; i <= tabletCount; i++) {
     const n = String(i).padStart(2, '0');
-    images.push({ type: 'tablet', seed: `${slug}-t${n}`, src: `assets/${slug}/t${n}.${ext}` });
+    images.push({ type: 'tablet', seed: `${slug}-t${n}`, src: `assets/${slug}/t${n}.${ext}`, locked });
   }
   return images;
 }
@@ -16,9 +16,9 @@ export const projects = [
   { id: 'pozzo-di-borgo', name: 'Pozzo di Borgo', images: buildImages('pozzo-di-borgo', 5, 8) },
   { id: 'mcdo',           name: 'McDonald’s',     images: buildImages('mcdo',           3, 7) },
   { id: 'loreal',         name: 'L’Oréal',        images: buildImages('loreal',         4, 8) },
-  { id: 'pompidou',       name: 'Pompidou',       images: buildImages('pompidou',       3, 3, 'png') },
+  { id: 'pompidou',       name: 'Pompidou',       images: buildImages('pompidou',       3, 3, 'png', true) },
   { id: 'gobelins',       name: 'Gobelins',       images: buildImages('gobelins',       5, 3) },
-  { id: 'liquides',       name: 'Liquides',       images: buildImages('liquides',       5, 7) },
+  { id: 'liquides',       name: 'Liquides',       images: buildImages('liquides',       5, 7, 'jpg', true) },
 ];
 
 export const pool = projects.flatMap(p => p.images);

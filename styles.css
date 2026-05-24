@@ -201,3 +201,47 @@ html, body {
   -webkit-user-drag: none;
 }
 
+/* Projets confidentiels : image floutée + cadenas en overlay */
+.tile-img--locked {
+  filter: blur(24px);
+}
+
+.tile-lock {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 44px;
+  color: rgba(255, 255, 255, 0.9);
+  z-index: 5;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.tile-lock:hover {
+  color: #fff;
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.tile-pw {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: center;
+  outline: none;
+  width: 140px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+

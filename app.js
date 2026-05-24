@@ -159,6 +159,83 @@ function attachTilt(inner) {
   });
 }
 
+// ─── Verrouillage des projets confidentiels ────────────────────────────────
+// Un seul mot de passe global : n'importe quelle saisie + Entrée débloque
+// toutes les tuiles verrouillées (passées et futures).
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const lockedEntries = new Set();
+let unlockedAll = false;
+
+function createLockSvg() {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 16 20');
+  svg.setAttribute('class', 'tile-lock');
+  svg.setAttribute('aria-hidden', 'true');
+  const body = document.createElementNS(SVG_NS, 'rect');
+  body.setAttribute('x', '2'); body.setAttribute('y', '8');
+  body.setAttribute('width', '12'); body.setAttribute('height', '10');
+  body.setAttribute('rx', '1'); body.setAttribute('fill', 'currentColor');
+  const arc = document.createElementNS(SVG_NS, 'path');
+  arc.setAttribute('d', 'M5 8 V5 a3 3 0 0 1 6 0 V8');
+  arc.setAttribute('stroke', 'currentColor');
+  arc.setAttribute('stroke-width', '1.5');
+  arc.setAttribute('fill', 'none');
+  svg.appendChild(body); svg.appendChild(arc);
+  return svg;
+}
+
+function unlockAll() {
+  unlockedAll = true;
+  for (const entry of lockedEntries) {
+    entry.imgEl.classList.remove('tile-img--locked');
+    entry.lockSvg.remove();
+    if (entry.inputEl) entry.inputEl.remove();
+  }
+  lockedEntries.clear();
+}
+
+function showPasswordInput(entry, inner) {
+  if (entry.inputEl) return;
+  entry.lockSvg.style.display = 'none';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'tile-pw';
+  input.placeholder = 'Mot de passe';
+  input.autocomplete = 'off';
+  input.spellcheck = false;
+  entry.inputEl = input;
+  inner.appendChild(input);
+  // Bloque la propagation vers les handlers viewport (wheel/mousedown).
+  input.addEventListener('click', e => e.stopPropagation());
+  input.addEventListener('mousedown', e => e.stopPropagation());
+  input.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter' && input.value.length > 0) unlockAll();
+  });
+  input.addEventListener('blur', () => {
+    if (input.value.length === 0) {
+      input.remove();
+      entry.inputEl = null;
+      entry.lockSvg.style.display = '';
+    }
+  });
+  setTimeout(() => input.focus(), 0);
+}
+
+function attachLock(inner, imgEl) {
+  if (unlockedAll) return;
+  imgEl.classList.add('tile-img--locked');
+  const lockSvg = createLockSvg();
+  inner.appendChild(lockSvg);
+  const entry = { imgEl, lockSvg, inputEl: null };
+  lockedEntries.add(entry);
+  lockSvg.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    showPasswordInput(entry, inner);
+  });
+}
+// ──────────────────────────────────────────────────────────────────────────
+
 function attachFrameGlow(frame) {
   frame.addEventListener('mousemove', (e) => {
     const rect = frame.getBoundingClientRect();
@@ -252,6 +329,7 @@ function createTile(item, pos, label) {
     else img.addEventListener('load', applyGlow, { once: true });
     content.appendChild(img);
     content.classList.add('tile-content--image');
+    if (item.locked) attachLock(inner, img);
   } else {
     const hueMatch = color.match(/hsl\((\d+)/);
     const hue = hueMatch ? hueMatch[1] : 0;
