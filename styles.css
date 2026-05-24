@@ -51,21 +51,12 @@ html, body {
   position: absolute;
   will-change: transform;
   user-select: none;
-  box-shadow: 0 60px 0 -40px transparent;
-  transition: box-shadow 0.4s cubic-bezier(0.4, 0, 0.4, 1);
+  box-shadow: 0 60px 160px -25px transparent;
+  transition: box-shadow 1s cubic-bezier(0.4, 0, 0.4, 1);
 }
 
 .tile:hover {
-  animation: glow-breathe 2.4s ease-in-out infinite alternate;
-}
-
-@keyframes glow-breathe {
-  0% {
-    box-shadow: 0 60px 90px -40px var(--tile-glow-color, transparent);
-  }
-  100% {
-    box-shadow: 0 60px 160px -25px var(--tile-glow-color, transparent);
-  }
+  box-shadow: 0 60px 160px -25px var(--tile-glow-color, transparent);
 }
 
 .tile-inner {
