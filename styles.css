@@ -79,16 +79,21 @@ html, body {
   background: #000;
   padding: 12px;
   border-radius: var(--tile-radius-outer, 32px);
-  box-shadow: 0 24px 70px -30px color-mix(in srgb,
-    var(--tile-glow-color, transparent) calc(var(--glow-alpha) * 100%),
-    transparent);
+  /* Anneau de bordure 1px (premier shadow) + glow respirant (second shadow).
+     box-shadow épouse exactement border-radius → contour parfaitement uniforme aux corners,
+     contrairement à un masque content-box XOR padding-box qui s'amincit aux arrondis. */
+  box-shadow:
+    0 0 0 1px #999A9A,
+    0 24px 70px -30px color-mix(in srgb,
+      var(--tile-glow-color, transparent) calc(var(--glow-alpha) * 100%),
+      transparent);
   transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1),
               --glow-alpha 0.6s ease-out;
 }
 
-/* Anneau de bordure 1px (constant). ::before = couleur de repos, ::after = highlight liquid glass
-   qui apparaît au hover. Les deux occupent EXACTEMENT le même anneau → pas d'épaississement. */
-.tile-frame::before,
+/* Highlight liquid glass au hover : halo blanc qui glisse sur l'anneau 1px.
+   La technique de masque introduit un léger amincissement aux corners, mais comme c'est
+   un gradient additif au-dessus d'un contour parfait, l'effet reste discret. */
 .tile-frame::after {
   content: '';
   position: absolute;
@@ -96,6 +101,12 @@ html, body {
   border-radius: inherit;
   padding: 1px;
   pointer-events: none;
+  background: radial-gradient(
+    45% 45% at var(--frame-x, 50%) var(--frame-y, 50%),
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 255, 255, 0.5) 40%,
+    rgba(255, 255, 255, 0) 100%
+  );
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
@@ -104,19 +115,6 @@ html, body {
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
   mask-composite: exclude;
-}
-
-.tile-frame::before {
-  background: #999A9A;
-}
-
-.tile-frame::after {
-  background: radial-gradient(
-    45% 45% at var(--frame-x, 50%) var(--frame-y, 50%),
-    rgba(255, 255, 255, 1) 0%,
-    rgba(255, 255, 255, 0.5) 40%,
-    rgba(255, 255, 255, 0) 100%
-  );
   opacity: 0;
   transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }

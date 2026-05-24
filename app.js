@@ -167,20 +167,23 @@ const lockedEntries = new Set();
 let unlockedAll = false;
 
 function createLockSvg() {
+  // Adapté de Noun Project — lock-8106161 by Win Ningsih.
+  // Body plein avec trou de serrure (evenodd cutout) + arc épais en stroke.
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', '0 0 16 20');
   svg.setAttribute('class', 'tile-lock');
   svg.setAttribute('aria-hidden', 'true');
-  const body = document.createElementNS(SVG_NS, 'rect');
-  body.setAttribute('x', '2'); body.setAttribute('y', '8');
-  body.setAttribute('width', '12'); body.setAttribute('height', '10');
-  body.setAttribute('rx', '1'); body.setAttribute('fill', 'currentColor');
+  const body = document.createElementNS(SVG_NS, 'path');
+  body.setAttribute('d', 'M1 10 H15 V20 H1 Z M7.4 13 H8.6 V17 H7.4 Z');
+  body.setAttribute('fill', 'currentColor');
+  body.setAttribute('fill-rule', 'evenodd');
   const arc = document.createElementNS(SVG_NS, 'path');
-  arc.setAttribute('d', 'M5 8 V5 a3 3 0 0 1 6 0 V8');
+  arc.setAttribute('d', 'M4.2 10 V6 a3.8 3.8 0 0 1 7.6 0 V10');
   arc.setAttribute('stroke', 'currentColor');
-  arc.setAttribute('stroke-width', '1.5');
+  arc.setAttribute('stroke-width', '2');
   arc.setAttribute('fill', 'none');
-  svg.appendChild(body); svg.appendChild(arc);
+  svg.appendChild(body);
+  svg.appendChild(arc);
   return svg;
 }
 
