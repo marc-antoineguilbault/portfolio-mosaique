@@ -300,7 +300,7 @@ function createTile(item, pos, label) {
   el.dataset.type = item.type;
   el.style.width = `${pos.w}px`;
   el.style.height = `${pos.h}px`;
-  el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
+  el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0) scale(var(--bump-scale, 1))`;
 
   const color = colorFromSeed(item.seed);
   el.style.setProperty('--tile-glow-color', color);
@@ -349,9 +349,11 @@ function createTile(item, pos, label) {
   attachTilt(inner);
   attachScroll(tileScroll, inner);
   inner.addEventListener('click', () => {
-    inner.classList.remove('tile-bump-animate');
-    void inner.offsetWidth; // force reflow → relance l'animation au prochain clic
-    inner.classList.add('tile-bump-animate');
+    // Class sur tile (pas inner) car --bump-scale est composé dans le transform de tile,
+    // qui contient frame + contour. Le scale englobe donc l'image ET les bords.
+    el.classList.remove('tile-bump-animate');
+    void el.offsetWidth; // force reflow → relance l'animation au prochain clic
+    el.classList.add('tile-bump-animate');
   });
 
   scroller.appendChild(el);
@@ -438,7 +440,7 @@ function frame(t) {
   for (const tile of liveTiles) {
     const tileOffset = offset * tile.velocityMultiplier;
     const stagger = COL_STAGGER[tile.colIdx] ?? 0;
-    tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y - tileOffset + stagger}px, 0)`;
+    tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y - tileOffset + stagger}px, 0) scale(var(--bump-scale, 1))`;
   }
   topUpIfNeeded();
   requestAnimationFrame(frame);

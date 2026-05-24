@@ -107,12 +107,20 @@ html, body {
   isolation: isolate;
 }
 
-/* Bump au clic (téléphones uniquement) : press → overshoot → retour. */
+/* Bump au clic : press → overshoot → retour. On anime --bump-scale (et non
+   transform directement) car le JS écrit déjà transform: translate3d sur .tile
+   à chaque frame pour le défilement. Le scale est composé via var() dans le transform. */
+@property --bump-scale {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
 @keyframes tile-bump {
-  0%   { transform: scale(1); }
-  28%  { transform: scale(0.9); }
-  62%  { transform: scale(1.04); }
-  100% { transform: scale(1); }
+  0%   { --bump-scale: 1; }
+  28%  { --bump-scale: 0.9; }
+  62%  { --bump-scale: 1.04; }
+  100% { --bump-scale: 1; }
 }
 
 .tile-bump-animate {
