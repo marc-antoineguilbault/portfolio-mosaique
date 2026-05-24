@@ -149,9 +149,28 @@ html, body {
   background: #000;
   padding: 12px;
   border-radius: var(--tile-radius-outer, 32px);
-  /* Contour 1px uniforme (box-shadow épouse border-radius). Glow déplacé sur .tile. */
-  box-shadow: 0 0 0 1px #999A9A;
+  /* Le contour 1px est désormais dessiné par .tile-border-overlay dans #tile-borders
+     (couche fixed z-index 10000) pour passer au-dessus du canvas WebGL (z-index 9999). */
   transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Couche au-dessus du canvas onde : reçoit un outline par tile, sync via rAF. */
+#tile-borders {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10000;
+  overflow: hidden;
+}
+
+.tile-border-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: var(--tile-radius-outer, 32px);
+  box-shadow: 0 0 0 1px #999A9A;
+  pointer-events: none;
+  will-change: transform;
 }
 
 

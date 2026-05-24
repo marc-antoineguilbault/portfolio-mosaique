@@ -21,6 +21,11 @@ const COL_STAGGER = [0, 80, 0, 80];                // décalage visuel permanent
 const viewport = document.getElementById('viewport');
 const scroller = document.getElementById('scroller');
 
+// Couche d'overlay pour les contours 1px — fixed z-index 10000, par-dessus le canvas WebGL.
+const borderLayer = document.createElement('div');
+borderLayer.id = 'tile-borders';
+document.body.appendChild(borderLayer);
+
 let cols = 4;
 let colWidth = 0;
 let colHeights = [];
@@ -585,7 +590,15 @@ function createTile(item, pos, label) {
   });
 
   scroller.appendChild(el);
-  return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
+
+  // Border overlay : dessiné dans une couche fixed (z 10000), passe au-dessus du canvas onde (z 9999).
+  const borderEl = document.createElement('div');
+  borderEl.className = 'tile-border-overlay';
+  borderEl.style.width = `${pos.w}px`;
+  borderEl.style.height = `${pos.h}px`;
+  borderLayer.appendChild(borderEl);
+
+  return { el, inner, item, borderEl, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
 }
 
 // Shuffle déterministe (PRNG linéaire seedé) — entrelace les projets dès la 1ère tuile
@@ -668,7 +681,9 @@ function frame(t) {
   for (const tile of liveTiles) {
     const tileOffset = offset * tile.velocityMultiplier;
     const stagger = COL_STAGGER[tile.colIdx] ?? 0;
-    tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y - tileOffset + stagger}px, 0)`;
+    const tx = `translate3d(${tile.x}px, ${tile.y - tileOffset + stagger}px, 0)`;
+    tile.el.style.transform = tx;
+    if (tile.borderEl) tile.borderEl.style.transform = tx;
   }
   topUpIfNeeded();
   requestAnimationFrame(frame);
@@ -701,6 +716,10 @@ function rebuildLayout() {
     tile.colIdx = pos.colIdx;
     tile.el.style.width = `${pos.w}px`;
     tile.el.style.height = `${pos.h}px`;
+    if (tile.borderEl) {
+      tile.borderEl.style.width = `${pos.w}px`;
+      tile.borderEl.style.height = `${pos.h}px`;
+    }
   }
   fillUntil(h * 2);
   offset = 0;
