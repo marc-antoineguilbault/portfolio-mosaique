@@ -21,8 +21,6 @@ const COL_STAGGER = [0, 80, 0, 80];                // décalage visuel permanent
 const viewport = document.getElementById('viewport');
 const scroller = document.getElementById('scroller');
 
-// Cascade d'apparition au load : index incrémenté pour chaque tile créée.
-let tileEnterIdx = 0;
 
 let cols = 4;
 let colWidth = 0;
@@ -363,20 +361,15 @@ async function fireRipple(tileEl, glowStr) {
   rippleProgram.uniforms.uTint.value = new Float32Array(hslToRgb(glowStr || 'hsl(0, 0%, 50%)'));
   rippleProgram.uniforms.uMouse.value.set(r.left + r.width / 2, r.top + r.height / 2);
 
-  // Snapshot du body : capture la mosaïque AVEC les contours 1px du DOM (box-shadow du frame),
-  // pour que le shader puisse aussi déformer les contours dans l'épaisseur de l'onde.
-  // On ignore l'UI overlay (textes/bandes) et le ripple canvas lui-même.
+  // Snapshot du viewport (la mosaïque + contours via box-shadow du frame).
+  // Cadrage limité au viewport → pas de zones noires hors mosaïque dans la texture.
   let snapshot;
   try {
-    snapshot = await html2canvas(document.body, {
-      backgroundColor: '#000',
+    snapshot = await html2canvas(viewport, {
+      backgroundColor: null,
       logging: false,
       scale: Math.min(window.devicePixelRatio || 1, 1.5),
-      ignoreElements: (el) =>
-        el === rippleCanvas ||
-        el.classList?.contains('ui-overlay') ||
-        el.classList?.contains('tile-darken-overlay') ||
-        el === cursorEl,
+      ignoreElements: (el) => el === rippleCanvas,
     });
   } catch (e) {
     console.warn('html2canvas failed', e);
@@ -545,10 +538,6 @@ function createTile(item, pos, label) {
   el.style.setProperty('--tile-glow-color', color);
   // Décale la respiration de chaque tuile (delay négatif → animation déjà en cours au mount)
   el.style.setProperty('--glow-delay', `-${(Math.random() * 2.6).toFixed(2)}s`);
-  // Cascade d'apparition : delay croissant les premières tuiles, puis 0 pour le scroll-fill
-  const enterDelayMs = tileEnterIdx < 40 ? tileEnterIdx * 70 : 0;
-  el.style.setProperty('--enter-delay', `${enterDelayMs}ms`);
-  tileEnterIdx++;
 
   const frame = document.createElement('div');
   frame.className = 'tile-frame';
