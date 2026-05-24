@@ -21,14 +21,8 @@ const COL_STAGGER = [0, 80, 0, 80];                // décalage visuel permanent
 const viewport = document.getElementById('viewport');
 const scroller = document.getElementById('scroller');
 
-// Hover sur un texte UI (corners) → assombrit tous les projets via l'overlay
-const darkenOverlay = document.querySelector('.tile-darken-overlay');
-if (darkenOverlay) {
-  document.querySelectorAll('.ui-corner').forEach((corner) => {
-    corner.addEventListener('mouseenter', () => darkenOverlay.classList.add('is-active'));
-    corner.addEventListener('mouseleave', () => darkenOverlay.classList.remove('is-active'));
-  });
-}
+// Cascade d'apparition au load : index incrémenté pour chaque tile créée.
+let tileEnterIdx = 0;
 
 let cols = 4;
 let colWidth = 0;
@@ -551,6 +545,10 @@ function createTile(item, pos, label) {
   el.style.setProperty('--tile-glow-color', color);
   // Décale la respiration de chaque tuile (delay négatif → animation déjà en cours au mount)
   el.style.setProperty('--glow-delay', `-${(Math.random() * 2.6).toFixed(2)}s`);
+  // Cascade d'apparition : delay croissant les premières tuiles, puis 0 pour le scroll-fill
+  const enterDelayMs = tileEnterIdx < 40 ? tileEnterIdx * 70 : 0;
+  el.style.setProperty('--enter-delay', `${enterDelayMs}ms`);
+  tileEnterIdx++;
 
   const frame = document.createElement('div');
   frame.className = 'tile-frame';
