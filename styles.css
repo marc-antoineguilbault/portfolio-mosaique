@@ -125,11 +125,7 @@ html, body {
   will-change: transform;
   user-select: none;
   border-radius: var(--tile-radius-outer, 32px);
-  z-index: 1; /* devant les .tile-ripple (qui restent en arrière) */
-  /* Glow (lueur diffuse) sur la tile root → NON scalé par le bump (qui s'applique sur .tile-frame). */
-  box-shadow: 0 24px 70px -30px color-mix(in srgb,
-    var(--tile-glow-color, transparent) calc(var(--glow-alpha) * 100%),
-    transparent);
+  z-index: 1;
   transition: --glow-alpha 0.6s ease-out, opacity 0.6s ease;
 }
 
@@ -158,9 +154,13 @@ html, body {
   background: #000;
   padding: 12px;
   border-radius: var(--tile-radius-outer, 32px);
-  /* Contour 1px restauré sur le frame — il fait partie du DOM mosaïque, donc html2canvas
-     le capture dans le snapshot, et le shader le déforme avec les images dans l'anneau. */
-  box-shadow: 0 0 0 1px #999A9A;
+  /* Contour 1px + glow sur le frame (et non sur .tile) → les deux suivent le tilt en perspective,
+     pas d'ombre rectangulaire résiduelle au format d'origine. */
+  box-shadow:
+    0 0 0 1px #999A9A,
+    0 24px 70px -30px color-mix(in srgb,
+      var(--tile-glow-color, transparent) calc(var(--glow-alpha) * 100%),
+      transparent);
   transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
