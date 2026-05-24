@@ -2,13 +2,14 @@ import { pool, colorFromSeed, RATIOS } from './data.js';
 
 const GAP = 48;
 const GAP_Y = 160;
-const INITIAL_OFFSET_RANGE = 400;
 const BASE_VELOCITY = 30;
 const WHEEL_GAIN = 0.5;
 const RECYCLE_MARGIN_VH = 3;
-const ANTI_REPEAT = 8;
-const VELOCITY_VARIANCE = 0.5;
 const MOBILE_SCALE = 0.8;
+
+// Patterns déterministes — la grille est identique à chaque reload.
+const INITIAL_OFFSETS = [-50, -320, -180, -240];   // décalage Y de départ par colonne
+const GROUP_VELOCITIES = [0.85, 1.15];             // une vitesse par paire de colonnes
 
 const viewport = document.getElementById('viewport');
 const scroller = document.getElementById('scroller');
@@ -35,13 +36,8 @@ function computeLayout() {
   const { w: vw } = getViewportSize();
   cols = getColsForViewport(vw);
   colWidth = (vw - (cols + 1) * GAP) / cols;
-  colHeights = new Array(cols).fill(0).map(() => GAP - Math.random() * INITIAL_OFFSET_RANGE);
-  colVelocityMultipliers = new Array(cols);
-  for (let groupStart = 0; groupStart < cols; groupStart += 2) {
-    const groupVel = 1 - VELOCITY_VARIANCE / 2 + Math.random() * VELOCITY_VARIANCE;
-    colVelocityMultipliers[groupStart] = groupVel;
-    if (groupStart + 1 < cols) colVelocityMultipliers[groupStart + 1] = groupVel;
-  }
+  colHeights = new Array(cols).fill(0).map((_, i) => GAP + (INITIAL_OFFSETS[i] ?? -100));
+  colVelocityMultipliers = new Array(cols).fill(0).map((_, i) => GROUP_VELOCITIES[Math.floor(i / 2) % GROUP_VELOCITIES.length]);
 }
 
 function placeNext(item) {
@@ -89,28 +85,28 @@ function createTile(item, pos, label) {
   return { el, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier };
 }
 
-const recentHistory = [];
-let lastType = null;
 const mobilePool = pool.filter(p => p.type === 'mobile');
 const tabletPool = pool.filter(p => p.type === 'tablet');
+let mobileIdx = 0;
+let tabletIdx = 0;
+let lastType = null;
 
 function pickRandom() {
   let desiredType;
   if (lastType === 'mobile') desiredType = 'tablet';
   else if (lastType === 'tablet') desiredType = 'mobile';
-  else desiredType = Math.random() < 0.5 ? 'mobile' : 'tablet';
-
-  let candidates = desiredType === 'mobile' ? mobilePool : tabletPool;
-  if (candidates.length === 0) candidates = pool;
+  else desiredType = 'mobile';
 
   let item;
-  let tries = 0;
-  do {
-    item = candidates[Math.floor(Math.random() * candidates.length)];
-    tries++;
-  } while (recentHistory.includes(item.seed) && tries < 20);
-  recentHistory.push(item.seed);
-  if (recentHistory.length > ANTI_REPEAT) recentHistory.shift();
+  if (desiredType === 'mobile' && mobilePool.length > 0) {
+    item = mobilePool[mobileIdx % mobilePool.length];
+    mobileIdx++;
+  } else if (desiredType === 'tablet' && tabletPool.length > 0) {
+    item = tabletPool[tabletIdx % tabletPool.length];
+    tabletIdx++;
+  } else {
+    item = pool[(mobileIdx + tabletIdx) % pool.length];
+  }
   lastType = item.type;
   return item;
 }
