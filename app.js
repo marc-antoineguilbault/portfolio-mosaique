@@ -74,8 +74,8 @@ function placeNext(item) {
 const TILT_MAX_DEG = 5;
 const TILT_PERSPECTIVE = 1000;
 const CONTENT_HEIGHT_RATIO = 2.5;
-const SCROLL_DOWN_DURATION = 7000;
-const SCROLL_UP_DURATION = 1400;
+const SCROLL_DOWN_SPEED = 110;
+const SCROLL_UP_SPEED = 700;
 
 function easeInOutQuad(t) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
@@ -103,11 +103,15 @@ function attachScroll(inner) {
   inner.addEventListener('mouseenter', () => {
     inner.classList.remove('scrolling-up');
     const maxScroll = inner.scrollHeight - inner.clientHeight;
-    animateScrollTo(maxScroll, SCROLL_DOWN_DURATION);
+    const distance = Math.max(maxScroll - inner.scrollTop, 0);
+    const duration = (distance / SCROLL_DOWN_SPEED) * 1000;
+    animateScrollTo(maxScroll, duration);
   });
   inner.addEventListener('mouseleave', () => {
     inner.classList.add('scrolling-up');
-    animateScrollTo(0, SCROLL_UP_DURATION, () => {
+    const distance = inner.scrollTop;
+    const duration = (distance / SCROLL_UP_SPEED) * 1000;
+    animateScrollTo(0, duration, () => {
       inner.classList.remove('scrolling-up');
     });
   });
