@@ -4,6 +4,66 @@
   box-sizing: border-box;
 }
 
+/* ─── UI overlay : 4 coins (identité, rôle, statut, contact) + dégradé d'arrière-plan ─── */
+.ui-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  font-family: 'Suisse Int\'l', 'Suisse Intl', 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Dégradé "qui vient de l'extérieur" — 4 ellipses radiales depuis chaque coin
+   qui s'estompent vers le centre, esprit visuel proche de l'onde au clic. */
+.ui-grad-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 0% 0%,   rgba(255, 255, 255, 0.07), transparent 60%),
+    radial-gradient(ellipse 70% 55% at 100% 0%, rgba(255, 255, 255, 0.07), transparent 60%),
+    radial-gradient(ellipse 70% 55% at 0% 100%, rgba(255, 255, 255, 0.07), transparent 60%),
+    radial-gradient(ellipse 70% 55% at 100% 100%, rgba(255, 255, 255, 0.07), transparent 60%);
+  mix-blend-mode: screen;
+}
+
+.ui-corner {
+  position: absolute;
+  padding: 28px 36px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+  line-height: 1;
+}
+
+.ui-corner--tl { top: 0; left: 0; }
+.ui-corner--tr { top: 0; right: 0; }
+.ui-corner--bl { bottom: 0; left: 0; }
+.ui-corner--br { bottom: 0; right: 0; }
+
+.ui-corner a {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ui-corner a:hover {
+  color: #fff;
+}
+
+/* Pastille vert fluo avec halo lumineux */
+.ui-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.9), 0 0 16px rgba(74, 222, 128, 0.5);
+}
+
 html, body {
   width: 100%;
   height: 100%;
