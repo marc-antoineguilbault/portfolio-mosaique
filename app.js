@@ -127,11 +127,23 @@ function fillUntil(targetHeight) {
 let offset = 0;
 let velocity = BASE_VELOCITY;
 let lastFrameTime = 0;
+let paused = false;
+
+scroller.addEventListener('mouseenter', () => { paused = true; });
+scroller.addEventListener('mouseleave', () => { paused = false; });
+
+viewport.addEventListener('wheel', (e) => {
+  if (paused) return;
+  e.preventDefault();
+  offset += e.deltaY * WHEEL_GAIN;
+}, { passive: false });
 
 function frame(t) {
   const dt = Math.min((t - lastFrameTime) / 1000, 0.1);
   lastFrameTime = t;
-  offset += velocity * dt;
+  if (!paused) {
+    offset += velocity * dt;
+  }
   scroller.style.transform = `translate3d(0, ${-offset}px, 0)`;
   recycleIfNeeded();
   requestAnimationFrame(frame);
