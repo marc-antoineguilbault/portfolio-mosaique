@@ -56,12 +56,12 @@ html, body {
   position: absolute;
   will-change: transform;
   user-select: none;
-  box-shadow: 0 60px 160px -25px transparent;
+  box-shadow: 0 24px 70px -30px transparent;
   transition: box-shadow 1s cubic-bezier(0.4, 0, 0.4, 1);
 }
 
 .tile:hover {
-  box-shadow: 0 60px 160px -25px var(--tile-glow-color, transparent);
+  box-shadow: 0 24px 70px -30px var(--tile-glow-color, transparent);
 }
 
 .tile::after {
