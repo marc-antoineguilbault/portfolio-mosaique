@@ -189,16 +189,14 @@ const BULGE_FRAG = `
   uniform sampler2D uTexture;
   uniform vec2 uMouse;
   varying vec2 vUv;
-  const float radius = 0.6;
-  const float strength = 1.1;
+  const float radius = 0.45;
+  const float strength = 0.06;
   vec2 bulge(vec2 uv, vec2 center) {
-    uv -= center;
-    float dist = length(uv) / radius;
-    float distPow = pow(dist, 2.0);
-    float strengthAmount = strength / (1.0 + distPow);
-    uv *= strengthAmount;
-    uv += center;
-    return uv;
+    vec2 offset = uv - center;
+    float dist = length(offset);
+    float falloff = 1.0 - smoothstep(0.0, radius, dist);
+    float scale = mix(1.0, 1.0 - strength, falloff);
+    return center + offset * scale;
   }
   void main() {
     vec2 bulgeUV = bulge(vUv, uMouse);
