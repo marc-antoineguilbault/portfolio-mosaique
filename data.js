@@ -22,9 +22,6 @@ export const projects = [
   { id: 'placeholders',   name: 'Placeholders',   images: [
     { type: 'fullwidth', seed: 'fw01' },
     { type: 'fullwidth', seed: 'fw02' },
-    { type: 'square',    seed: 'sq01' },
-    { type: 'square',    seed: 'sq02' },
-    { type: 'square',    seed: 'sq03' },
   ]},
 ];
 
@@ -48,5 +45,4 @@ export const RATIOS = {
   mobile: 9 / 19.5,
   tablet: 3024 / 1964,
   fullwidth: 16 / 9,
-  square: 1,
 };

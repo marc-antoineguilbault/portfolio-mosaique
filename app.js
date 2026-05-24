@@ -51,7 +51,7 @@ function computeLayout() {
 }
 
 function placeNext(item) {
-  if (item.type === 'mobile' || item.type === 'square') {
+  if (item.type === 'mobile') {
     let i = 0;
     for (let k = 1; k < cols; k++) {
       if (colHeights[k] < colHeights[i]) i = k;
@@ -59,7 +59,7 @@ function placeNext(item) {
     const x = GAP + i * (colWidth + GAP);
     const y = colHeights[i];
     const w = colWidth;
-    const h = item.type === 'square' ? w : w / RATIOS.mobile;
+    const h = w / RATIOS.mobile;
     colHeights[i] = y + h + GAP_Y;
     return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[i], colIdx: i };
   } else if (item.type === 'fullwidth') {
@@ -245,13 +245,12 @@ function seededShuffle(arr, seed) {
 const poolByType = {
   mobile:    seededShuffle(pool.filter(p => p.type === 'mobile'),    42),
   tablet:    seededShuffle(pool.filter(p => p.type === 'tablet'),    1337),
-  square:    seededShuffle(pool.filter(p => p.type === 'square'),    7),
   fullwidth: seededShuffle(pool.filter(p => p.type === 'fullwidth'), 99),
 };
-const poolIndices = { mobile: 0, tablet: 0, square: 0, fullwidth: 0 };
+const poolIndices = { mobile: 0, tablet: 0, fullwidth: 0 };
 
-// Cycle de 8 tuiles : 3 mobile + 3 tablet + 1 square + 1 fullwidth.
-const TYPE_CYCLE = ['mobile', 'tablet', 'mobile', 'square', 'tablet', 'mobile', 'tablet', 'fullwidth'];
+// Cycle de 7 tuiles : 4 mobile + 2 tablet + 1 fullwidth.
+const TYPE_CYCLE = ['mobile', 'tablet', 'mobile', 'tablet', 'mobile', 'fullwidth', 'mobile'];
 let cycleIdx = 0;
 
 function pickRandom() {
