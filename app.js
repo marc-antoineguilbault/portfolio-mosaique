@@ -202,7 +202,7 @@ function showPasswordInput(entry, inner) {
   if (entry.inputEl) return;
   entry.lockSvg.style.display = 'none';
   const input = document.createElement('input');
-  input.type = 'text';
+  input.type = 'password';
   input.className = 'tile-pw';
   input.autocomplete = 'off';
   input.spellcheck = false;
