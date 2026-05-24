@@ -13,8 +13,8 @@ const FRAME_PADDING = 12;
 
 // Patterns déterministes — la grille est identique à chaque reload.
 const INITIAL_OFFSETS = [-50, -320, -180, -240];   // décalage Y de départ par colonne
-const GROUP_VELOCITIES = [0.85, 1.15];             // une vitesse par paire de colonnes
-const COL_STAGGER = [0, 80, 0, 80];                // décalage visuel permanent par colonne (briser l'alignement vertical entre cols)
+const GROUP_VELOCITIES = [1, 1];                   // vitesses uniformes : un parallax (vitesses divergentes) entrerait en collision avec les tuiles `fullwidth`
+const COL_STAGGER = [0, 80, 0, 80];                // décalage visuel permanent par colonne (briser l'alignement vertical entre cols) — offset constant, n'introduit pas de divergence dans le temps
 
 const viewport = document.getElementById('viewport');
 const scroller = document.getElementById('scroller');
