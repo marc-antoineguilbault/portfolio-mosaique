@@ -8,6 +8,7 @@ const WHEEL_GAIN = 0.5;
 const RECYCLE_MARGIN_VH = 1.5;
 const ANTI_REPEAT = 8;
 const VELOCITY_VARIANCE = 0.5;
+const MOBILE_SCALE = 0.8;
 
 const viewport = document.getElementById('viewport');
 const scroller = document.getElementById('scroller');
@@ -35,7 +36,12 @@ function computeLayout() {
   cols = getColsForViewport(vw);
   colWidth = (vw - (cols + 1) * GAP) / cols;
   colHeights = new Array(cols).fill(0).map(() => GAP - Math.random() * INITIAL_OFFSET_RANGE);
-  colVelocityMultipliers = new Array(cols).fill(0).map(() => 1 - VELOCITY_VARIANCE / 2 + Math.random() * VELOCITY_VARIANCE);
+  colVelocityMultipliers = new Array(cols);
+  for (let groupStart = 0; groupStart < cols; groupStart += 2) {
+    const groupVel = 1 - VELOCITY_VARIANCE / 2 + Math.random() * VELOCITY_VARIANCE;
+    colVelocityMultipliers[groupStart] = groupVel;
+    if (groupStart + 1 < cols) colVelocityMultipliers[groupStart + 1] = groupVel;
+  }
 }
 
 function placeNext(item) {
@@ -44,16 +50,16 @@ function placeNext(item) {
     for (let k = 1; k < cols; k++) {
       if (colHeights[k] < colHeights[i]) i = k;
     }
-    const x = GAP + i * (colWidth + GAP);
+    const w = colWidth * MOBILE_SCALE;
+    const x = GAP + i * (colWidth + GAP) + (colWidth - w) / 2;
     const y = colHeights[i];
-    const w = colWidth;
     const h = w / RATIOS.mobile;
     colHeights[i] = y + h + GAP_Y;
     return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[i] };
   } else {
     let bestI = 0;
     let bestScore = Infinity;
-    for (let i = 0; i < cols - 1; i++) {
+    for (let i = 0; i + 1 < cols; i += 2) {
       const score = Math.max(colHeights[i], colHeights[i + 1]);
       if (score < bestScore) {
         bestScore = score;
@@ -66,8 +72,7 @@ function placeNext(item) {
     const h = w / RATIOS.tablet;
     colHeights[bestI] = y + h + GAP_Y;
     colHeights[bestI + 1] = y + h + GAP_Y;
-    const velocityMultiplier = (colVelocityMultipliers[bestI] + colVelocityMultipliers[bestI + 1]) / 2;
-    return { x, y, w, h, velocityMultiplier };
+    return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[bestI] };
   }
 }
 
