@@ -21,11 +21,6 @@ const COL_STAGGER = [0, 80, 0, 80];                // décalage visuel permanent
 const viewport = document.getElementById('viewport');
 const scroller = document.getElementById('scroller');
 
-// Couche d'overlay pour les contours 1px — fixed z-index 10000, par-dessus le canvas WebGL.
-const borderLayer = document.createElement('div');
-borderLayer.id = 'tile-borders';
-document.body.appendChild(borderLayer);
-
 // Hover sur un texte UI (corners) → assombrit tous les projets via l'overlay
 const darkenOverlay = document.querySelector('.tile-darken-overlay');
 if (darkenOverlay) {
@@ -374,15 +369,20 @@ async function fireRipple(tileEl, glowStr) {
   rippleProgram.uniforms.uTint.value = new Float32Array(hslToRgb(glowStr || 'hsl(0, 0%, 50%)'));
   rippleProgram.uniforms.uMouse.value.set(r.left + r.width / 2, r.top + r.height / 2);
 
-  // Snapshot du viewport (la mosaïque + tiles voisines) pour pouvoir le déformer dans le shader.
-  // Async ~50-200ms ; on capture AVANT d'afficher le canvas pour ne pas se snapshooter soi-même.
+  // Snapshot du body : capture la mosaïque AVEC les contours 1px du DOM (box-shadow du frame),
+  // pour que le shader puisse aussi déformer les contours dans l'épaisseur de l'onde.
+  // On ignore l'UI overlay (textes/bandes) et le ripple canvas lui-même.
   let snapshot;
   try {
-    snapshot = await html2canvas(viewport, {
+    snapshot = await html2canvas(document.body, {
       backgroundColor: '#000',
       logging: false,
       scale: Math.min(window.devicePixelRatio || 1, 1.5),
-      ignoreElements: (el) => el === rippleCanvas,
+      ignoreElements: (el) =>
+        el === rippleCanvas ||
+        el.classList?.contains('ui-overlay') ||
+        el.classList?.contains('tile-darken-overlay') ||
+        el === cursorEl,
     });
   } catch (e) {
     console.warn('html2canvas failed', e);
@@ -599,15 +599,7 @@ function createTile(item, pos, label) {
   });
 
   scroller.appendChild(el);
-
-  // Border overlay : dessiné dans une couche fixed (z 10000), passe au-dessus du canvas onde (z 9999).
-  const borderEl = document.createElement('div');
-  borderEl.className = 'tile-border-overlay';
-  borderEl.style.width = `${pos.w}px`;
-  borderEl.style.height = `${pos.h}px`;
-  borderLayer.appendChild(borderEl);
-
-  return { el, inner, item, borderEl, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
+  return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
 }
 
 // Shuffle déterministe (PRNG linéaire seedé) — entrelace les projets dès la 1ère tuile
@@ -690,9 +682,7 @@ function frame(t) {
   for (const tile of liveTiles) {
     const tileOffset = offset * tile.velocityMultiplier;
     const stagger = COL_STAGGER[tile.colIdx] ?? 0;
-    const tx = `translate3d(${tile.x}px, ${tile.y - tileOffset + stagger}px, 0)`;
-    tile.el.style.transform = tx;
-    if (tile.borderEl) tile.borderEl.style.transform = tx;
+    tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y - tileOffset + stagger}px, 0)`;
   }
   topUpIfNeeded();
   requestAnimationFrame(frame);
@@ -725,10 +715,6 @@ function rebuildLayout() {
     tile.colIdx = pos.colIdx;
     tile.el.style.width = `${pos.w}px`;
     tile.el.style.height = `${pos.h}px`;
-    if (tile.borderEl) {
-      tile.borderEl.style.width = `${pos.w}px`;
-      tile.borderEl.style.height = `${pos.h}px`;
-    }
   }
   fillUntil(h * 2);
   offset = 0;
