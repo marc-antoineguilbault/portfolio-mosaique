@@ -594,6 +594,11 @@ function createTile(item, pos, label) {
   attachTilt(inner);
   attachScroll(tileScroll, inner);
   inner.addEventListener('click', () => {
+    // Bump du contour 1px (épaisseur seulement, position inchangée)
+    el.classList.remove('tile-contour-bump');
+    void el.offsetWidth;
+    el.classList.add('tile-contour-bump');
+
     const glow = el.style.getPropertyValue('--tile-glow-color');
     fireRipple(el, glow);
     if (el.dataset.project) focusProject(el.dataset.project);
