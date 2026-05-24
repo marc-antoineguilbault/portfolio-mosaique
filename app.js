@@ -81,8 +81,29 @@ function easeInOutQuad(t) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
 
-function attachScroll(scroller, host) {
+function attachScroll(scroller, host, scrollbar, thumb) {
   let animId = null;
+
+  function updateThumb() {
+    const scrollH = scroller.scrollHeight;
+    const clientH = scroller.clientHeight;
+    if (scrollH <= clientH + 1) {
+      thumb.style.display = 'none';
+      return;
+    }
+    thumb.style.display = '';
+    const trackH = scrollbar.clientHeight;
+    const thumbH = Math.max((clientH / scrollH) * trackH, 20);
+    const maxScrollTop = scrollH - clientH;
+    const maxThumbTop = trackH - thumbH;
+    const thumbTop = maxScrollTop > 0 ? (scroller.scrollTop / maxScrollTop) * maxThumbTop : 0;
+    thumb.style.height = `${thumbH}px`;
+    thumb.style.top = `${thumbTop}px`;
+  }
+
+  scroller.addEventListener('scroll', updateThumb);
+  requestAnimationFrame(updateThumb);
+
   function animateScrollTo(target, duration, onDone) {
     cancelAnimationFrame(animId);
     const start = scroller.scrollTop;
@@ -101,18 +122,18 @@ function attachScroll(scroller, host) {
     animId = requestAnimationFrame(step);
   }
   host.addEventListener('mouseenter', () => {
-    scroller.classList.remove('scrolling-up');
+    scrollbar.classList.remove('scrolling-up');
     const maxScroll = scroller.scrollHeight - scroller.clientHeight;
     const distance = Math.max(maxScroll - scroller.scrollTop, 0);
     const duration = (distance / SCROLL_DOWN_SPEED) * 1000;
     animateScrollTo(maxScroll, duration);
   });
   host.addEventListener('mouseleave', () => {
-    scroller.classList.add('scrolling-up');
+    scrollbar.classList.add('scrolling-up');
     const distance = scroller.scrollTop;
     const duration = (distance / SCROLL_UP_SPEED) * 1000;
     animateScrollTo(0, duration, () => {
-      scroller.classList.remove('scrolling-up');
+      scrollbar.classList.remove('scrolling-up');
     });
   });
 }
@@ -191,11 +212,19 @@ function createTile(item, pos, label) {
 
   tileScroll.appendChild(content);
   inner.appendChild(tileScroll);
+
+  const scrollbar = document.createElement('div');
+  scrollbar.className = 'tile-scrollbar';
+  const thumb = document.createElement('div');
+  thumb.className = 'tile-scrollbar-thumb';
+  scrollbar.appendChild(thumb);
+  inner.appendChild(scrollbar);
+
   frame.appendChild(inner);
 
   el.appendChild(frame);
   attachTilt(inner);
-  attachScroll(tileScroll, inner);
+  attachScroll(tileScroll, inner, scrollbar, thumb);
 
   scroller.appendChild(el);
   return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
