@@ -75,9 +75,6 @@ const TILT_MAX_DEG = 5;
 const TILT_PERSPECTIVE = 1000;
 
 function attachTilt(inner) {
-  inner.addEventListener('mouseenter', () => {
-    inner.style.transition = 'none';
-  });
   inner.addEventListener('mousemove', (e) => {
     const rect = inner.getBoundingClientRect();
     const cx = rect.width / 2;
@@ -93,7 +90,6 @@ function attachTilt(inner) {
     inner.style.setProperty('--gy', (py / rect.height) * 100 + '%');
   });
   inner.addEventListener('mouseleave', () => {
-    inner.style.transition = '';
     inner.style.transform = '';
   });
 }
