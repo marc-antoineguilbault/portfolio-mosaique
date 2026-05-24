@@ -79,8 +79,39 @@ function createTile(item, pos, label) {
   return { el, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h };
 }
 
+const recentHistory = [];
 function pickRandom() {
-  return pool[Math.floor(Math.random() * pool.length)];
+  if (pool.length <= ANTI_REPEAT) {
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  let item;
+  let tries = 0;
+  do {
+    item = pool[Math.floor(Math.random() * pool.length)];
+    tries++;
+  } while (recentHistory.includes(item.seed) && tries < 20);
+  recentHistory.push(item.seed);
+  if (recentHistory.length > ANTI_REPEAT) recentHistory.shift();
+  return item;
+}
+
+function recycleIfNeeded() {
+  for (const tile of liveTiles) {
+    if (tile.y + tile.h - offset < -RECYCLE_MARGIN) {
+      const newItem = pickRandom();
+      const pos = placeNext(newItem);
+      tile.item = newItem;
+      tile.x = pos.x;
+      tile.y = pos.y;
+      tile.w = pos.w;
+      tile.h = pos.h;
+      tile.el.dataset.type = newItem.type;
+      tile.el.style.background = colorFromSeed(newItem.seed);
+      tile.el.style.width = `${pos.w}px`;
+      tile.el.style.height = `${pos.h}px`;
+      tile.el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
+    }
+  }
 }
 
 function fillUntil(targetHeight) {
@@ -102,6 +133,7 @@ function frame(t) {
   lastFrameTime = t;
   offset += velocity * dt;
   scroller.style.transform = `translate3d(0, ${-offset}px, 0)`;
+  recycleIfNeeded();
   requestAnimationFrame(frame);
 }
 
