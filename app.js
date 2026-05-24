@@ -247,16 +247,6 @@ function attachLock(inner, imgEl) {
 }
 // ──────────────────────────────────────────────────────────────────────────
 
-function attachFrameGlow(frame) {
-  frame.addEventListener('mousemove', (e) => {
-    const rect = frame.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    frame.style.setProperty('--frame-x', x + '%');
-    frame.style.setProperty('--frame-y', y + '%');
-  });
-}
-
 // Extrait la couleur dominante d'une image pour piloter le glow.
 // Échantillonne 32×32 px, ignore blanc/noir purs (UI chrome, fonds), moyenne RGB,
 // puis convertit en HSL pour booster la saturation et plafonner la luminosité.
@@ -357,7 +347,6 @@ function createTile(item, pos, label) {
 
   el.appendChild(frame);
   attachTilt(inner);
-  attachFrameGlow(frame);
   attachScroll(tileScroll, inner);
 
   scroller.appendChild(el);

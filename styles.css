@@ -91,40 +91,9 @@ html, body {
               --glow-alpha 0.6s ease-out;
 }
 
-/* Highlight liquid glass au hover : halo blanc qui glisse sur l'anneau 1px.
-   La technique de masque introduit un léger amincissement aux corners, mais comme c'est
-   un gradient additif au-dessus d'un contour parfait, l'effet reste discret. */
-.tile-frame::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  pointer-events: none;
-  background: radial-gradient(
-    45% 45% at var(--frame-x, 50%) var(--frame-y, 50%),
-    rgba(255, 255, 255, 1) 0%,
-    rgba(255, 255, 255, 0.5) 40%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  opacity: 0;
-  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
 
 .tile:hover .tile-frame {
   animation: glow-breathe 2.6s ease-in-out infinite;
-}
-
-.tile:hover .tile-frame::after {
-  opacity: 1;
 }
 
 
