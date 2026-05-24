@@ -83,7 +83,7 @@ function easeInOutQuad(t) {
 
 function attachScroll(inner) {
   let animId = null;
-  function animateScrollTo(target, duration) {
+  function animateScrollTo(target, duration, onDone) {
     cancelAnimationFrame(animId);
     const start = inner.scrollTop;
     const delta = target - start;
@@ -92,16 +92,24 @@ function attachScroll(inner) {
       const elapsed = t - startTime;
       const progress = Math.min(elapsed / duration, 1);
       inner.scrollTop = start + delta * easeInOutQuad(progress);
-      if (progress < 1) animId = requestAnimationFrame(step);
+      if (progress < 1) {
+        animId = requestAnimationFrame(step);
+      } else if (onDone) {
+        onDone();
+      }
     }
     animId = requestAnimationFrame(step);
   }
   inner.addEventListener('mouseenter', () => {
+    inner.classList.remove('scrolling-up');
     const maxScroll = inner.scrollHeight - inner.clientHeight;
     animateScrollTo(maxScroll, SCROLL_DOWN_DURATION);
   });
   inner.addEventListener('mouseleave', () => {
-    animateScrollTo(0, SCROLL_UP_DURATION);
+    inner.classList.add('scrolling-up');
+    animateScrollTo(0, SCROLL_UP_DURATION, () => {
+      inner.classList.remove('scrolling-up');
+    });
   });
 }
 
@@ -113,6 +121,7 @@ window.addEventListener('mousemove', (e) => {
 });
 
 function attachTilt(inner) {
+  const tile = inner.parentElement;
   inner.addEventListener('mouseenter', () => {
     cursorEl.classList.add('locked');
   });
@@ -127,8 +136,8 @@ function attachTilt(inner) {
     const rotateY = dx * TILT_MAX_DEG;
     const rotateX = -dy * TILT_MAX_DEG;
     inner.style.transform = `perspective(${TILT_PERSPECTIVE}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-    inner.style.setProperty('--gx', (px / rect.width) * 100 + '%');
-    inner.style.setProperty('--gy', (py / rect.height) * 100 + '%');
+    tile.style.setProperty('--gx', (px / rect.width) * 100 + '%');
+    tile.style.setProperty('--gy', (py / rect.height) * 100 + '%');
   });
   inner.addEventListener('mouseleave', () => {
     inner.style.transform = '';
