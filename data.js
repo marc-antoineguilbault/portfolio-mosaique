@@ -56,5 +56,5 @@ export function colorFromSeed(seed) {
 
 export const RATIOS = {
   mobile: 9 / 19.5,
-  tablet: 3 / 4,
+  tablet: 4 / 3,
 };

@@ -1,6 +1,7 @@
 import { pool, colorFromSeed, RATIOS } from './data.js';
 
-const GAP = 12;
+const GAP = 24;
+const INITIAL_OFFSET_RANGE = 400;
 const BASE_VELOCITY = 30;
 const WHEEL_GAIN = 0.5;
 const RECYCLE_MARGIN = 100;
@@ -31,7 +32,7 @@ function computeLayout() {
   const { w: vw } = getViewportSize();
   cols = getColsForViewport(vw);
   colWidth = (vw - (cols + 1) * GAP) / cols;
-  colHeights = new Array(cols).fill(GAP);
+  colHeights = new Array(cols).fill(0).map(() => GAP - Math.random() * INITIAL_OFFSET_RANGE);
 }
 
 function placeNext(item) {
@@ -133,7 +134,6 @@ scroller.addEventListener('mouseenter', () => { paused = true; });
 scroller.addEventListener('mouseleave', () => { paused = false; });
 
 viewport.addEventListener('wheel', (e) => {
-  if (paused) return;
   e.preventDefault();
   offset += e.deltaY * WHEEL_GAIN;
 }, { passive: false });
