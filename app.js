@@ -74,36 +74,15 @@ function placeNext(item) {
 const TILT_MAX_DEG = 5;
 const TILT_PERSPECTIVE = 1000;
 const CONTENT_HEIGHT_RATIO = 2.5;
-const SCROLL_DOWN_SPEED = 110;
-const SCROLL_UP_SPEED = 700;
+const SCROLL_DOWN_DURATION = 8000;
+const SCROLL_UP_DURATION = 1500;
 
 function easeInOutQuad(t) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
 
-function attachScroll(scroller, host, scrollbar, thumb) {
+function attachScroll(scroller, host) {
   let animId = null;
-
-  function updateThumb() {
-    const scrollH = scroller.scrollHeight;
-    const clientH = scroller.clientHeight;
-    if (scrollH <= clientH + 1) {
-      thumb.style.display = 'none';
-      return;
-    }
-    thumb.style.display = '';
-    const trackH = scrollbar.clientHeight;
-    const thumbH = Math.max((clientH / scrollH) * trackH, 20);
-    const maxScrollTop = scrollH - clientH;
-    const maxThumbTop = trackH - thumbH;
-    const thumbTop = maxScrollTop > 0 ? (scroller.scrollTop / maxScrollTop) * maxThumbTop : 0;
-    thumb.style.height = `${thumbH}px`;
-    thumb.style.top = `${thumbTop}px`;
-  }
-
-  scroller.addEventListener('scroll', updateThumb);
-  requestAnimationFrame(updateThumb);
-
   function animateScrollTo(target, duration, onDone) {
     cancelAnimationFrame(animId);
     const start = scroller.scrollTop;
@@ -122,19 +101,18 @@ function attachScroll(scroller, host, scrollbar, thumb) {
     animId = requestAnimationFrame(step);
   }
   host.addEventListener('mouseenter', () => {
-    scrollbar.classList.remove('scrolling-up');
     const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+    if (maxScroll <= 0) return;
     const distance = Math.max(maxScroll - scroller.scrollTop, 0);
-    const duration = (distance / SCROLL_DOWN_SPEED) * 1000;
+    const duration = SCROLL_DOWN_DURATION * (distance / maxScroll);
     animateScrollTo(maxScroll, duration);
   });
   host.addEventListener('mouseleave', () => {
-    scrollbar.classList.add('scrolling-up');
+    const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+    if (maxScroll <= 0) return;
     const distance = scroller.scrollTop;
-    const duration = (distance / SCROLL_UP_SPEED) * 1000;
-    animateScrollTo(0, duration, () => {
-      scrollbar.classList.remove('scrolling-up');
-    });
+    const duration = SCROLL_UP_DURATION * (distance / maxScroll);
+    animateScrollTo(0, duration);
   });
 }
 
@@ -212,19 +190,11 @@ function createTile(item, pos, label) {
 
   tileScroll.appendChild(content);
   inner.appendChild(tileScroll);
-
-  const scrollbar = document.createElement('div');
-  scrollbar.className = 'tile-scrollbar';
-  const thumb = document.createElement('div');
-  thumb.className = 'tile-scrollbar-thumb';
-  scrollbar.appendChild(thumb);
-  inner.appendChild(scrollbar);
-
   frame.appendChild(inner);
 
   el.appendChild(frame);
   attachTilt(inner);
-  attachScroll(tileScroll, inner, scrollbar, thumb);
+  attachScroll(tileScroll, inner);
 
   scroller.appendChild(el);
   return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
