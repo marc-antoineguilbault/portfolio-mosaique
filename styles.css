@@ -102,17 +102,21 @@ html, body {
 
 
 
-/* Bump doux du contour 1px au clic : le box-shadow spread s'épaissit légèrement,
-   passe par un blanc semi-transparent (effet lumineux), puis revient au gris d'origine. */
+/* Bump du contour 1px au clic, durée alignée sur l'onde WebGL (2s).
+   Plusieurs paliers d'épaisseur et d'opacité — pulses successifs qui font écho
+   aux 3 fronts de l'onde. */
 @keyframes tile-contour-bump {
   0%   { box-shadow: 0 0 0 1px rgba(153, 154, 154, 1); }
-  30%  { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55); }
-  55%  { box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3); }
+  12%  { box-shadow: 0 0 0 9px rgba(255, 255, 255, 0.7); }
+  28%  { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35); }
+  45%  { box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.55); }
+  62%  { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25); }
+  78%  { box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.35); }
   100% { box-shadow: 0 0 0 1px rgba(153, 154, 154, 1); }
 }
 
 .tile-contour-bump .tile-frame {
-  animation: tile-contour-bump 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: tile-contour-bump 2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .tile-inner {
