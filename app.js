@@ -1,7 +1,7 @@
 import { pool, colorFromSeed, RATIOS } from './data.js';
 
-const GAP = 24;
-const GAP_Y = 80;
+const GAP = 48;
+const GAP_Y = 160;
 const INITIAL_OFFSET_RANGE = 400;
 const BASE_VELOCITY = 30;
 const WHEEL_GAIN = 0.5;
