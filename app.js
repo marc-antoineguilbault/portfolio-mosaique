@@ -181,6 +181,10 @@ function focusProject(slug) {
   focusedProject = slug;
   document.querySelectorAll('.tile').forEach(applyDimming);
 }
+
+// Ripples actifs — mis à jour à chaque frame pour suivre la tuile (sinon ils glissent
+// par rapport à la mosaïque qui défile pendant l'animation).
+const activeRipples = [];
 // ──────────────────────────────────────────────────────────────────────────
 
 // ─── Verrouillage des projets confidentiels ────────────────────────────────
@@ -391,7 +395,13 @@ function createTile(item, pos, label) {
     const glow = el.style.getPropertyValue('--tile-glow-color');
     if (glow) ripple.style.setProperty('--tile-glow-color', glow);
     scroller.appendChild(ripple);
-    ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
+    const entry = { ripple, tile: el };
+    activeRipples.push(entry);
+    ripple.addEventListener('animationend', () => {
+      ripple.remove();
+      const idx = activeRipples.indexOf(entry);
+      if (idx >= 0) activeRipples.splice(idx, 1);
+    }, { once: true });
 
     if (el.dataset.project) focusProject(el.dataset.project);
   });
@@ -482,6 +492,10 @@ function frame(t) {
     const tileOffset = offset * tile.velocityMultiplier;
     const stagger = COL_STAGGER[tile.colIdx] ?? 0;
     tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y - tileOffset + stagger}px, 0)`;
+  }
+  // Les ripples suivent leur tuile pour ne pas glisser pendant le défilement.
+  for (const { ripple, tile } of activeRipples) {
+    ripple.style.transform = tile.style.transform;
   }
   topUpIfNeeded();
   requestAnimationFrame(frame);
