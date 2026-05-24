@@ -1,4 +1,5 @@
 import { pool, colorFromSeed, RATIOS } from './data.js';
+import { Renderer, Program, Mesh, Triangle, Texture, Vec2 } from 'https://cdn.jsdelivr.net/npm/ogl/+esm';
 
 const GAP = 48;
 const GAP_Y = 160;
@@ -182,9 +183,137 @@ function focusProject(slug) {
   document.querySelectorAll('.tile').forEach(applyDimming);
 }
 
-// Ripples actifs — mis à jour à chaque frame pour suivre la tuile (sinon ils glissent
-// par rapport à la mosaïque qui défile pendant l'animation).
-const activeRipples = [];
+// ─── WebGL ripple fullscreen (inspiré Codrops Texture Ripples) ─────────────
+// Canvas overlay plein écran. Au clic : shader propage des ondes depuis la position
+// du clic, distord l'image cliquée comme texture, tinte la couleur projet.
+const RIPPLE_VERT = `
+attribute vec2 uv;
+attribute vec2 position;
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = vec4(position, 0.0, 1.0);
+}
+`;
+const RIPPLE_FRAG = `
+precision highp float;
+varying vec2 vUv;
+uniform float uTime;
+uniform vec2 uMouse;
+uniform vec2 uResolution;
+uniform sampler2D uTexture;
+uniform vec2 uTextureResolution;
+uniform vec3 uTint;
+
+vec2 coverUv(vec2 uv, vec2 texRes, vec2 res) {
+  vec2 ratio = vec2(
+    min((res.x / res.y) / (texRes.x / texRes.y), 1.0),
+    min((res.y / res.x) / (texRes.y / texRes.x), 1.0)
+  );
+  return vec2(uv.x * ratio.x + (1.0 - ratio.x) * 0.5,
+              uv.y * ratio.y + (1.0 - ratio.y) * 0.5);
+}
+
+void main() {
+  float aspect = uResolution.x / uResolution.y;
+  vec2 p = (vUv - uMouse) * vec2(aspect, 1.0);
+  float dist = length(p);
+  float front = uTime * 1.6;
+  // Onde concentrique : sin atténué par enveloppe gaussienne autour du front
+  float wave = sin((dist - front) * 22.0) * exp(-pow((dist - front) * 5.5, 2.0));
+  float amplitude = 0.06 * (1.0 - uTime);
+  vec2 dir = normalize(p + 1e-5);
+  vec2 imageUv = coverUv(vUv, uTextureResolution, uResolution);
+  vec2 displaced = imageUv + dir * wave * amplitude;
+  vec4 tex = texture2D(uTexture, displaced);
+  // Anneau lumineux sur le front, teinté couleur projet
+  float ring = exp(-pow((dist - front) * 8.0, 2.0)) * (1.0 - uTime * 0.7);
+  vec3 col = mix(tex.rgb, uTint, ring * 0.55);
+  float alpha = 1.0 - smoothstep(0.75, 1.0, uTime);
+  gl_FragColor = vec4(col, alpha);
+}
+`;
+
+const rippleRenderer = new Renderer({ alpha: true, premultipliedAlpha: false });
+const rippleGl = rippleRenderer.gl;
+const rippleCanvas = rippleGl.canvas;
+rippleCanvas.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:9999;display:none';
+document.body.appendChild(rippleCanvas);
+const rippleProgram = new Program(rippleGl, {
+  vertex: RIPPLE_VERT,
+  fragment: RIPPLE_FRAG,
+  transparent: true,
+  uniforms: {
+    uTime: { value: 0 },
+    uMouse: { value: new Vec2(0.5, 0.5) },
+    uResolution: { value: new Vec2(1, 1) },
+    uTexture: { value: new Texture(rippleGl) },
+    uTextureResolution: { value: new Vec2(1, 1) },
+    uTint: { value: new Float32Array([1, 1, 1]) },
+  },
+});
+const rippleMesh = new Mesh(rippleGl, { geometry: new Triangle(rippleGl), program: rippleProgram });
+
+function setRippleSize() {
+  rippleRenderer.setSize(window.innerWidth, window.innerHeight);
+  rippleProgram.uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
+}
+setRippleSize();
+window.addEventListener('resize', setRippleSize);
+
+const RIPPLE_DURATION = 1500;
+const rippleTextureCache = new Map();
+let rippleAnimStart = 0;
+let rippleActive = false;
+
+function hslToRgb(str) {
+  const m = str.match(/hsl\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)/);
+  if (!m) return [1, 1, 1];
+  const h = parseFloat(m[1]) / 360;
+  const s = parseFloat(m[2]) / 100;
+  const l = parseFloat(m[3]) / 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n, k = (n + h * 12) % 12) => l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+  return [f(0), f(8), f(4)];
+}
+
+function renderRipple(now) {
+  const elapsed = now - rippleAnimStart;
+  const progress = elapsed / RIPPLE_DURATION;
+  if (progress >= 1) {
+    rippleCanvas.style.display = 'none';
+    rippleActive = false;
+    return;
+  }
+  rippleProgram.uniforms.uTime.value = progress;
+  rippleRenderer.render({ scene: rippleMesh });
+  requestAnimationFrame(renderRipple);
+}
+
+function fireRipple(clickX, clickY, img, glowStr) {
+  if (!img || !(img.complete && img.naturalWidth > 0)) return;
+  let entry = rippleTextureCache.get(img.src);
+  if (!entry) {
+    const tex = new Texture(rippleGl);
+    tex.image = img;
+    entry = { tex, w: img.naturalWidth, h: img.naturalHeight };
+    rippleTextureCache.set(img.src, entry);
+  }
+  rippleProgram.uniforms.uTexture.value = entry.tex;
+  rippleProgram.uniforms.uTextureResolution.value.set(entry.w, entry.h);
+  rippleProgram.uniforms.uMouse.value.set(
+    clickX / window.innerWidth,
+    1 - clickY / window.innerHeight,
+  );
+  rippleProgram.uniforms.uTint.value = new Float32Array(hslToRgb(glowStr || 'hsl(0, 0%, 50%)'));
+  rippleCanvas.style.display = 'block';
+  rippleAnimStart = performance.now();
+  if (!rippleActive) {
+    rippleActive = true;
+    requestAnimationFrame(renderRipple);
+  }
+}
+// ──────────────────────────────────────────────────────────────────────────
 // ──────────────────────────────────────────────────────────────────────────
 
 // ─── Verrouillage des projets confidentiels ────────────────────────────────
@@ -377,37 +506,10 @@ function createTile(item, pos, label) {
   el.appendChild(frame);
   attachTilt(inner);
   attachScroll(tileScroll, inner);
-  inner.addEventListener('click', () => {
-    // Très léger bump sur le frame (le glow sur tile root n'est pas touché)
-    el.classList.remove('tile-bump-light');
-    void el.offsetWidth;
-    el.classList.add('tile-bump-light');
-
-    // Onde Siri : wrapper porte le translate (suit la tuile), blob enfant porte le scale.
-    const ripple = document.createElement('div');
-    ripple.className = 'tile-ripple';
-    ripple.style.width = el.style.width;
-    ripple.style.height = el.style.height;
-    ripple.style.borderRadius = getComputedStyle(el).borderRadius;
-    ripple.style.transform = el.style.transform;
+  inner.addEventListener('click', (e) => {
+    const img = el.querySelector('img');
     const glow = el.style.getPropertyValue('--tile-glow-color');
-    if (glow) ripple.style.setProperty('--tile-glow-color', glow);
-    const blob = document.createElement('div');
-    blob.className = 'tile-ripple-blob';
-    ripple.appendChild(blob);
-    const echo = document.createElement('div');
-    echo.className = 'tile-ripple-blob tile-ripple-blob--echo';
-    ripple.appendChild(echo);
-    scroller.appendChild(ripple);
-    const entry = { ripple, tile: el };
-    activeRipples.push(entry);
-    // Le 2e anneau (echo) a un delay, donc son animationend arrive plus tard → cleanup safe
-    echo.addEventListener('animationend', () => {
-      ripple.remove();
-      const idx = activeRipples.indexOf(entry);
-      if (idx >= 0) activeRipples.splice(idx, 1);
-    }, { once: true });
-
+    fireRipple(e.clientX, e.clientY, img, glow);
     if (el.dataset.project) focusProject(el.dataset.project);
   });
   applyDimming(el); // au cas où une nouvelle tuile arrive après un focus
@@ -497,10 +599,6 @@ function frame(t) {
     const tileOffset = offset * tile.velocityMultiplier;
     const stagger = COL_STAGGER[tile.colIdx] ?? 0;
     tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y - tileOffset + stagger}px, 0)`;
-  }
-  // Les ripples suivent leur tuile pour ne pas glisser pendant le défilement.
-  for (const { ripple, tile } of activeRipples) {
-    ripple.style.transform = tile.style.transform;
   }
   topUpIfNeeded();
   requestAnimationFrame(frame);
