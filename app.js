@@ -75,13 +75,18 @@ function createTile(item, pos, label) {
   const el = document.createElement('div');
   el.className = 'tile';
   el.dataset.type = item.type;
-  el.style.background = colorFromSeed(item.seed);
   el.style.width = `${pos.w}px`;
   el.style.height = `${pos.h}px`;
   el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
-  el.textContent = label;
+
+  const inner = document.createElement('div');
+  inner.className = 'tile-inner';
+  inner.style.background = colorFromSeed(item.seed);
+  inner.textContent = label;
+  el.appendChild(inner);
+
   scroller.appendChild(el);
-  return { el, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
+  return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
 }
 
 const mobilePool = pool.filter(p => p.type === 'mobile');
