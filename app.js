@@ -395,10 +395,14 @@ function createTile(item, pos, label) {
     const blob = document.createElement('div');
     blob.className = 'tile-ripple-blob';
     ripple.appendChild(blob);
+    const echo = document.createElement('div');
+    echo.className = 'tile-ripple-blob tile-ripple-blob--echo';
+    ripple.appendChild(echo);
     scroller.appendChild(ripple);
     const entry = { ripple, tile: el };
     activeRipples.push(entry);
-    blob.addEventListener('animationend', () => {
+    // Le 2e anneau (echo) a un delay, donc son animationend arrive plus tard → cleanup safe
+    echo.addEventListener('animationend', () => {
       ripple.remove();
       const idx = activeRipples.indexOf(entry);
       if (idx >= 0) activeRipples.splice(idx, 1);
