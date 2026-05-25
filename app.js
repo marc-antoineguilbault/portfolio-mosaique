@@ -407,8 +407,14 @@ function createTile(item, pos, label) {
   attachTilt(inner);
   attachScroll(tileScroll, inner);
 
-  // Au clic : focus le projet (toggle si re-clic d'un projet du même nom)
+  // Au clic : focus le projet (toggle si re-clic d'un projet du même nom).
+  // Si la tuile est verrouillée → délègue au handler du cadenas (= ouvre le champ mot de passe).
   inner.addEventListener('click', () => {
+    const lockSvg = inner.querySelector('.tile-lock');
+    if (lockSvg && lockSvg.style.display !== 'none') {
+      lockSvg.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      return;
+    }
     const proj = el.dataset.project;
     if (!proj) return;
     if (currentFocusedProject === proj) {
