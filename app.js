@@ -186,11 +186,45 @@ window.addEventListener('mousemove', (e) => {
   cursorEl.style.top = `${e.clientY}px`;
 });
 
+// Smoothing du trail : par frame (≈60fps), current += (target - current) * SMOOTH.
+// 0.12 ≈ 250ms pour rattraper 98% du chemin → léger lag perceptible mais pas mou.
+const CURSOR_LIGHT_SMOOTH = 0.12;
+
 function attachTilt(inner) {
   const frame = inner.parentElement;
-  inner.addEventListener('mouseenter', () => {
+  // Position cible (curseur réel) et current (lumière), en proportions 0..1 de la tile.
+  let targetX = 0.5, targetY = 0.5;
+  let currentX = 0.5, currentY = 0.5;
+  let rafId = null;
+  let active = false;
+
+  function tick() {
+    const dx = targetX - currentX;
+    const dy = targetY - currentY;
+    currentX += dx * CURSOR_LIGHT_SMOOTH;
+    currentY += dy * CURSOR_LIGHT_SMOOTH;
+    inner.style.setProperty('--gx', (currentX * 100) + '%');
+    inner.style.setProperty('--gy', (currentY * 100) + '%');
+    // Tant qu'on est en survol OU qu'il reste un delta à rattraper, on continue.
+    if (active || Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+      rafId = requestAnimationFrame(tick);
+    } else {
+      rafId = null;
+    }
+  }
+
+  inner.addEventListener('mouseenter', (e) => {
     cursorEl.classList.add('locked');
+    // Init current à la position du curseur (évite un "snap depuis le centre" au 1er hover).
+    const rect = inner.getBoundingClientRect();
+    targetX = currentX = (e.clientX - rect.left) / rect.width;
+    targetY = currentY = (e.clientY - rect.top) / rect.height;
+    inner.style.setProperty('--gx', (currentX * 100) + '%');
+    inner.style.setProperty('--gy', (currentY * 100) + '%');
+    active = true;
+    if (rafId === null) rafId = requestAnimationFrame(tick);
   });
+
   inner.addEventListener('mousemove', (e) => {
     const rect = inner.getBoundingClientRect();
     const cx = rect.width / 2;
@@ -199,15 +233,21 @@ function attachTilt(inner) {
     const py = e.clientY - rect.top;
     const dx = (px - cx) / cx;
     const dy = (py - cy) / cy;
+    // Tilt 3D : reste 1:1 sur le curseur réel (réactivité préservée).
     const rotateY = dx * TILT_MAX_DEG;
     const rotateX = -dy * TILT_MAX_DEG;
     frame.style.transform = `perspective(${TILT_PERSPECTIVE}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-    inner.style.setProperty('--gx', (px / rect.width) * 100 + '%');
-    inner.style.setProperty('--gy', (py / rect.height) * 100 + '%');
+    // Lumière : on met à jour la target, le tick rAF lerp vers elle.
+    targetX = px / rect.width;
+    targetY = py / rect.height;
+    if (rafId === null) rafId = requestAnimationFrame(tick);
   });
+
   inner.addEventListener('mouseleave', () => {
     frame.style.transform = '';
     cursorEl.classList.remove('locked');
+    active = false;
+    // Le tick continue jusqu'à ce que la lumière ait rattrapé sa dernière target, puis s'arrête.
   });
 }
 
