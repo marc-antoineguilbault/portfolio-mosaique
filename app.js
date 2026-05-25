@@ -22,6 +22,9 @@ const scroller = document.getElementById('scroller');
 // Index incrémenté pour la cascade d'apparition au load.
 let tileEnterIdx = 0;
 
+// État du focus projet : slug du projet cliqué, ou null si état initial.
+let currentFocusedProject = null;
+
 // ─── Typewriter du suffixe " pour <client>" du label TL au CLIC ──────────
 // La partie statique "Marc-Antoine Guilbault, Lead Designer UI" ne bouge pas ;
 // seul le span .ui-corner__suffix s'écrit/efface lettre par lettre.
@@ -404,10 +407,31 @@ function createTile(item, pos, label) {
   attachTilt(inner);
   attachScroll(tileScroll, inner);
 
-  // Au clic : typewriter du suffixe " pour <nom client>" (le label fixe reste affiché)
+  // Au clic : focus le projet (toggle si re-clic d'un projet du même nom)
   inner.addEventListener('click', () => {
-    const name = projectNameById.get(el.dataset.project);
-    if (name) animateSuffix(`pour ${name}`);
+    const proj = el.dataset.project;
+    if (!proj) return;
+    if (currentFocusedProject === proj) {
+      // Toggle off : retour à l'état initial
+      currentFocusedProject = null;
+      document.querySelectorAll('.tile').forEach((t) => {
+        t.classList.remove('tile--project-focused', 'tile--project-dimmed');
+      });
+      animateSuffix('');
+    } else {
+      currentFocusedProject = proj;
+      document.querySelectorAll('.tile').forEach((t) => {
+        if (t.dataset.project === proj) {
+          t.classList.add('tile--project-focused');
+          t.classList.remove('tile--project-dimmed');
+        } else {
+          t.classList.add('tile--project-dimmed');
+          t.classList.remove('tile--project-focused');
+        }
+      });
+      const name = projectNameById.get(proj);
+      if (name) animateSuffix(`pour ${name}`);
+    }
   });
 
   // Méta sous la tuile : largeur fixe = 1 colonne. Pour les tablets (2 cols),
@@ -429,6 +453,11 @@ function createTile(item, pos, label) {
   el.appendChild(meta);
 
   scroller.appendChild(el);
+  // Adopte l'état focus en cours (si une nouvelle tuile arrive après un clic sur projet)
+  if (currentFocusedProject) {
+    if (item.project === currentFocusedProject) el.classList.add('tile--project-focused');
+    else el.classList.add('tile--project-dimmed');
+  }
   return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
 }
 

@@ -284,6 +284,16 @@ html, body {
   opacity: 1;
 }
 
+/* Au clic sur un projet : ses tuiles → meta toujours visible ; autres tuiles → image noircie */
+.tile--project-focused .tile-meta {
+  opacity: 1;
+}
+
+.tile--project-dimmed .tile-scroll {
+  filter: brightness(0.2);
+  transition: filter 0.45s ease;
+}
+
 .tile-meta__subtitle {
   font-size: 12px;
   letter-spacing: 0.04em;
