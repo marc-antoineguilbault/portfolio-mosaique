@@ -196,7 +196,7 @@ html, body {
 
 /* Pour les tablets (plus larges), spread plus négatif pour resserrer le halo. */
 .tile[data-type="tablet"] .tile-frame {
-  --glow-spread: -200px;
+  --glow-spread: -180px;
 }
 
 
