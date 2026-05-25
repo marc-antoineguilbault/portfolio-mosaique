@@ -184,11 +184,11 @@ html, body {
      de la maquette (haut/milieu/bas de l'image). */
   box-shadow:
     0 0 0 1px #999A9A,
-    -60px 24px 90px -45px color-mix(in srgb,
+    -60px 24px 90px -80px color-mix(in srgb,
       var(--tile-glow-1, transparent) calc(var(--glow-alpha) * 100%), transparent),
-       0px 32px 100px -45px color-mix(in srgb,
+       0px 32px 100px -80px color-mix(in srgb,
       var(--tile-glow-2, transparent) calc(var(--glow-alpha) * 100%), transparent),
-     60px 24px 90px -45px color-mix(in srgb,
+     60px 24px 90px -80px color-mix(in srgb,
       var(--tile-glow-3, transparent) calc(var(--glow-alpha) * 100%), transparent);
   transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
