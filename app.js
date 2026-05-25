@@ -1,4 +1,4 @@
-import { pool, colorFromSeed, RATIOS } from './data.js';
+import { pool, projects, colorFromSeed, RATIOS } from './data.js';
 
 const GAP = 48;
 const GAP_Y = 220; /* augmenté pour laisser la place au bloc .tile-meta sous chaque tuile */
@@ -21,6 +21,42 @@ const scroller = document.getElementById('scroller');
 
 // Index incrémenté pour la cascade d'apparition au load.
 let tileEnterIdx = 0;
+
+// ─── Typewriter du label TL au hover ──────────────────────────────────────
+const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
+let labelInitialText = null;
+let typewriterRAF = null;
+
+function animateLabel(target) {
+  const tl = document.querySelector('.ui-corner--tl');
+  if (!tl) return;
+  if (labelInitialText === null) labelInitialText = tl.textContent;
+  if (typewriterRAF) cancelAnimationFrame(typewriterRAF);
+  const fromText = tl.textContent;
+  const toText = target;
+  const CHAR_MS = 16;
+  const deleteDur = fromText.length * CHAR_MS;
+  const writeDur = toText.length * CHAR_MS;
+  const total = deleteDur + writeDur;
+  const start = performance.now();
+  function step(now) {
+    const e = now - start;
+    if (e < deleteDur) {
+      const keep = Math.max(0, fromText.length - Math.floor(e / CHAR_MS));
+      tl.textContent = fromText.slice(0, keep);
+      typewriterRAF = requestAnimationFrame(step);
+    } else if (e < total) {
+      const wr = Math.min(toText.length, Math.floor((e - deleteDur) / CHAR_MS));
+      tl.textContent = toText.slice(0, wr);
+      typewriterRAF = requestAnimationFrame(step);
+    } else {
+      tl.textContent = toText;
+      typewriterRAF = null;
+    }
+  }
+  typewriterRAF = requestAnimationFrame(step);
+}
+// ──────────────────────────────────────────────────────────────────────────
 
 
 let cols = 4;
@@ -367,6 +403,15 @@ function createTile(item, pos, label) {
   el.appendChild(frame);
   attachTilt(inner);
   attachScroll(tileScroll, inner);
+
+  // Au hover : typewriter du label TL avec "… pour <nom client>"
+  inner.addEventListener('mouseenter', () => {
+    const name = projectNameById.get(el.dataset.project);
+    if (name) animateLabel(`Marc-Antoine Guilbault, Lead Designer UI pour ${name}`);
+  });
+  inner.addEventListener('mouseleave', () => {
+    if (labelInitialText) animateLabel(labelInitialText);
+  });
 
   // Méta sous la tuile : largeur fixe = 1 colonne (même pour le format tablet 2 cols)
   const meta = document.createElement('div');
