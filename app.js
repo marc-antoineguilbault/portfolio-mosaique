@@ -324,24 +324,39 @@ function rgbToHsl(r, g, b) {
   return [h * 60, s, l];
 }
 
-function extractGlowColor(img) {
-  try {
-    _glowCtx.clearRect(0, 0, 32, 32);
-    _glowCtx.drawImage(img, 0, 0, 32, 32);
-    const data = _glowCtx.getImageData(0, 0, 32, 32).data;
-    let r = 0, g = 0, b = 0, count = 0;
-    for (let i = 0; i < data.length; i += 4) {
+// Extrait 3 couleurs distinctes en samplant 3 bandes horizontales de l'image
+// (haut, milieu, bas). Renvoie un array de 3 hsl ou des fallbacks gris si la
+// zone est trop désaturée. Permet un glow multi-color au lieu d'une teinte moyenne.
+function bandAverage(data, yStart, yEnd) {
+  let r = 0, g = 0, b = 0, count = 0;
+  for (let y = yStart; y < yEnd; y++) {
+    for (let x = 0; x < 32; x++) {
+      const i = (y * 32 + x) * 4;
       if (data[i + 3] < 128) continue;
       const lum = (data[i] + data[i + 1] + data[i + 2]) / 3;
       if (lum > 240 || lum < 16) continue;
       r += data[i]; g += data[i + 1]; b += data[i + 2]; count++;
     }
-    if (count === 0) return null;
-    r /= count; g /= count; b /= count;
-    const [h, s, l] = rgbToHsl(r, g, b);
-    const sBoosted = Math.min(s * 1.8, 0.85);
-    const lClamped = Math.max(0.42, Math.min(0.58, l));
-    return `hsl(${h.toFixed(0)}, ${(sBoosted * 100).toFixed(0)}%, ${(lClamped * 100).toFixed(0)}%)`;
+  }
+  if (count === 0) return null;
+  r /= count; g /= count; b /= count;
+  const [h, s, l] = rgbToHsl(r, g, b);
+  const sBoosted = Math.min(s * 1.9, 0.9);
+  const lClamped = Math.max(0.42, Math.min(0.6, l));
+  return `hsl(${h.toFixed(0)}, ${(sBoosted * 100).toFixed(0)}%, ${(lClamped * 100).toFixed(0)}%)`;
+}
+
+function extractGlowColors(img) {
+  try {
+    _glowCtx.clearRect(0, 0, 32, 32);
+    _glowCtx.drawImage(img, 0, 0, 32, 32);
+    const data = _glowCtx.getImageData(0, 0, 32, 32).data;
+    const fallback = 'hsl(0, 0%, 50%)';
+    return [
+      bandAverage(data, 0, 11)  || fallback,
+      bandAverage(data, 11, 22) || fallback,
+      bandAverage(data, 22, 32) || fallback,
+    ];
   } catch (e) {
     return null;
   }
@@ -381,8 +396,12 @@ function createTile(item, pos, label) {
     img.alt = '';
     img.draggable = false;
     const applyGlow = () => {
-      const c = extractGlowColor(img);
-      if (c) el.style.setProperty('--tile-glow-color', c);
+      const colors = extractGlowColors(img);
+      if (colors && colors.length === 3) {
+        el.style.setProperty('--tile-glow-1', colors[0]);
+        el.style.setProperty('--tile-glow-2', colors[1]);
+        el.style.setProperty('--tile-glow-3', colors[2]);
+      }
     };
     if (img.complete && img.naturalWidth > 0) applyGlow();
     else img.addEventListener('load', applyGlow, { once: true });
