@@ -173,6 +173,13 @@ html, body {
   50%      { --glow-alpha: 1; }
 }
 
+/* @property pour pouvoir transitionner la couleur du contour. */
+@property --contour-color {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #999A9A;
+}
+
 .tile-frame {
   position: relative;
   width: 100%;
@@ -185,14 +192,15 @@ html, body {
   --glow-spread: -120px;
   --glow-y: 120px;
   box-shadow:
-    0 0 0 1px #999A9A,
+    0 0 0 1px var(--contour-color),
     -60px var(--glow-y) 90px var(--glow-spread) color-mix(in srgb,
       var(--tile-glow-1, transparent) calc(var(--glow-alpha) * 100%), transparent),
        0px var(--glow-y) 100px var(--glow-spread) color-mix(in srgb,
       var(--tile-glow-2, transparent) calc(var(--glow-alpha) * 100%), transparent),
      60px var(--glow-y) 90px var(--glow-spread) color-mix(in srgb,
       var(--tile-glow-3, transparent) calc(var(--glow-alpha) * 100%), transparent);
-  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+              --contour-color 0.45s ease;
 }
 
 /* Tablet : Y plus court, même spread que mobile. */
@@ -304,6 +312,11 @@ html, body {
 
 .tile--project-dimmed .tile-scroll {
   filter: brightness(0.2);
+}
+
+/* Contour 1px aussi noirci à 60% (-40%) quand la tile est dimmed. */
+.tile--project-dimmed .tile-frame {
+  --contour-color: #5C5D5D;
 }
 
 .tile-meta__subtitle {
