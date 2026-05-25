@@ -235,7 +235,7 @@ html, body {
     rgba(255, 255, 255, 0.05) 35%,
     rgba(255, 255, 255, 0) 65%
   );
-  mix-blend-mode: soft-light;
+  mix-blend-mode: hard-light;
   opacity: 0;
   transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
