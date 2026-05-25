@@ -410,10 +410,14 @@ function createTile(item, pos, label) {
     if (name) animateSuffix(` pour ${name}`);
   });
 
-  // Méta sous la tuile : largeur fixe = 1 colonne (même pour le format tablet 2 cols)
+  // Méta sous la tuile : largeur fixe = 1 colonne. Pour les tablets (2 cols),
+  // on l'aligne sur la colonne DROITE → offset de colWidth + GAP par rapport au bord gauche.
   const meta = document.createElement('div');
   meta.className = 'tile-meta';
   meta.style.width = `${colWidth}px`;
+  if (item.type === 'tablet') {
+    meta.style.left = `${colWidth + GAP}px`;
+  }
   const subtitle = document.createElement('p');
   subtitle.className = 'tile-meta__subtitle';
   subtitle.textContent = '↑ Détails';
@@ -541,6 +545,11 @@ function rebuildLayout() {
     tile.colIdx = pos.colIdx;
     tile.el.style.width = `${pos.w}px`;
     tile.el.style.height = `${pos.h}px`;
+    const meta = tile.el.querySelector('.tile-meta');
+    if (meta) {
+      meta.style.width = `${colWidth}px`;
+      meta.style.left = tile.item.type === 'tablet' ? `${colWidth + GAP}px` : '0';
+    }
   }
   fillUntil(h * 2);
   offset = 0;
