@@ -300,32 +300,32 @@ html, body {
   pointer-events: none;
 }
 
-/* Wrappers générés par splitIntoLines() : chaque ligne visuelle est un .tile-meta__line
-   (clip overflow) contenant un .tile-meta__line-inner translaté sous la baseline. */
+/* Wrappers générés par splitIntoLines() : chaque ligne est un .tile-meta__line
+   contenant un .tile-meta__line-inner translaté en Y (sans clipping → la ligne
+   flotte vers sa position au reveal, plutôt que glisser depuis un masque). */
 .tile-meta__line {
   display: block;
-  overflow: hidden;
   line-height: inherit;
 }
 
 .tile-meta__line-inner {
   display: block;
-  transform: translateY(110%);
+  transform: translateY(24px);
   opacity: 0;
   transition:
-    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0s,
-    opacity 0.35s ease 0s;
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0s,
+    opacity 0.4s ease 0s;
   will-change: transform, opacity;
 }
 
-/* Apparition : chaque ligne remonte avec son propre délai (--line-delay défini en JS). */
+/* Apparition : chaque ligne remonte de 24px → 0, staggered via --line-delay (défini en JS). */
 .tile:hover .tile-meta__line-inner,
 .tile--project-focused .tile-meta__line-inner {
   transform: translateY(0);
   opacity: 1;
   transition:
-    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) var(--line-delay, 0s),
-    opacity 0.55s ease var(--line-delay, 0s);
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1) var(--line-delay, 0s),
+    opacity 0.6s ease var(--line-delay, 0s);
 }
 
 .tile--project-dimmed .tile-scroll {
