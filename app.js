@@ -19,6 +19,9 @@ const COL_STAGGER = [0, 80, 0, 80];                // décalage visuel permanent
 const viewport = document.getElementById('viewport');
 const scroller = document.getElementById('scroller');
 
+// Index incrémenté pour la cascade d'apparition au load.
+let tileEnterIdx = 0;
+
 
 let cols = 4;
 let colWidth = 0;
@@ -316,6 +319,10 @@ function createTile(item, pos, label) {
 
   const color = colorFromSeed(item.seed);
   el.style.setProperty('--tile-glow-color', color);
+  // Cascade d'apparition : delay croissant pour le 1er fill, puis 0 pour les tiles ajoutées au scroll
+  const enterDelayMs = tileEnterIdx < 30 ? tileEnterIdx * 60 : 0;
+  el.style.setProperty('--enter-delay', `${enterDelayMs}ms`);
+  tileEnterIdx++;
 
   const frame = document.createElement('div');
   frame.className = 'tile-frame';
