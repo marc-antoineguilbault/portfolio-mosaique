@@ -64,9 +64,6 @@
   position: absolute;
   /* Padding horizontal = 48px (= GAP entre tuiles dans app.js) → textes alignés sur la grille */
   padding: 28px 48px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
   pointer-events: auto;
   line-height: 1;
 }
