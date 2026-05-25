@@ -3,6 +3,9 @@ import { pool, projects, colorFromSeed, RATIOS } from './data.js';
 // Préférence d'accessibilité : neutralise les animations parasitaires (auto-scroll continu,
 // auto-scroll au hover, tilt 3D, trail du curseur). Le glow + le focus projet restent OK.
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Capacité de hover (= souris/trackpad). Sans hover (tactile pur), on skip tilt/trail/auto-scroll
+// → pas de sticky-hover, pas de curseur custom invisible, comportement natif tactile.
+const HAS_HOVER = window.matchMedia('(hover: hover)').matches;
 
 const GAP = 48;
 const GAP_Y = 220; /* augmenté pour laisser la place au bloc .tile-meta sous chaque tuile */
@@ -142,8 +145,8 @@ function easeInOutQuad(t) {
 }
 
 function attachScroll(scroller, host) {
-  // A11y : pas d'auto-scroll au hover en reduced-motion.
-  if (REDUCED_MOTION) return;
+  // A11y : pas d'auto-scroll au hover en reduced-motion. Tactile : pas de hover → no-op.
+  if (REDUCED_MOTION || !HAS_HOVER) return;
   let animId = null;
   let startTimer = null;
   function animateScrollTo(target, duration, onDone) {
@@ -198,6 +201,9 @@ const CURSOR_LIGHT_SMOOTH = 0.08;
 
 function attachTilt(inner) {
   const frame = inner.parentElement;
+
+  // Tactile : pas de mousemove à attendre, pas de curseur custom → skip total.
+  if (!HAS_HOVER) return;
 
   // A11y : en reduced-motion, on conserve uniquement le lock du curseur (signal d'état,
   // pas une animation parasitaire). Pas de tilt 3D, pas de trail.
@@ -672,6 +678,13 @@ viewport.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 function frame(t) {
+  // Skip tout le travail si l'onglet est en background (ou minimisé).
+  // Empêche l'accumulation de tiles via topUpIfNeeded() en background + libère CPU/batterie.
+  if (document.visibilityState !== 'visible') {
+    lastFrameTime = t;
+    requestAnimationFrame(frame);
+    return;
+  }
   const dt = Math.min((t - lastFrameTime) / 1000, 0.1);
   lastFrameTime = t;
   if (!paused) {
@@ -685,6 +698,13 @@ function frame(t) {
   topUpIfNeeded();
   requestAnimationFrame(frame);
 }
+
+// Au retour sur l'onglet, reset lastFrameTime pour éviter un grand dt et un saut visuel.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    lastFrameTime = performance.now();
+  }
+});
 
 function init() {
   const { w, h } = getViewportSize();

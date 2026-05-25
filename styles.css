@@ -393,6 +393,16 @@ html, body {
   transform: translate(-50%, -50%) scale(1.1);
 }
 
+/* Tactile (hover absent ou pointeur grossier = doigt) : restaure le curseur natif et
+   masque le curseur custom (le JS, lui, skip déjà tilt/trail/auto-scroll dans attachTilt
+   et attachScroll). Empêche aussi le curseur invisible (cursor: none) qui dérange certains
+   stylets / écrans tactiles laptop. */
+@media (hover: none), (pointer: coarse) {
+  html, body,
+  .tile-inner { cursor: auto; }
+  #cursor { display: none; }
+}
+
 /* Accessibilité : prefers-reduced-motion. Neutralise toutes les animations longues,
    transitions et l'auto-scroll. Le glow reste visible au hover (statique, sans pulse).
    Les lignes de meta sont visibles instantanément (pas de slide-up). */
