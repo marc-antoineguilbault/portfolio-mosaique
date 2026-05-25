@@ -407,7 +407,7 @@ function createTile(item, pos, label) {
   // Au clic : typewriter du suffixe " pour <nom client>" (le label fixe reste affiché)
   inner.addEventListener('click', () => {
     const name = projectNameById.get(el.dataset.project);
-    if (name) animateSuffix(` pour ${name}`);
+    if (name) animateSuffix(`pour ${name}`);
   });
 
   // Méta sous la tuile : largeur fixe = 1 colonne. Pour les tablets (2 cols),
