@@ -224,10 +224,6 @@ html, body {
 
 
 
-/* Lumière qui suit le curseur au survol : cœur blanc-ivoire chaud, mid doré (cœur
-   solaire), puis touches pastel rose et cyan en extrémité (irisation subtile).
-   mix-blend-mode: screen → la lumière éclaire les zones sombres de la maquette
-   sans dénaturer les zones claires (comportement physique d'une vraie lumière). */
 .tile-inner::after {
   content: '';
   position: absolute;
@@ -235,13 +231,10 @@ html, body {
   border-radius: inherit;
   background: radial-gradient(
     circle at var(--gx, 50%) var(--gy, 50%),
-    rgba(255, 245, 220, 0.32) 0%,
-    rgba(255, 205, 140, 0.20) 15%,
-    rgba(255, 175, 200, 0.11) 35%,
-    rgba(190, 220, 255, 0.06) 55%,
-    rgba(255, 255, 255, 0) 75%
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.05) 35%,
+    rgba(255, 255, 255, 0) 65%
   );
-  mix-blend-mode: screen;
   opacity: 0;
   transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
