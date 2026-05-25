@@ -187,8 +187,8 @@ window.addEventListener('mousemove', (e) => {
 });
 
 // Smoothing du trail : par frame (≈60fps), current += (target - current) * SMOOTH.
-// 0.12 ≈ 250ms pour rattraper 98% du chemin → léger lag perceptible mais pas mou.
-const CURSOR_LIGHT_SMOOTH = 0.12;
+// 0.08 ≈ 400ms pour rattraper 98% du chemin → trail traînant, plus marqué.
+const CURSOR_LIGHT_SMOOTH = 0.08;
 
 function attachTilt(inner) {
   const frame = inner.parentElement;
