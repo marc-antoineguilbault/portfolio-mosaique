@@ -22,17 +22,17 @@ const scroller = document.getElementById('scroller');
 // Index incrémenté pour la cascade d'apparition au load.
 let tileEnterIdx = 0;
 
-// ─── Typewriter du label TL au hover ──────────────────────────────────────
+// ─── Typewriter du suffixe " pour <client>" du label TL au CLIC ──────────
+// La partie statique "Marc-Antoine Guilbault, Lead Designer UI" ne bouge pas ;
+// seul le span .ui-corner__suffix s'écrit/efface lettre par lettre.
 const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
-let labelInitialText = null;
 let typewriterRAF = null;
 
-function animateLabel(target) {
-  const tl = document.querySelector('.ui-corner--tl');
-  if (!tl) return;
-  if (labelInitialText === null) labelInitialText = tl.textContent;
+function animateSuffix(target) {
+  const suffix = document.querySelector('.ui-corner__suffix');
+  if (!suffix) return;
   if (typewriterRAF) cancelAnimationFrame(typewriterRAF);
-  const fromText = tl.textContent;
+  const fromText = suffix.textContent;
   const toText = target;
   const CHAR_MS = 16;
   const deleteDur = fromText.length * CHAR_MS;
@@ -43,14 +43,14 @@ function animateLabel(target) {
     const e = now - start;
     if (e < deleteDur) {
       const keep = Math.max(0, fromText.length - Math.floor(e / CHAR_MS));
-      tl.textContent = fromText.slice(0, keep);
+      suffix.textContent = fromText.slice(0, keep);
       typewriterRAF = requestAnimationFrame(step);
     } else if (e < total) {
       const wr = Math.min(toText.length, Math.floor((e - deleteDur) / CHAR_MS));
-      tl.textContent = toText.slice(0, wr);
+      suffix.textContent = toText.slice(0, wr);
       typewriterRAF = requestAnimationFrame(step);
     } else {
-      tl.textContent = toText;
+      suffix.textContent = toText;
       typewriterRAF = null;
     }
   }
@@ -404,13 +404,10 @@ function createTile(item, pos, label) {
   attachTilt(inner);
   attachScroll(tileScroll, inner);
 
-  // Au hover : typewriter du label TL avec "… pour <nom client>"
-  inner.addEventListener('mouseenter', () => {
+  // Au clic : typewriter du suffixe " pour <nom client>" (le label fixe reste affiché)
+  inner.addEventListener('click', () => {
     const name = projectNameById.get(el.dataset.project);
-    if (name) animateLabel(`Marc-Antoine Guilbault, Lead Designer UI pour ${name}`);
-  });
-  inner.addEventListener('mouseleave', () => {
-    if (labelInitialText) animateLabel(labelInitialText);
+    if (name) animateSuffix(` pour ${name}`);
   });
 
   // Méta sous la tuile : largeur fixe = 1 colonne (même pour le format tablet 2 cols)
