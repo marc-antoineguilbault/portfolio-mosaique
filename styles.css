@@ -34,6 +34,19 @@
 }
 
 
+/* Léger dégradé sombre en haut pour appuyer la lisibilité des textes des corners. */
+.ui-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 140px;
+  pointer-events: none;
+  z-index: -1;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.2) 60%, transparent 100%);
+}
+
 /* Dégradé "qui vient de l'extérieur" — 4 ellipses radiales depuis chaque coin
    qui s'estompent vers le centre, esprit visuel proche de l'onde au clic. */
 .ui-grad-bg {
