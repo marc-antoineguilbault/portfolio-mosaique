@@ -1,5 +1,9 @@
 import { pool, projects, colorFromSeed, RATIOS } from './data.js';
 
+// Préférence d'accessibilité : neutralise les animations parasitaires (auto-scroll continu,
+// auto-scroll au hover, tilt 3D, trail du curseur). Le glow + le focus projet restent OK.
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 const GAP = 48;
 const GAP_Y = 220; /* augmenté pour laisser la place au bloc .tile-meta sous chaque tuile */
 const BASE_VELOCITY = 30;
@@ -138,6 +142,8 @@ function easeInOutQuad(t) {
 }
 
 function attachScroll(scroller, host) {
+  // A11y : pas d'auto-scroll au hover en reduced-motion.
+  if (REDUCED_MOTION) return;
   let animId = null;
   let startTimer = null;
   function animateScrollTo(target, duration, onDone) {
@@ -192,6 +198,15 @@ const CURSOR_LIGHT_SMOOTH = 0.08;
 
 function attachTilt(inner) {
   const frame = inner.parentElement;
+
+  // A11y : en reduced-motion, on conserve uniquement le lock du curseur (signal d'état,
+  // pas une animation parasitaire). Pas de tilt 3D, pas de trail.
+  if (REDUCED_MOTION) {
+    inner.addEventListener('mouseenter', () => cursorEl.classList.add('locked'));
+    inner.addEventListener('mouseleave', () => cursorEl.classList.remove('locked'));
+    return;
+  }
+
   // Position cible (curseur réel) et current (lumière), en proportions 0..1 de la tile.
   let targetX = 0.5, targetY = 0.5;
   let currentX = 0.5, currentY = 0.5;
@@ -490,6 +505,8 @@ function createTile(item, pos, label) {
     img.src = item.src;
     img.alt = '';
     img.draggable = false;
+    img.loading = 'lazy';
+    img.decoding = 'async';
     const applyGlow = () => {
       const colors = extractGlowColors(img);
       if (colors && colors.length === 3) {
@@ -638,7 +655,7 @@ function topUpIfNeeded() {
 }
 
 let offset = 0;
-let velocity = BASE_VELOCITY;
+let velocity = REDUCED_MOTION ? 0 : BASE_VELOCITY;
 let lastFrameTime = 0;
 let paused = false;
 

@@ -393,6 +393,25 @@ html, body {
   transform: translate(-50%, -50%) scale(1.1);
 }
 
+/* Accessibilité : prefers-reduced-motion. Neutralise toutes les animations longues,
+   transitions et l'auto-scroll. Le glow reste visible au hover (statique, sans pulse).
+   Les lignes de meta sont visibles instantanément (pas de slide-up). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .tile-meta__line-inner {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  .tile:hover {
+    --glow-alpha: 1;
+  }
+}
+
 /* Input sans habillage : pas de fond, pas de bord. Le caret blanc reste visible
    (clignote pour signaler la saisie), et les puces du type=password matérialisent
    les caractères tapés. */
