@@ -284,7 +284,7 @@ html, body {
   font-size: 12px;
   letter-spacing: 0.04em;
   opacity: 0.85;
-  margin: 0;
+  margin: 10px 0 0;
 }
 
 .tile-meta__desc {
