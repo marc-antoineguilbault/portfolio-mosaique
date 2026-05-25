@@ -288,7 +288,8 @@ html, body {
 }
 
 /* Méta sous chaque tuile : sous-titre + description, largeur fixe = 1 colonne.
-   N'apparaît qu'au survol de la tuile. */
+   Le bloc lui-même est toujours présent ; ce sont les LIGNES de texte qui apparaissent
+   au survol (ou au clic du projet), avec un mouvement bas→haut + fondu, staggered. */
 .tile-meta {
   position: absolute;
   top: 100%;
@@ -297,17 +298,34 @@ html, body {
   color: rgba(255, 255, 255, 0.85);
   font-family: 'Suisse Int\'l', 'Suisse Intl', 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   pointer-events: none;
+}
+
+/* Wrappers générés par splitIntoLines() : chaque ligne visuelle est un .tile-meta__line
+   (clip overflow) contenant un .tile-meta__line-inner translaté sous la baseline. */
+.tile-meta__line {
+  display: block;
+  overflow: hidden;
+  line-height: inherit;
+}
+
+.tile-meta__line-inner {
+  display: block;
+  transform: translateY(110%);
   opacity: 0;
-  transition: opacity 0.4s ease;
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0s,
+    opacity 0.35s ease 0s;
+  will-change: transform, opacity;
 }
 
-.tile:hover .tile-meta {
+/* Apparition : chaque ligne remonte avec son propre délai (--line-delay défini en JS). */
+.tile:hover .tile-meta__line-inner,
+.tile--project-focused .tile-meta__line-inner {
+  transform: translateY(0);
   opacity: 1;
-}
-
-/* Au clic sur un projet : ses tuiles → meta toujours visible ; autres tuiles → image noircie */
-.tile--project-focused .tile-meta {
-  opacity: 1;
+  transition:
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) var(--line-delay, 0s),
+    opacity 0.55s ease var(--line-delay, 0s);
 }
 
 .tile--project-dimmed .tile-scroll {
