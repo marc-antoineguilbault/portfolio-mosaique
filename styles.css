@@ -234,6 +234,8 @@ html, body {
   scrollbar-width: none;
   border-radius: inherit;
   clip-path: inset(0 round var(--tile-radius-inner, 20px));
+  /* Transition sur l'élément de base → fade dans les DEUX sens (assombrissement ET retour) */
+  transition: filter 0.45s ease;
 }
 
 .tile-scroll::-webkit-scrollbar {
@@ -291,7 +293,6 @@ html, body {
 
 .tile--project-dimmed .tile-scroll {
   filter: brightness(0.2);
-  transition: filter 0.45s ease;
 }
 
 .tile-meta__subtitle {
