@@ -266,7 +266,8 @@ html, body {
   -webkit-user-drag: none;
 }
 
-/* Méta sous chaque tuile : sous-titre + description, largeur fixe = 1 colonne. */
+/* Méta sous chaque tuile : sous-titre + description, largeur fixe = 1 colonne.
+   N'apparaît qu'au survol de la tuile. */
 .tile-meta {
   position: absolute;
   top: 100%;
@@ -275,6 +276,12 @@ html, body {
   color: rgba(255, 255, 255, 0.85);
   font-family: 'Suisse Int\'l', 'Suisse Intl', 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.tile:hover .tile-meta {
+  opacity: 1;
 }
 
 .tile-meta__subtitle {
