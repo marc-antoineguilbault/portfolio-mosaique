@@ -167,9 +167,9 @@ html, body {
   initial-value: 0;
 }
 
-/* Respiration au hover, amplitude adoucie (70% → 100%) pour un rendu plus naturel. */
+/* Respiration au hover : intensité oscille entre 50% et 100% */
 @keyframes glow-breathe {
-  0%, 100% { --glow-alpha: 0.7; }
+  0%, 100% { --glow-alpha: 0.5; }
   50%      { --glow-alpha: 1; }
 }
 
@@ -187,35 +187,26 @@ html, body {
   background: #000;
   padding: 12px;
   border-radius: var(--tile-radius-outer, 32px);
-  /* Glow solaire stratifié (pattern J. Comeau : empiler des ombres avec offsets/blurs
-     progressifs pour un falloff naturel). 3 couches "proches" en couleurs extraites de
-     l'image (haut/milieu/bas, le cœur du glow), 1 halo doré large (cœur solaire chaud
-     hsl 38°), 2 halos pastel décalés rose-violet (310°) et cyan (195°) → touche irisée
-     subtile aux extrémités. Tout pulse ensemble via --glow-alpha au hover. */
-  --glow-y: 110px;
-  --glow-spread: -110px;
+  /* Contour 1px + glow multi-couleurs : 3 ombres décalées avec 3 teintes extraites
+     de la maquette (haut/milieu/bas de l'image). --glow-y et --glow-spread varient par format. */
+  --glow-spread: -120px;
+  --glow-y: 120px;
   box-shadow:
     0 0 0 1px var(--contour-color),
-    -50px calc(var(--glow-y) - 20px) 70px var(--glow-spread) color-mix(in srgb,
+    -60px var(--glow-y) 90px var(--glow-spread) color-mix(in srgb,
       var(--tile-glow-1, transparent) calc(var(--glow-alpha) * 100%), transparent),
-       0px var(--glow-y) 95px var(--glow-spread) color-mix(in srgb,
+       0px var(--glow-y) 100px var(--glow-spread) color-mix(in srgb,
       var(--tile-glow-2, transparent) calc(var(--glow-alpha) * 100%), transparent),
-     50px calc(var(--glow-y) - 20px) 70px var(--glow-spread) color-mix(in srgb,
-      var(--tile-glow-3, transparent) calc(var(--glow-alpha) * 100%), transparent),
-       0px calc(var(--glow-y) + 40px) 180px calc(var(--glow-spread) + 30px) color-mix(in srgb,
-      hsl(38, 95%, 62%) calc(var(--glow-alpha) * 35%), transparent),
-     -90px calc(var(--glow-y) + 60px) 220px calc(var(--glow-spread) + 50px) color-mix(in srgb,
-      hsl(310, 75%, 65%) calc(var(--glow-alpha) * 22%), transparent),
-      90px calc(var(--glow-y) + 60px) 220px calc(var(--glow-spread) + 50px) color-mix(in srgb,
-      hsl(195, 75%, 65%) calc(var(--glow-alpha) * 22%), transparent);
+     60px var(--glow-y) 90px var(--glow-spread) color-mix(in srgb,
+      var(--tile-glow-3, transparent) calc(var(--glow-alpha) * 100%), transparent);
   transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1),
               --contour-color 0.45s ease;
 }
 
 /* Tablet : Y plus court, même spread que mobile. */
 .tile[data-type="tablet"] .tile-frame {
-  --glow-spread: -110px;
-  --glow-y: 90px;
+  --glow-spread: -120px;
+  --glow-y: 80px;
 }
 
 
@@ -233,6 +224,10 @@ html, body {
 
 
 
+/* Lumière qui suit le curseur au survol : cœur blanc-ivoire chaud, mid doré (cœur
+   solaire), puis touches pastel rose et cyan en extrémité (irisation subtile).
+   mix-blend-mode: screen → la lumière éclaire les zones sombres de la maquette
+   sans dénaturer les zones claires (comportement physique d'une vraie lumière). */
 .tile-inner::after {
   content: '';
   position: absolute;
@@ -240,10 +235,13 @@ html, body {
   border-radius: inherit;
   background: radial-gradient(
     circle at var(--gx, 50%) var(--gy, 50%),
-    rgba(255, 255, 255, 0.22) 0%,
-    rgba(255, 255, 255, 0.05) 35%,
-    rgba(255, 255, 255, 0) 65%
+    rgba(255, 245, 220, 0.32) 0%,
+    rgba(255, 205, 140, 0.20) 15%,
+    rgba(255, 175, 200, 0.11) 35%,
+    rgba(190, 220, 255, 0.06) 55%,
+    rgba(255, 255, 255, 0) 75%
   );
+  mix-blend-mode: screen;
   opacity: 0;
   transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
