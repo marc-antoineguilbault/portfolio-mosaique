@@ -1,7 +1,7 @@
 import { pool, colorFromSeed, RATIOS } from './data.js';
 
 const GAP = 48;
-const GAP_Y = 160;
+const GAP_Y = 220; /* augmenté pour laisser la place au bloc .tile-meta sous chaque tuile */
 const BASE_VELOCITY = 30;
 const WHEEL_GAIN = 0.5;
 
@@ -367,6 +367,20 @@ function createTile(item, pos, label) {
   el.appendChild(frame);
   attachTilt(inner);
   attachScroll(tileScroll, inner);
+
+  // Méta sous la tuile : largeur fixe = 1 colonne (même pour le format tablet 2 cols)
+  const meta = document.createElement('div');
+  meta.className = 'tile-meta';
+  meta.style.width = `${colWidth}px`;
+  const subtitle = document.createElement('p');
+  subtitle.className = 'tile-meta__subtitle';
+  subtitle.textContent = '↑ Détails';
+  const desc = document.createElement('p');
+  desc.className = 'tile-meta__desc';
+  desc.textContent = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.';
+  meta.appendChild(subtitle);
+  meta.appendChild(desc);
+  el.appendChild(meta);
 
   scroller.appendChild(el);
   return { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h, velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };

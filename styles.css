@@ -269,6 +269,31 @@ html, body {
   -webkit-user-drag: none;
 }
 
+/* Méta sous chaque tuile : sous-titre + description, largeur fixe = 1 colonne. */
+.tile-meta {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  padding-top: 16px;
+  color: rgba(255, 255, 255, 0.85);
+  font-family: 'Suisse Int\'l', 'Suisse Intl', 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  pointer-events: none;
+}
+
+.tile-meta__subtitle {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+  margin: 0;
+}
+
+.tile-meta__desc {
+  font-size: 16px;
+  line-height: 1.4;
+  margin: 12px 0 0;
+  color: rgba(255, 255, 255, 0.95);
+}
+
 /* Projets confidentiels : image floutée + cadenas en overlay.
    La transition sur filter assure le fondu du flou au déverrouillage. */
 .tile-content--image img {
