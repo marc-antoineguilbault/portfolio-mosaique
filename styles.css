@@ -314,9 +314,9 @@ html, body {
   filter: brightness(0.2);
 }
 
-/* Contour 1px aussi noirci à 60% (-40%) quand la tile est dimmed. */
+/* Contour 1px noirci à 20% (-80%) quand la tile est dimmed. */
 .tile--project-dimmed .tile-frame {
-  --contour-color: #5C5D5D;
+  --contour-color: #1F1F1F;
 }
 
 .tile-meta__subtitle {
