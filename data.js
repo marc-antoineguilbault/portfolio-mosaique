@@ -14,7 +14,7 @@ function buildImages(slug, mobileCount, tabletCount, ext = 'jpg', locked = false
 export const projects = [
   { id: 'liquides-paris',     name: 'Liquides Paris',          images: buildImages('liquides-paris',     2, 2, 'webp') },
   { id: 'gobelins-paris',     name: 'Gobelins Paris',          images: buildImages('gobelins-paris',     3, 3, 'webp') },
-  { id: 'loreal-groupe',      name: 'L’Oréal Groupe',          images: buildImages('loreal-groupe',      3, 4, 'webp') },
+  { id: 'loreal-groupe',      name: 'L’Oréal Groupe',          images: buildImages('loreal-groupe',      3, 3, 'webp') },
   { id: 'centre-pompidou',    name: 'Centre Pompidou',         images: buildImages('centre-pompidou',    1, 2, 'webp') },
   { id: 'pozzo-di-borgo',     name: 'Pozzo Di Borgo (Parfums)',images: buildImages('pozzo-di-borgo',     2, 4, 'webp') },
   { id: 'quintessence-paris', name: 'Quintessence Paris',      images: buildImages('quintessence-paris', 3, 0, 'webp') },
