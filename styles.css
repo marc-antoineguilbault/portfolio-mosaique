@@ -249,19 +249,35 @@ html, body {
 .tile-scroll {
   width: 100%;
   height: 100%;
-  overflow-y: scroll;
+  /* `auto` → scrollbar visible UNIQUEMENT si le contenu déborde (projets longs).
+     Les tiles dont l'image rentre pile dans le ratio n'auront pas de scrollbar. */
+  overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: none;
+  /* Firefox : scrollbar fine + couleur thumb/track (thumb blanc semi-transparent). */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
   border-radius: inherit;
   clip-path: inset(0 round var(--tile-radius-inner, 20px));
   /* Transition sur l'élément de base → fade dans les DEUX sens (assombrissement ET retour) */
   transition: filter 0.45s ease;
 }
 
+/* Webkit (Chrome / Safari / Edge) : scrollbar 5px, thumb arrondi, plus visible au hover. */
 .tile-scroll::-webkit-scrollbar {
-  width: 0;
+  width: 5px;
   height: 0;
   background: transparent;
+}
+
+.tile-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+  transition: background 0.25s ease;
+}
+
+.tile-scroll:hover::-webkit-scrollbar-thumb,
+.tile-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
 }
 
 
