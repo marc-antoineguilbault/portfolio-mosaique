@@ -765,6 +765,8 @@ let hoverPaused = false;
 // Le tile recycling supprime les tiles passées sous l'écran ; sans ce floor, scroller
 // trop haut révèle un gap noir (les premières tiles ont été recyclées).
 let minLiveTileY = -Infinity;
+// Marge entre le top du viewport et la première tile quand on a scrollé au max vers le haut.
+const SCROLL_TOP_MARGIN = 60;
 
 viewport.addEventListener('mousedown', () => { paused = true; });
 window.addEventListener('mouseup', () => { paused = false; });
@@ -784,8 +786,9 @@ viewport.addEventListener('wheel', (e) => {
   // (Le scroll de la tile reste possible uniquement via l'auto-scroll au hover.)
   e.preventDefault();
   offset += e.deltaY * WHEEL_GAIN;
-  // Clamp au floor : la plus haute tile reste collée au top du viewport, jamais de gap noir.
-  if (offset < minLiveTileY) offset = minLiveTileY;
+  // Clamp au floor : la plus haute tile reste au top du viewport (avec une marge), jamais de gap noir.
+  const floor = minLiveTileY - SCROLL_TOP_MARGIN;
+  if (offset < floor) offset = floor;
 }, { passive: false });
 
 function frame(t) {
@@ -802,9 +805,10 @@ function frame(t) {
     offset += velocity * dt;
   }
   // Filet de sécurité : si offset a dépassé le floor (race entre wheel/velocity/recycling),
-  // on force le retour à l'état "première tile collée au top". Snap instantané = "scroll
-  // forcé vers le bas pour revenir à l'état initial".
-  if (offset < minLiveTileY) offset = minLiveTileY;
+  // on force le retour à l'état "première tile au top + SCROLL_TOP_MARGIN". Snap instantané
+  // = "scroll forcé vers le bas pour revenir à l'état initial".
+  const floor = minLiveTileY - SCROLL_TOP_MARGIN;
+  if (offset < floor) offset = floor;
   // Culling visuel + recycling : on n'écrit le DOM que pour les tiles dans la zone d'affichage
   // élargie, et on retire les tiles passées loin sous l'écran pour borner la consommation mémoire
   // (sinon le scroll infini accumule indéfiniment des éléments + leurs listeners).
