@@ -761,6 +761,10 @@ let lastFrameTime = 0;
 let paused = false;
 // Pause de l'auto-scroll quand on survole une tile (indépendant du drag mousedown).
 let hoverPaused = false;
+// Floor offset : recalculé à chaque frame = min(tile.y) parmi les tiles vivantes.
+// Le tile recycling supprime les tiles passées sous l'écran ; sans ce floor, scroller
+// trop haut révèle un gap noir (les premières tiles ont été recyclées).
+let minLiveTileY = -Infinity;
 
 viewport.addEventListener('mousedown', () => { paused = true; });
 window.addEventListener('mouseup', () => { paused = false; });
@@ -780,7 +784,8 @@ viewport.addEventListener('wheel', (e) => {
   // (Le scroll de la tile reste possible uniquement via l'auto-scroll au hover.)
   e.preventDefault();
   offset += e.deltaY * WHEEL_GAIN;
-  if (offset < 0) offset = 0;
+  // Clamp au floor : la plus haute tile reste collée au top du viewport, jamais de gap noir.
+  if (offset < minLiveTileY) offset = minLiveTileY;
 }, { passive: false });
 
 function frame(t) {
@@ -796,6 +801,10 @@ function frame(t) {
   if (!paused && !hoverPaused) {
     offset += velocity * dt;
   }
+  // Filet de sécurité : si offset a dépassé le floor (race entre wheel/velocity/recycling),
+  // on force le retour à l'état "première tile collée au top". Snap instantané = "scroll
+  // forcé vers le bas pour revenir à l'état initial".
+  if (offset < minLiveTileY) offset = minLiveTileY;
   // Culling visuel + recycling : on n'écrit le DOM que pour les tiles dans la zone d'affichage
   // élargie, et on retire les tiles passées loin sous l'écran pour borner la consommation mémoire
   // (sinon le scroll infini accumule indéfiniment des éléments + leurs listeners).
@@ -803,6 +812,7 @@ function frame(t) {
   const VISIBLE_MARGIN = 200;    // px : marge pour pré-positionner avant que la tile arrive
   const RECYCLE_MARGIN = 1000;   // px sous l'écran : au-delà, on retire la tile du DOM
   const toRemove = [];
+  let nextMinY = Infinity;
   for (let i = 0; i < liveTiles.length; i++) {
     const tile = liveTiles[i];
     const tileOffset = offset * tile.velocityMultiplier;
@@ -813,6 +823,8 @@ function frame(t) {
       toRemove.push(i);
       continue;
     }
+    // Trace la plus haute tile survivante pour calculer le floor du prochain frame.
+    if (tile.y < nextMinY) nextMinY = tile.y;
     // Tile hors viewport (haut ou bas) → skip les writes : ses styles ne sont pas observés
     if (ty > vh + VISIBLE_MARGIN || ty + tile.h < -VISIBLE_MARGIN) {
       continue;
@@ -830,6 +842,9 @@ function frame(t) {
     tile.el.remove(); // détache du DOM → handlers + closures GC'd avec l'élément
     liveTiles.splice(toRemove[i], 1);
   }
+  // Met à jour le floor pour le prochain frame. -Infinity si plus aucune tile (transitoire,
+  // topUpIfNeeded va en regénérer en bas).
+  minLiveTileY = (nextMinY === Infinity) ? -Infinity : nextMinY;
   topUpIfNeeded();
   requestAnimationFrame(frame);
 }
