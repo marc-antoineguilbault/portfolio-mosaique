@@ -16,7 +16,7 @@ export const projects = [
   { id: 'pozzo-di-borgo', name: 'Pozzo di Borgo', images: buildImages('pozzo-di-borgo', 5, 8) },
   { id: 'mcdo',           name: 'McDonald’s',     images: buildImages('mcdo',           3, 7) },
   { id: 'loreal',         name: 'L’Oréal',        images: buildImages('loreal',         4, 8) },
-  { id: 'pompidou',       name: 'Pompidou',       images: buildImages('pompidou',       3, 3, 'png', true) },
+  { id: 'pompidou',       name: 'Pompidou',       images: buildImages('pompidou',       3, 3, 'jpg', true) },
   { id: 'gobelins',       name: 'Gobelins',       images: buildImages('gobelins',       5, 3) },
   { id: 'liquides',       name: 'Liquides',       images: buildImages('liquides',       5, 7, 'jpg', true) },
   { id: '_ratio-test',    name: 'Ratio Test',     images: buildImages('_ratio-test',    1, 1, 'jpg') },

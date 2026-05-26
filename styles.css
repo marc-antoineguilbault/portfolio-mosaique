@@ -107,12 +107,12 @@ html, body {
   background: rgba(180, 180, 180, 0.55);
   pointer-events: none;
   z-index: 1000;
-  transform: translate(-50%, -50%);
+  /* Transform set en JS à chaque mousemove (perf : GPU compositing, pas de layout). */
   transition:
     width 0.4s cubic-bezier(0.4, 0, 0.4, 1),
     height 0.4s cubic-bezier(0.4, 0, 0.4, 1),
     background 0.4s ease;
-  will-change: left, top, width, height, background;
+  will-change: transform, width, height, background;
 }
 
 #cursor.locked {

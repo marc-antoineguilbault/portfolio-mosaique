@@ -238,8 +238,8 @@ let mouseX = 0, mouseY = 0;
 window.addEventListener('mousemove', (e) => {
   mouseX = e.clientX;
   mouseY = e.clientY;
-  cursorEl.style.left = `${e.clientX}px`;
-  cursorEl.style.top = `${e.clientY}px`;
+  // Transform = compositing GPU pur (pas de layout). translate(-50%, -50%) centre le rond.
+  cursorEl.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
 });
 
 // Smoothing du trail : par frame (≈60fps), current += (target - current) * SMOOTH.
@@ -287,13 +287,14 @@ function attachTilt(inner) {
     cursorEl.classList.add('locked');
     // Arrête le défilement auto de la mosaïque le temps qu'on examine le projet.
     hoverPaused = true;
+    // Perf : lire le layout AVANT d'écrire transform (évite un reflow synchrone).
+    const rect = inner.getBoundingClientRect();
+    // Init current à la position du curseur (évite un "snap depuis le centre" au 1er hover).
+    targetX = currentX = (e.clientX - rect.left) / rect.width;
+    targetY = currentY = (e.clientY - rect.top) / rect.height;
     // Lift initial sans tilt — "respiration" verticale avant la déformation 3D.
     liftStartTime = performance.now();
     frame.style.transform = `perspective(${TILT_PERSPECTIVE}px) translateY(-${HOVER_LIFT_PX}px)`;
-    // Init current à la position du curseur (évite un "snap depuis le centre" au 1er hover).
-    const rect = inner.getBoundingClientRect();
-    targetX = currentX = (e.clientX - rect.left) / rect.width;
-    targetY = currentY = (e.clientY - rect.top) / rect.height;
     inner.style.setProperty('--gx', (currentX * 100) + '%');
     inner.style.setProperty('--gy', (currentY * 100) + '%');
     active = true;
