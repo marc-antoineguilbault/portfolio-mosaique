@@ -534,12 +534,19 @@ function createTile(item, pos, label) {
     const maxScroll = tileScroll.scrollHeight - tileScroll.clientHeight;
     if (maxScroll <= 0) {
       scrollbar.classList.remove('is-active');
-      scrollbarFill.style.height = '0%';
+      scrollbarFill.style.height = '0px';
+      scrollbarFill.style.transform = 'translateY(0)';
       return;
     }
     scrollbar.classList.add('is-active');
+    const trackHeight = scrollbar.clientHeight;
+    // Hauteur du thumb proportionnelle au ratio visible (= clientHeight / scrollHeight),
+    // clampée à un minimum lisible pour les très longs contenus.
+    const thumbHeight = Math.max(20, trackHeight * tileScroll.clientHeight / tileScroll.scrollHeight);
     const progress = Math.max(0, Math.min(1, tileScroll.scrollTop / maxScroll));
-    scrollbarFill.style.height = (progress * 100) + '%';
+    const thumbY = progress * (trackHeight - thumbHeight);
+    scrollbarFill.style.height = thumbHeight + 'px';
+    scrollbarFill.style.transform = `translateY(${thumbY}px)`;
   }
 
   tileScroll.addEventListener('scroll', updateScrollbar, { passive: true });
