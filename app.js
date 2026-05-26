@@ -134,6 +134,9 @@ function placeNext(item) {
 
 const TILT_MAX_DEG = 2.5;
 const TILT_PERSPECTIVE = 1400;
+// Au rollover : la tile lift verticalement avant que le tilt 3D s'applique.
+const HOVER_LIFT_PX = 12;
+const LIFT_BEFORE_TILT_MS = 250;
 const CONTENT_HEIGHT_RATIO = 2.5;
 const SCROLL_DOWN_DURATION = 8000;
 const SCROLL_UP_DURATION = 1500;
@@ -218,6 +221,8 @@ function attachTilt(inner) {
   let currentX = 0.5, currentY = 0.5;
   let rafId = null;
   let active = false;
+  // Pour séquencer "lift d'abord, tilt ensuite" : on stocke le timestamp du mouseenter.
+  let liftStartTime = 0;
 
   function tick() {
     const dx = targetX - currentX;
@@ -236,6 +241,11 @@ function attachTilt(inner) {
 
   inner.addEventListener('mouseenter', (e) => {
     cursorEl.classList.add('locked');
+    // Arrête le défilement auto de la mosaïque le temps qu'on examine le projet.
+    hoverPaused = true;
+    // Lift initial sans tilt — "respiration" verticale avant la déformation 3D.
+    liftStartTime = performance.now();
+    frame.style.transform = `perspective(${TILT_PERSPECTIVE}px) translateY(-${HOVER_LIFT_PX}px)`;
     // Init current à la position du curseur (évite un "snap depuis le centre" au 1er hover).
     const rect = inner.getBoundingClientRect();
     targetX = currentX = (e.clientX - rect.left) / rect.width;
@@ -252,13 +262,17 @@ function attachTilt(inner) {
     const cy = rect.height / 2;
     const px = e.clientX - rect.left;
     const py = e.clientY - rect.top;
-    const dx = (px - cx) / cx;
-    const dy = (py - cy) / cy;
-    // Tilt 3D : reste 1:1 sur le curseur réel (réactivité préservée).
-    const rotateY = dx * TILT_MAX_DEG;
-    const rotateX = -dy * TILT_MAX_DEG;
-    frame.style.transform = `perspective(${TILT_PERSPECTIVE}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-    // Lumière : on met à jour la target, le tick rAF lerp vers elle.
+    // Tilt 3D : appliqué uniquement après le délai de lift initial → la tile lift d'abord,
+    // puis la déformation 3D suit le curseur.
+    const liftElapsed = performance.now() - liftStartTime;
+    if (liftElapsed >= LIFT_BEFORE_TILT_MS) {
+      const dx = (px - cx) / cx;
+      const dy = (py - cy) / cy;
+      const rotateY = dx * TILT_MAX_DEG;
+      const rotateX = -dy * TILT_MAX_DEG;
+      frame.style.transform = `perspective(${TILT_PERSPECTIVE}px) translateY(-${HOVER_LIFT_PX}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+    }
+    // Lumière : on met à jour la target, le tick rAF lerp vers elle (trail indépendant du lift).
     targetX = px / rect.width;
     targetY = py / rect.height;
     if (rafId === null) rafId = requestAnimationFrame(tick);
@@ -267,6 +281,7 @@ function attachTilt(inner) {
   inner.addEventListener('mouseleave', () => {
     frame.style.transform = '';
     cursorEl.classList.remove('locked');
+    hoverPaused = false;
     active = false;
     // Le tick continue jusqu'à ce que la lumière ait rattrapé sa dernière target, puis s'arrête.
   });
@@ -664,6 +679,8 @@ let offset = 0;
 let velocity = REDUCED_MOTION ? 0 : BASE_VELOCITY;
 let lastFrameTime = 0;
 let paused = false;
+// Pause de l'auto-scroll quand on survole une tile (indépendant du drag mousedown).
+let hoverPaused = false;
 
 viewport.addEventListener('mousedown', () => { paused = true; });
 window.addEventListener('mouseup', () => { paused = false; });
@@ -687,7 +704,7 @@ function frame(t) {
   }
   const dt = Math.min((t - lastFrameTime) / 1000, 0.1);
   lastFrameTime = t;
-  if (!paused) {
+  if (!paused && !hoverPaused) {
     offset += velocity * dt;
   }
   for (const tile of liveTiles) {
