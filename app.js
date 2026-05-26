@@ -49,12 +49,27 @@ function unfocusProject() {
 }
 let typewriterRAF = null;
 
-function animateSuffix(target) {
+// Rend le suffix avec " pour " statique + le nom dans un .ui-corner__suffix-name (colorisable).
+function renderSuffix(suffix, text) {
+  const PREFIX = ' pour ';
+  suffix.replaceChildren();
+  if (text.length <= PREFIX.length) {
+    suffix.textContent = text;
+    return;
+  }
+  suffix.appendChild(document.createTextNode(text.slice(0, PREFIX.length)));
+  const nameSpan = document.createElement('span');
+  nameSpan.className = 'ui-corner__suffix-name';
+  nameSpan.textContent = text.slice(PREFIX.length);
+  suffix.appendChild(nameSpan);
+}
+
+function animateSuffix(name) {
   const suffix = document.querySelector('.ui-corner__suffix');
   if (!suffix) return;
   if (typewriterRAF) cancelAnimationFrame(typewriterRAF);
   const fromText = suffix.textContent;
-  const toText = target;
+  const toText = name ? ` pour ${name}` : '';
   const CHAR_MS = 16;
   const deleteDur = fromText.length * CHAR_MS;
   const writeDur = toText.length * CHAR_MS;
@@ -64,14 +79,14 @@ function animateSuffix(target) {
     const e = now - start;
     if (e < deleteDur) {
       const keep = Math.max(0, fromText.length - Math.floor(e / CHAR_MS));
-      suffix.textContent = fromText.slice(0, keep);
+      renderSuffix(suffix, fromText.slice(0, keep));
       typewriterRAF = requestAnimationFrame(step);
     } else if (e < total) {
       const wr = Math.min(toText.length, Math.floor((e - deleteDur) / CHAR_MS));
-      suffix.textContent = toText.slice(0, wr);
+      renderSuffix(suffix, toText.slice(0, wr));
       typewriterRAF = requestAnimationFrame(step);
     } else {
-      suffix.textContent = toText;
+      renderSuffix(suffix, toText);
       typewriterRAF = null;
     }
   }
@@ -633,7 +648,7 @@ function createTile(item, pos, label) {
         }
       });
       const name = projectNameById.get(proj);
-      if (name) animateSuffix(`pour ${name}`);
+      if (name) animateSuffix(name);
     }
   });
 
@@ -741,20 +756,8 @@ viewport.addEventListener('click', (e) => {
 });
 
 viewport.addEventListener('wheel', (e) => {
-  // Si on wheelle dans une tile scrollable et qu'on n'est pas à la limite (haut ou bas) dans
-  // le sens du scroll, on laisse le browser scroller la tile naturellement (overflow-y: auto).
-  // Sinon (pas de tile, tile non scrollable, ou tile en limite) → scroll de la mosaïque.
-  const tileScroll = e.target.closest('.tile-scroll');
-  if (tileScroll) {
-    const maxScroll = tileScroll.scrollHeight - tileScroll.clientHeight;
-    if (maxScroll > 0.5) {
-      const atTop = tileScroll.scrollTop <= 0.5;
-      const atBottom = tileScroll.scrollTop >= maxScroll - 0.5;
-      const goingUp = e.deltaY < 0;
-      const goingDown = e.deltaY > 0;
-      if ((goingUp && !atTop) || (goingDown && !atBottom)) return;
-    }
-  }
+  // Scroll manuel dans la tile désactivé : le wheel défile toujours la mosaïque.
+  // (Le scroll de la tile reste possible uniquement via l'auto-scroll au hover.)
   e.preventDefault();
   offset += e.deltaY * WHEEL_GAIN;
   if (offset < 0) offset = 0;
