@@ -19,6 +19,7 @@ export const projects = [
   { id: 'pompidou',       name: 'Pompidou',       images: buildImages('pompidou',       3, 3, 'png', true) },
   { id: 'gobelins',       name: 'Gobelins',       images: buildImages('gobelins',       5, 3) },
   { id: 'liquides',       name: 'Liquides',       images: buildImages('liquides',       5, 7, 'jpg', true) },
+  { id: '_ratio-test',    name: 'Ratio Test',     images: buildImages('_ratio-test',    1, 1, 'jpg') },
 ];
 
 export const pool = projects.flatMap(p => p.images);
