@@ -133,7 +133,7 @@ html, body {
   top: 0;
   left: 0;
   width: 100%;
-  will-change: transform;
+  /* Pas de will-change : .scroller n'est jamais transformé (le transform est sur chaque tile). */
 }
 
 .tile {
@@ -391,8 +391,9 @@ html, body {
     opacity 0.6s ease var(--line-delay, 0s);
 }
 
+/* Compositable (opacity vs filter brightness) → pas de repaint, transition GPU pure. */
 .tile--project-dimmed .tile-scroll {
-  filter: brightness(0.2);
+  opacity: 0.18;
 }
 
 /* Contour atténué quand la tile est dimmed (focus sur un autre projet). */

@@ -12,13 +12,13 @@ function buildImages(slug, mobileCount, tabletCount, ext = 'jpg', locked = false
 }
 
 export const projects = [
-  { id: 'quintessence',   name: 'Quintessence',   images: buildImages('quintessence',   7, 2) },
-  { id: 'pozzo-di-borgo', name: 'Pozzo di Borgo', images: buildImages('pozzo-di-borgo', 5, 8) },
-  { id: 'mcdo',           name: 'McDonald’s',     images: buildImages('mcdo',           3, 7) },
-  { id: 'loreal',         name: 'L’Oréal',        images: buildImages('loreal',         4, 8) },
-  { id: 'pompidou',       name: 'Pompidou',       images: buildImages('pompidou',       3, 3, 'jpg', true) },
-  { id: 'gobelins',       name: 'Gobelins',       images: buildImages('gobelins',       5, 3) },
-  { id: 'liquides',       name: 'Liquides',       images: buildImages('liquides',       5, 7, 'jpg', true) },
+  { id: 'quintessence',   name: 'Quintessence',   images: buildImages('quintessence',   7, 2, 'webp') },
+  { id: 'pozzo-di-borgo', name: 'Pozzo di Borgo', images: buildImages('pozzo-di-borgo', 5, 8, 'webp') },
+  { id: 'mcdo',           name: 'McDonald’s',     images: buildImages('mcdo',           3, 7, 'webp') },
+  { id: 'loreal',         name: 'L’Oréal',        images: buildImages('loreal',         4, 8, 'webp') },
+  { id: 'pompidou',       name: 'Pompidou',       images: buildImages('pompidou',       3, 3, 'webp', true) },
+  { id: 'gobelins',       name: 'Gobelins',       images: buildImages('gobelins',       5, 3, 'webp') },
+  { id: 'liquides',       name: 'Liquides',       images: buildImages('liquides',       5, 7, 'webp', true) },
   { id: '_ratio-test',    name: 'Ratio Test',     images: buildImages('_ratio-test',    1, 1, 'jpg') },
 ];
 

@@ -796,16 +796,39 @@ function frame(t) {
   if (!paused && !hoverPaused) {
     offset += velocity * dt;
   }
-  for (const tile of liveTiles) {
+  // Culling visuel + recycling : on n'écrit le DOM que pour les tiles dans la zone d'affichage
+  // élargie, et on retire les tiles passées loin sous l'écran pour borner la consommation mémoire
+  // (sinon le scroll infini accumule indéfiniment des éléments + leurs listeners).
+  const vh = window.innerHeight || document.documentElement.clientHeight;
+  const VISIBLE_MARGIN = 200;    // px : marge pour pré-positionner avant que la tile arrive
+  const RECYCLE_MARGIN = 1000;   // px sous l'écran : au-delà, on retire la tile du DOM
+  const toRemove = [];
+  for (let i = 0; i < liveTiles.length; i++) {
+    const tile = liveTiles[i];
     const tileOffset = offset * tile.velocityMultiplier;
     const stagger = COL_STAGGER[tile.colIdx] ?? 0;
     const ty = tile.y - tileOffset + stagger;
+    // Tile sortie de l'écran par le haut + buffer → garbage collect
+    if (ty + tile.h < -RECYCLE_MARGIN) {
+      toRemove.push(i);
+      continue;
+    }
+    // Tile hors viewport (haut ou bas) → skip les writes : ses styles ne sont pas observés
+    if (ty > vh + VISIBLE_MARGIN || ty + tile.h < -VISIBLE_MARGIN) {
+      continue;
+    }
     tile.el.style.transform = `translate3d(${tile.x}px, ${ty}px, 0)`;
     // Centre du gradient-border : curseur global projeté dans le repère local de la tile,
     // en %. Hors-tile, les valeurs dépassent 0/100 % → le gradient « décentre », ce qui
     // est exactement l'effet voulu (les tiles loin du curseur voient le stop 20 %).
     tile.el.style.setProperty('--cursor-x', ((mouseX - tile.x) / tile.w) * 100 + '%');
     tile.el.style.setProperty('--cursor-y', ((mouseY - ty) / tile.h) * 100 + '%');
+  }
+  // Reverse splice (préserve les indices)
+  for (let i = toRemove.length - 1; i >= 0; i--) {
+    const tile = liveTiles[toRemove[i]];
+    tile.el.remove(); // détache du DOM → handlers + closures GC'd avec l'élément
+    liveTiles.splice(toRemove[i], 1);
   }
   topUpIfNeeded();
   requestAnimationFrame(frame);
