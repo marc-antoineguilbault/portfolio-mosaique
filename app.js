@@ -720,6 +720,20 @@ window.addEventListener('touchend', () => { paused = false; });
 window.addEventListener('touchcancel', () => { paused = false; });
 
 viewport.addEventListener('wheel', (e) => {
+  // Si on wheelle dans une tile scrollable et qu'on n'est pas à la limite (haut ou bas) dans
+  // le sens du scroll, on laisse le browser scroller la tile naturellement (overflow-y: auto).
+  // Sinon (pas de tile, tile non scrollable, ou tile en limite) → scroll de la mosaïque.
+  const tileScroll = e.target.closest('.tile-scroll');
+  if (tileScroll) {
+    const maxScroll = tileScroll.scrollHeight - tileScroll.clientHeight;
+    if (maxScroll > 0.5) {
+      const atTop = tileScroll.scrollTop <= 0.5;
+      const atBottom = tileScroll.scrollTop >= maxScroll - 0.5;
+      const goingUp = e.deltaY < 0;
+      const goingDown = e.deltaY > 0;
+      if ((goingUp && !atTop) || (goingDown && !atBottom)) return;
+    }
+  }
   e.preventDefault();
   offset += e.deltaY * WHEEL_GAIN;
   if (offset < 0) offset = 0;

@@ -266,23 +266,24 @@ html, body {
   background: transparent;
 }
 
-/* Scrollbar custom : ligne verticale 1 px, blanc 50 %, hauteur du frame -15 px haut / -15 px bas.
-   Par-dessus, un .__fill blanc 100 % grandit de 0 → 100 % avec la progression du scroll.
-   `.is-active` est ajoutée en JS quand le contenu déborde (sinon scrollbar invisible). */
+/* Scrollbar custom : ligne verticale 1 px, blanc 50 %, hauteur du frame -50 px haut / -50 px
+   bas (total -100 px). Par-dessus, un .__fill blanc 100 % grandit de 0 → 100 % avec la
+   progression du scroll. `.is-active` est ajoutée en JS quand le contenu déborde ; la
+   visibilité finale n'est déclenchée qu'au hover de la tile → fade in/out fluide. */
 .tile-scrollbar {
   position: absolute;
   right: 8px;
-  top: 15px;
-  bottom: 15px;
+  top: 50px;
+  bottom: 50px;
   width: 1px;
   background: rgba(255, 255, 255, 0.5);
   pointer-events: none;
   z-index: 3;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.tile-scrollbar.is-active {
+.tile:hover .tile-scrollbar.is-active {
   opacity: 1;
 }
 
