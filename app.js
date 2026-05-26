@@ -36,6 +36,7 @@ let currentFocusedProject = null;
 // La partie statique "Marc-Antoine Guilbault, Lead Designer UI" ne bouge pas ;
 // seul le span .ui-corner__suffix s'écrit/efface lettre par lettre.
 const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
+const projectDescById = new Map(projects.map((p) => [p.id, p.desc]));
 
 // Désélectionne le projet focused : retire les classes sur toutes les tiles + reset suffixe TL.
 // Utilisé par le re-clic sur une tile du projet ET par le clic sur le fond.
@@ -685,7 +686,7 @@ function createTile(item, pos, label) {
   subtitle.textContent = '↑ Détails';
   const desc = document.createElement('p');
   desc.className = 'tile-meta__desc';
-  desc.textContent = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.';
+  desc.textContent = projectDescById.get(item.project) ?? '';
   meta.appendChild(subtitle);
   meta.appendChild(desc);
   el.appendChild(meta);
