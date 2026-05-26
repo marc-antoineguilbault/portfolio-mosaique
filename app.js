@@ -36,6 +36,17 @@ let currentFocusedProject = null;
 // La partie statique "Marc-Antoine Guilbault, Lead Designer UI" ne bouge pas ;
 // seul le span .ui-corner__suffix s'écrit/efface lettre par lettre.
 const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
+
+// Désélectionne le projet focused : retire les classes sur toutes les tiles + reset suffixe TL.
+// Utilisé par le re-clic sur une tile du projet ET par le clic sur le fond.
+function unfocusProject() {
+  if (!currentFocusedProject) return;
+  currentFocusedProject = null;
+  document.querySelectorAll('.tile').forEach((t) => {
+    t.classList.remove('tile--project-focused', 'tile--project-dimmed');
+  });
+  animateSuffix('');
+}
 let typewriterRAF = null;
 
 function animateSuffix(target) {
@@ -609,11 +620,7 @@ function createTile(item, pos, label) {
     if (!proj) return;
     if (currentFocusedProject === proj) {
       // Toggle off : retour à l'état initial
-      currentFocusedProject = null;
-      document.querySelectorAll('.tile').forEach((t) => {
-        t.classList.remove('tile--project-focused', 'tile--project-dimmed');
-      });
-      animateSuffix('');
+      unfocusProject();
     } else {
       currentFocusedProject = proj;
       document.querySelectorAll('.tile').forEach((t) => {
@@ -725,6 +732,13 @@ window.addEventListener('mouseup', () => { paused = false; });
 viewport.addEventListener('touchstart', () => { paused = true; }, { passive: true });
 window.addEventListener('touchend', () => { paused = false; });
 window.addEventListener('touchcancel', () => { paused = false; });
+
+// Clic sur le fond (= dans le viewport, hors d'une tile) → désélectionne le projet focused.
+viewport.addEventListener('click', (e) => {
+  if (!currentFocusedProject) return;
+  if (e.target.closest('.tile-inner')) return;
+  unfocusProject();
+});
 
 viewport.addEventListener('wheel', (e) => {
   // Si on wheelle dans une tile scrollable et qu'on n'est pas à la limite (haut ou bas) dans
