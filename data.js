@@ -18,6 +18,9 @@ export const projects = [
   { id: 'centre-pompidou',    name: 'Centre Pompidou',         images: buildImages('centre-pompidou',    1, 2, 'webp') },
   { id: 'pozzo-di-borgo',     name: 'Pozzo Di Borgo (Parfums)',images: buildImages('pozzo-di-borgo',     1, 4, 'webp') },
   { id: 'quintessence-paris', name: 'Quintessence Paris',      images: buildImages('quintessence-paris', 3, 0, 'webp') },
+  { id: 'courvoisier',        name: 'Courvoisier',             images: buildImages('courvoisier',        0, 2, 'webp', true) },
+  { id: 'royal-canin',        name: 'Royal Canin',             images: buildImages('royal-canin',        1, 0, 'webp') },
+  { id: 'porsche-macan',      name: 'Porsche Macan',           images: buildImages('porsche-macan',      1, 0, 'webp') },
 ];
 
 export const pool = projects.flatMap(p => p.images);
