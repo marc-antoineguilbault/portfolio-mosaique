@@ -521,6 +521,29 @@ function createTile(item, pos, label) {
   const content = document.createElement('div');
   content.className = 'tile-content';
 
+  // Scrollbar custom : track + fill. La track est dans .tile-frame (par-dessus le tile-inner
+   // qui est clip-pathed). `.is-active` est ajoutée par updateScrollbar() si scrollable.
+  const scrollbar = document.createElement('div');
+  scrollbar.className = 'tile-scrollbar';
+  scrollbar.setAttribute('aria-hidden', 'true');
+  const scrollbarFill = document.createElement('div');
+  scrollbarFill.className = 'tile-scrollbar__fill';
+  scrollbar.appendChild(scrollbarFill);
+
+  function updateScrollbar() {
+    const maxScroll = tileScroll.scrollHeight - tileScroll.clientHeight;
+    if (maxScroll <= 0) {
+      scrollbar.classList.remove('is-active');
+      scrollbarFill.style.height = '0%';
+      return;
+    }
+    scrollbar.classList.add('is-active');
+    const progress = Math.max(0, Math.min(1, tileScroll.scrollTop / maxScroll));
+    scrollbarFill.style.height = (progress * 100) + '%';
+  }
+
+  tileScroll.addEventListener('scroll', updateScrollbar, { passive: true });
+
   if (item.src) {
     const img = document.createElement('img');
     img.src = item.src;
@@ -536,8 +559,13 @@ function createTile(item, pos, label) {
         el.style.setProperty('--tile-glow-3', colors[2]);
       }
     };
-    if (img.complete && img.naturalWidth > 0) applyGlow();
-    else img.addEventListener('load', applyGlow, { once: true });
+    const onImgLoaded = () => {
+      applyGlow();
+      // L'image chargée modifie scrollHeight → re-check si scrollbar nécessaire.
+      updateScrollbar();
+    };
+    if (img.complete && img.naturalWidth > 0) onImgLoaded();
+    else img.addEventListener('load', onImgLoaded, { once: true });
     content.appendChild(img);
     content.classList.add('tile-content--image');
     if (item.locked) attachLock(inner, img);
@@ -554,8 +582,11 @@ function createTile(item, pos, label) {
   tileScroll.appendChild(content);
   inner.appendChild(tileScroll);
   frame.appendChild(inner);
+  frame.appendChild(scrollbar);
 
   el.appendChild(frame);
+  // Init scrollbar après attachement DOM (besoin du layout pour scrollHeight/clientHeight).
+  requestAnimationFrame(updateScrollbar);
   attachTilt(inner);
   attachScroll(tileScroll, inner);
 

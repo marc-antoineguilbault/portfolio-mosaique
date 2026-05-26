@@ -249,35 +249,50 @@ html, body {
 .tile-scroll {
   width: 100%;
   height: 100%;
-  /* `auto` → scrollbar visible UNIQUEMENT si le contenu déborde (projets longs).
-     Les tiles dont l'image rentre pile dans le ratio n'auront pas de scrollbar. */
+  /* `auto` → la scrollbar native (cachée) n'apparaît que si le contenu déborde.
+     La scrollbar visible est custom (.tile-scrollbar), gérée en JS. */
   overflow-y: auto;
   overflow-x: hidden;
-  /* Firefox : scrollbar fine + couleur thumb/track (thumb blanc semi-transparent). */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+  scrollbar-width: none;
   border-radius: inherit;
   clip-path: inset(0 round var(--tile-radius-inner, 20px));
   /* Transition sur l'élément de base → fade dans les DEUX sens (assombrissement ET retour) */
   transition: filter 0.45s ease;
 }
 
-/* Webkit (Chrome / Safari / Edge) : scrollbar 5px, thumb arrondi, plus visible au hover. */
 .tile-scroll::-webkit-scrollbar {
-  width: 5px;
+  width: 0;
   height: 0;
   background: transparent;
 }
 
-.tile-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 4px;
-  transition: background 0.25s ease;
+/* Scrollbar custom : ligne verticale 1 px, blanc 50 %, hauteur du frame -15 px haut / -15 px bas.
+   Par-dessus, un .__fill blanc 100 % grandit de 0 → 100 % avec la progression du scroll.
+   `.is-active` est ajoutée en JS quand le contenu déborde (sinon scrollbar invisible). */
+.tile-scrollbar {
+  position: absolute;
+  right: 8px;
+  top: 15px;
+  bottom: 15px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
-.tile-scroll:hover::-webkit-scrollbar-thumb,
-.tile-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.45);
+.tile-scrollbar.is-active {
+  opacity: 1;
+}
+
+.tile-scrollbar__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 0;
+  background: #fff;
 }
 
 
