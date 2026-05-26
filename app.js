@@ -767,6 +767,32 @@ let hoverPaused = false;
 let minLiveTileY = -Infinity;
 // Marge entre le top du viewport et la première tile quand on a scrollé au max vers le haut.
 const SCROLL_TOP_MARGIN = 60;
+// Effet de rebond : au moment où on touche le floor, on déclenche un scroll forcé vers
+// le bas de BOUNCE_PX sur BOUNCE_MS pour un retour visuel à l'état initial.
+const BOUNCE_PX = 120;
+const BOUNCE_MS = 500;
+let bouncing = false;
+
+function startBounce(toOffset) {
+  if (bouncing) return;
+  bouncing = true;
+  const fromOffset = offset;
+  const startTime = performance.now();
+  function tick(now) {
+    if (!bouncing) return;
+    const t = Math.min((now - startTime) / BOUNCE_MS, 1);
+    // ease-out cubic : départ rapide, décélération douce vers la position cible.
+    const eased = 1 - Math.pow(1 - t, 3);
+    offset = fromOffset + (toOffset - fromOffset) * eased;
+    if (t < 1) {
+      requestAnimationFrame(tick);
+    } else {
+      offset = toOffset;
+      bouncing = false;
+    }
+  }
+  requestAnimationFrame(tick);
+}
 
 viewport.addEventListener('mousedown', () => { paused = true; });
 window.addEventListener('mouseup', () => { paused = false; });
@@ -785,10 +811,15 @@ viewport.addEventListener('wheel', (e) => {
   // Scroll manuel dans la tile désactivé : le wheel défile toujours la mosaïque.
   // (Le scroll de la tile reste possible uniquement via l'auto-scroll au hover.)
   e.preventDefault();
+  // Pendant un bounce, les inputs wheel sont ignorés pour ne pas interrompre l'animation.
+  if (bouncing) return;
   offset += e.deltaY * WHEEL_GAIN;
-  // Clamp au floor : la plus haute tile reste au top du viewport (avec une marge), jamais de gap noir.
   const floor = minLiveTileY - SCROLL_TOP_MARGIN;
-  if (offset < floor) offset = floor;
+  if (offset < floor) {
+    // On touche le floor → snap puis bounce vers floor + BOUNCE_PX.
+    offset = floor;
+    startBounce(floor + BOUNCE_PX);
+  }
 }, { passive: false });
 
 function frame(t) {
@@ -801,14 +832,17 @@ function frame(t) {
   }
   const dt = Math.min((t - lastFrameTime) / 1000, 0.1);
   lastFrameTime = t;
-  if (!paused && !hoverPaused) {
+  // Pendant un bounce, l'auto-scroll est en pause (sinon il ferait diverger l'animation).
+  if (!paused && !hoverPaused && !bouncing) {
     offset += velocity * dt;
   }
   // Filet de sécurité : si offset a dépassé le floor (race entre wheel/velocity/recycling),
-  // on force le retour à l'état "première tile au top + SCROLL_TOP_MARGIN". Snap instantané
-  // = "scroll forcé vers le bas pour revenir à l'état initial".
+  // on force un bounce (= "scroll forcé vers le bas de BOUNCE_PX" demandé).
   const floor = minLiveTileY - SCROLL_TOP_MARGIN;
-  if (offset < floor) offset = floor;
+  if (!bouncing && offset < floor) {
+    offset = floor;
+    startBounce(floor + BOUNCE_PX);
+  }
   // Culling visuel + recycling : on n'écrit le DOM que pour les tiles dans la zone d'affichage
   // élargie, et on retire les tiles passées loin sous l'écran pour borner la consommation mémoire
   // (sinon le scroll infini accumule indéfiniment des éléments + leurs listeners).
