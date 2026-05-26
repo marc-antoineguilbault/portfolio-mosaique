@@ -182,10 +182,6 @@ const SCROLL_UP_PX_PER_SEC = 1200;
 // Survol < ce délai → l'auto-scroll ne se déclenche pas. Au-delà, intention manifeste.
 const SCROLL_DOWN_DELAY = 500;
 
-function easeInOutQuad(t) {
-  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-}
-
 function attachScroll(scroller, host) {
   // A11y : pas d'auto-scroll au hover en reduced-motion. Tactile : pas de hover → no-op.
   if (REDUCED_MOTION || !HAS_HOVER) return;
@@ -199,7 +195,9 @@ function attachScroll(scroller, host) {
     function step(t) {
       const elapsed = t - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      scroller.scrollTop = start + delta * easeInOutQuad(progress);
+      // Linéaire (pas d'ease) → vitesse instantanée vraiment constante (SCROLL_DOWN_PX_PER_SEC)
+      // et identique entre toutes les tiles, peu importe la longueur du contenu.
+      scroller.scrollTop = start + delta * progress;
       if (progress < 1) {
         animId = requestAnimationFrame(step);
       } else if (onDone) {
