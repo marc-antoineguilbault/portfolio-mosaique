@@ -164,8 +164,11 @@ const TILT_PERSPECTIVE = 1400;
 const HOVER_LIFT_PX = 12;
 const LIFT_BEFORE_TILT_MS = 250;
 const CONTENT_HEIGHT_RATIO = 2.5;
-const SCROLL_DOWN_DURATION = 8000;
-const SCROLL_UP_DURATION = 1500;
+// Vitesse FIXE (px/seconde) → la durée du scroll dépend uniquement de la distance à parcourir.
+// Une maquette deux fois plus longue mettra deux fois plus de temps : la vitesse perçue
+// reste identique entre formats mobile et tablet, peu importe la hauteur du contenu.
+const SCROLL_DOWN_PX_PER_SEC = 250;
+const SCROLL_UP_PX_PER_SEC = 1200;
 // Survol < ce délai → l'auto-scroll ne se déclenche pas. Au-delà, intention manifeste.
 const SCROLL_DOWN_DELAY = 500;
 
@@ -202,7 +205,7 @@ function attachScroll(scroller, host) {
       const maxScroll = scroller.scrollHeight - scroller.clientHeight;
       if (maxScroll <= 0) return;
       const distance = Math.max(maxScroll - scroller.scrollTop, 0);
-      const duration = SCROLL_DOWN_DURATION * (distance / maxScroll);
+      const duration = (distance / SCROLL_DOWN_PX_PER_SEC) * 1000;
       animateScrollTo(maxScroll, duration);
     }, SCROLL_DOWN_DELAY);
   });
@@ -212,7 +215,7 @@ function attachScroll(scroller, host) {
     const maxScroll = scroller.scrollHeight - scroller.clientHeight;
     if (maxScroll <= 0) return;
     const distance = scroller.scrollTop;
-    const duration = SCROLL_UP_DURATION * (distance / maxScroll);
+    const duration = (distance / SCROLL_UP_PX_PER_SEC) * 1000;
     animateScrollTo(0, duration);
   });
 }
