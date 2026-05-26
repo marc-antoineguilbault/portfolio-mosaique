@@ -179,13 +179,6 @@ html, body {
   50%      { --glow-alpha: 1; }
 }
 
-/* @property pour pouvoir transitionner la couleur du contour. */
-@property --contour-color {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #999A9A;
-}
-
 .tile-frame {
   position: relative;
   width: 100%;
@@ -193,20 +186,43 @@ html, body {
   background: #000;
   padding: 12px;
   border-radius: var(--tile-radius-outer, 32px);
-  /* Contour 1px + glow multi-couleurs : 3 ombres décalées avec 3 teintes extraites
-     de la maquette (haut/milieu/bas de l'image). --glow-y et --glow-spread varient par format. */
+  /* Glow multi-couleurs : 3 ombres décalées avec 3 teintes extraites de la maquette
+     (haut/milieu/bas). Le contour 1 px est désormais un pseudo-élément ::before
+     avec un radial-gradient qui suit le curseur global. */
   --glow-spread: -120px;
   --glow-y: 120px;
   box-shadow:
-    0 0 0 1px var(--contour-color),
     -60px var(--glow-y) 90px var(--glow-spread) color-mix(in srgb,
       var(--tile-glow-1, transparent) calc(var(--glow-alpha) * 100%), transparent),
        0px var(--glow-y) 100px var(--glow-spread) color-mix(in srgb,
       var(--tile-glow-2, transparent) calc(var(--glow-alpha) * 100%), transparent),
      60px var(--glow-y) 90px var(--glow-spread) color-mix(in srgb,
       var(--tile-glow-3, transparent) calc(var(--glow-alpha) * 100%), transparent);
-  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1),
-              --contour-color 0.45s ease;
+  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Contour 1 px : radial-gradient (FFF 80% → FFF 20%) centré sur la position du curseur,
+   projetée en coords locales (% de la tile) par le rAF — tous les contours réagissent
+   en même temps au mouvement de la souris globale. */
+.tile-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(
+    circle at var(--cursor-x, 50%) var(--cursor-y, 50%),
+    rgba(255, 255, 255, 0.8) 0%,
+    rgba(255, 255, 255, 0.2) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  z-index: 2;
+  transition: opacity 0.45s ease;
 }
 
 /* Tablet : Y plus court, même spread que mobile. */
@@ -379,9 +395,9 @@ html, body {
   filter: brightness(0.2);
 }
 
-/* Contour 1px noirci à 20% (-80%) quand la tile est dimmed. */
-.tile--project-dimmed .tile-frame {
-  --contour-color: #1F1F1F;
+/* Contour atténué quand la tile est dimmed (focus sur un autre projet). */
+.tile--project-dimmed .tile-frame::before {
+  opacity: 0.2;
 }
 
 .tile-meta__subtitle {

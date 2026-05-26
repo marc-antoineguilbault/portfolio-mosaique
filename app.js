@@ -222,7 +222,13 @@ function attachScroll(scroller, host) {
 
 const cursorEl = document.getElementById('cursor');
 
+// Position globale du curseur (en coords viewport). Utilisée pour le radial-gradient du
+// contour de chaque tile, projeté dans son repère local par frame() à chaque rAF.
+let mouseX = 0, mouseY = 0;
+
 window.addEventListener('mousemove', (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
   cursorEl.style.left = `${e.clientX}px`;
   cursorEl.style.top = `${e.clientY}px`;
 });
@@ -782,7 +788,13 @@ function frame(t) {
   for (const tile of liveTiles) {
     const tileOffset = offset * tile.velocityMultiplier;
     const stagger = COL_STAGGER[tile.colIdx] ?? 0;
-    tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y - tileOffset + stagger}px, 0)`;
+    const ty = tile.y - tileOffset + stagger;
+    tile.el.style.transform = `translate3d(${tile.x}px, ${ty}px, 0)`;
+    // Centre du gradient-border : curseur global projeté dans le repère local de la tile,
+    // en %. Hors-tile, les valeurs dépassent 0/100 % → le gradient « décentre », ce qui
+    // est exactement l'effet voulu (les tiles loin du curseur voient le stop 20 %).
+    tile.el.style.setProperty('--cursor-x', ((mouseX - tile.x) / tile.w) * 100 + '%');
+    tile.el.style.setProperty('--cursor-y', ((mouseY - ty) / tile.h) * 100 + '%');
   }
   topUpIfNeeded();
   requestAnimationFrame(frame);
