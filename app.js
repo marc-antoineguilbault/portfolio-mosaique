@@ -808,12 +808,14 @@ function frame(t) {
   // Filet de sécurité : snap au floor (= première tile à ty = SCROLL_TOP_Y).
   const floor = minLiveTileY - SCROLL_TOP_Y;
   if (offset < floor) offset = floor;
-  // Culling visuel + recycling : on n'écrit le DOM que pour les tiles dans la zone d'affichage
-  // élargie, et on retire les tiles passées loin sous l'écran pour borner la consommation mémoire
-  // (sinon le scroll infini accumule indéfiniment des éléments + leurs listeners).
+  // Cycling à 3 niveaux pour permettre le scroll up (récupération depuis le cache) :
+  // - VISIBLE_MARGIN : tile dans la zone d'affichage active → DOM attaché + transforms écrits
+  // - DETACH_MARGIN  : tile hors viewport mais en mémoire (DOM détaché) → recouvrable au scroll up
+  // - HARD_RECYCLE   : tile très loin → suppression définitive (mémoire bornée)
   const vh = window.innerHeight || document.documentElement.clientHeight;
-  const VISIBLE_MARGIN = 200;    // px : marge pour pré-positionner avant que la tile arrive
-  const RECYCLE_MARGIN = 1000;   // px sous l'écran : au-delà, on retire la tile du DOM
+  const VISIBLE_MARGIN = 200;
+  const DETACH_MARGIN = 1500;
+  const HARD_RECYCLE = 50000;
   const toRemove = [];
   let nextMinY = Infinity;
   for (let i = 0; i < liveTiles.length; i++) {
@@ -821,28 +823,41 @@ function frame(t) {
     const tileOffset = offset * tile.velocityMultiplier;
     const stagger = COL_STAGGER[tile.colIdx] ?? 0;
     const ty = tile.y - tileOffset + stagger;
-    // Tile sortie de l'écran par le haut + buffer → garbage collect
-    if (ty + tile.h < -RECYCLE_MARGIN) {
+    // Très loin → suppression définitive (memory cap, sinon scroll long = leak)
+    if (ty + tile.h < -HARD_RECYCLE) {
       toRemove.push(i);
       continue;
     }
-    // Trace la plus haute tile survivante pour calculer le floor du prochain frame.
+    // Toutes les tiles encore vivantes (détachées ou non) comptent pour le floor.
     if (tile.y < nextMinY) nextMinY = tile.y;
-    // Tile hors viewport (haut ou bas) → skip les writes : ses styles ne sont pas observés
-    if (ty > vh + VISIBLE_MARGIN || ty + tile.h < -VISIBLE_MARGIN) {
+    const inView = ty < vh + VISIBLE_MARGIN && ty + tile.h > -VISIBLE_MARGIN;
+    const inDetachZone = ty < vh + DETACH_MARGIN && ty + tile.h > -DETACH_MARGIN;
+    if (!inDetachZone) {
+      // Trop loin pour le DOM → détache si pas déjà fait, mais garde la tile dans liveTiles
+      // (sa position tile.y reste connue, on pourra la rattacher au scroll up).
+      if (!tile.detached) {
+        tile.el.remove();
+        tile.detached = true;
+      }
+      continue;
+    }
+    if (tile.detached) {
+      // Tile revient dans la zone : rattache au DOM (position absolue → réapparaît au bon endroit)
+      scroller.appendChild(tile.el);
+      tile.detached = false;
+    }
+    if (!inView) {
+      // Dans la zone DOM mais pas dans la zone visible : skip les writes (économie de CPU)
       continue;
     }
     tile.el.style.transform = `translate3d(${tile.x}px, ${ty}px, 0)`;
-    // Centre du gradient-border : curseur global projeté dans le repère local de la tile,
-    // en %. Hors-tile, les valeurs dépassent 0/100 % → le gradient « décentre », ce qui
-    // est exactement l'effet voulu (les tiles loin du curseur voient le stop 20 %).
     tile.el.style.setProperty('--cursor-x', ((mouseX - tile.x) / tile.w) * 100 + '%');
     tile.el.style.setProperty('--cursor-y', ((mouseY - ty) / tile.h) * 100 + '%');
   }
-  // Reverse splice (préserve les indices)
+  // Reverse splice pour les hard-recycles (préserve les indices)
   for (let i = toRemove.length - 1; i >= 0; i--) {
     const tile = liveTiles[toRemove[i]];
-    tile.el.remove(); // détache du DOM → handlers + closures GC'd avec l'élément
+    if (!tile.detached) tile.el.remove();
     liveTiles.splice(toRemove[i], 1);
   }
   // Met à jour le floor pour le prochain frame. -Infinity si plus aucune tile (transitoire,
