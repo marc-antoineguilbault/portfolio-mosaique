@@ -212,7 +212,7 @@ html, body {
   padding: 1px;
   background: radial-gradient(
     circle at var(--cursor-x, 50%) var(--cursor-y, 50%),
-    rgba(255, 255, 255, 0.8) 0%,
+    rgba(255, 255, 255, 0.6) 0%,
     rgba(255, 255, 255, 0.2) 100%
   );
   -webkit-mask:
