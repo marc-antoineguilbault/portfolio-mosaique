@@ -591,7 +591,6 @@ function createTile(item, pos, label) {
     img.src = item.src;
     img.alt = '';
     img.draggable = false;
-    img.loading = 'lazy';
     img.decoding = 'async';
     const applyGlow = () => {
       const colors = extractGlowColors(img);
@@ -605,6 +604,8 @@ function createTile(item, pos, label) {
       applyGlow();
       // L'image chargée modifie scrollHeight → re-check si scrollbar nécessaire.
       updateScrollbar();
+      // Fade-in : la classe déclenche la transition opacity 0 → 1.
+      img.classList.add('is-loaded');
     };
     if (img.complete && img.naturalWidth > 0) onImgLoaded();
     else img.addEventListener('load', onImgLoaded, { once: true });

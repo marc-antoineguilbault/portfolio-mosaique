@@ -414,10 +414,16 @@ html, body {
   color: rgba(255, 255, 255, 0.95);
 }
 
-/* Projets confidentiels : image floutée + cadenas en overlay.
-   La transition sur filter assure le fondu du flou au déverrouillage. */
+/* Apparition fondue : opacity 0 au départ, 1 quand l'image a chargé (classe ajoutée en JS).
+   Transition combinée avec filter (utilisée pour le fondu du flou au déverrouillage). */
 .tile-content--image img {
-  transition: filter 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+              filter 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tile-content--image img.is-loaded {
+  opacity: 1;
 }
 
 .tile-img--locked {
