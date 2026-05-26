@@ -126,6 +126,15 @@ function computeLayout() {
   document.documentElement.style.setProperty('--tile-radius-inner', `${radiusInner}px`);
 }
 
+// Le tile-frame a un padding (FRAME_PADDING px de chaque côté) → la zone visible interne
+// (tile-inner) est plus petite que la tile externe. Pour qu'une image au ratio nominal
+// rentre PILE dans tile-inner, on dimensionne la tile externe pour que (inner.h / inner.w)
+// = ratio nominal, en compensant le padding sur les deux axes.
+function frameHeightForInner(w, ratio) {
+  const pad = FRAME_PADDING * 2;
+  return (w - pad) / ratio + pad;
+}
+
 function placeNext(item) {
   if (item.type === 'mobile') {
     let i = 0;
@@ -135,7 +144,7 @@ function placeNext(item) {
     const x = GAP + i * (colWidth + GAP);
     const y = colHeights[i];
     const w = colWidth;
-    const h = w / RATIOS.mobile;
+    const h = frameHeightForInner(w, RATIOS.mobile);
     colHeights[i] = y + h + GAP_Y;
     return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[i], colIdx: i };
   } else {
@@ -151,7 +160,7 @@ function placeNext(item) {
     const x = GAP + bestI * (colWidth + GAP);
     const y = Math.max(colHeights[bestI], colHeights[bestI + 1]);
     const w = 2 * colWidth + GAP;
-    const h = w / RATIOS.tablet;
+    const h = frameHeightForInner(w, RATIOS.tablet);
     colHeights[bestI] = y + h + GAP_Y;
     colHeights[bestI + 1] = y + h + GAP_Y;
     return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[bestI], colIdx: bestI };
