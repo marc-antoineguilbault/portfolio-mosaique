@@ -759,7 +759,7 @@ function splitMetaIntoLines(meta) {
 }
 // ──────────────────────────────────────────────────────────────────────────
 
-function createTile(item, pos, label) {
+function createTile(item, pos, label, fetchPriority = 'auto') {
   const el = document.createElement('div');
   el.className = 'tile';
   el.dataset.type = item.type;
@@ -819,6 +819,7 @@ function createTile(item, pos, label) {
 
   if (item.src) {
     const img = document.createElement('img');
+    if (fetchPriority !== 'auto') img.fetchPriority = fetchPriority;
     img.src = item.src;
     img.alt = '';
     img.draggable = false;
@@ -951,8 +952,14 @@ function fillUntil(targetHeight) {
   while (Math.min(...colHeights) < targetHeight) {
     const item = pickRandom();
     const pos = placeNext(item);
-    const tile = createTile(item, pos, String(++counter));
+    let priority = 'auto';
+    if (!lcpPromoted && item.type === 'tablet') {
+      priority = 'high';
+      lcpPromoted = true;
+    }
+    const tile = createTile(item, pos, String(++counter), priority);
     liveTiles.push(tile);
+    placedSrcs.add(item.src);
   }
 }
 
