@@ -300,6 +300,24 @@ let colWidth = 0;
 let colHeights = [];
 let colVelocityMultipliers = [];
 let liveTiles = [];
+const placedSrcs = new Set();
+let prefillHandle = null;
+let lcpPromoted = false;
+
+const idle = (typeof requestIdleCallback === 'function')
+  ? (cb) => requestIdleCallback(cb, { timeout: 2000 })
+  : (cb) => setTimeout(() => cb({ timeRemaining: () => 50, didTimeout: false }), 1);
+const cancelIdle = (typeof cancelIdleCallback === 'function')
+  ? cancelIdleCallback
+  : clearTimeout;
+
+function shouldSkipPrefill() {
+  const c = navigator.connection;
+  if (!c) return false;
+  if (c.saveData === true) return true;
+  if (c.effectiveType === 'slow-2g' || c.effectiveType === '2g') return true;
+  return false;
+}
 
 function getColsForViewport(w) {
   if (w >= 900) return 4;
