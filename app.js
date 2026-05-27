@@ -15,8 +15,11 @@ const WHEEL_GAIN = 0.5;
 // Radius ancré à la grille de référence : vw=1470, 4 cols, gap=48 → colWidth=307.5, radius=32.
 const REF_COL_WIDTH = (1470 - 5 * GAP) / 4;
 const REF_RADIUS_OUTER = 32;
+const REF_FRAME_PADDING = 12;
 const RADIUS_RATIO = REF_RADIUS_OUTER / REF_COL_WIDTH;
-const FRAME_PADDING = 12;
+const PADDING_RATIO = REF_FRAME_PADDING / REF_COL_WIDTH;
+// Recalculé dans computeLayout() à chaque resize, en proportion de colWidth.
+let FRAME_PADDING = REF_FRAME_PADDING;
 
 // Patterns déterministes — la grille est identique à chaque reload.
 const INITIAL_OFFSETS = [-50, -320, -180, -240];   // décalage Y de départ par colonne
@@ -121,6 +124,9 @@ function computeLayout() {
   colHeights = new Array(cols).fill(0).map((_, i) => GAP + (INITIAL_OFFSETS[i] ?? -100));
   colVelocityMultipliers = new Array(cols).fill(0).map((_, i) => GROUP_VELOCITIES[Math.floor(i / 2) % GROUP_VELOCITIES.length]);
 
+  // Padding homothétique : à 1440-1470px viewport on a 12px, sur écrans plus petits ça réduit.
+  FRAME_PADDING = colWidth * PADDING_RATIO;
+  document.documentElement.style.setProperty('--frame-padding', `${FRAME_PADDING}px`);
   const radiusOuter = colWidth * RADIUS_RATIO;
   const radiusInner = Math.max(0, radiusOuter - FRAME_PADDING);
   document.documentElement.style.setProperty('--tile-radius-outer', `${radiusOuter}px`);
