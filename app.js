@@ -180,6 +180,48 @@ function renderNavTypewriterFrame(nav, s) {
   }
 }
 
+// Au focus d'un projet, promote en fetchpriority='high' les srcs du projet (l'user va
+// les voir via ↑↓) et en 'auto' les voisines (tiles autres projets dans la zone visible
+// autour des positions cibles). Évite le flash blanc quand l'user navigue rapidement
+// vers une maquette dont le voisinage est encore en fetch low priority du préfill phase 2.
+function preloadProjectAndNeighbors(projId) {
+  // 1. Toujours précharger les srcs du projet (high priority) — dérivé du pool, indépendant
+  //    de l'état de liveTiles (au cas où le préfill phase 2 n'a pas encore fini).
+  const projectSrcSet = new Set(
+    pool.filter((item) => item.project === projId).map((i) => i.src)
+  );
+  for (const src of projectSrcSet) {
+    const img = new Image();
+    img.fetchPriority = 'high';
+    img.src = src;
+  }
+
+  // 2. Voisines (auto priority) : tiles déjà placées dont la position Y est < 1 viewport
+  //    des positions des tiles du projet. Si le préfill phase 2 n'a pas fini, on les
+  //    rate ; pas grave, scrollToCurrentImage déclenchera flushPrefillSync si besoin.
+  const vh = window.innerHeight;
+  const projectTileYs = [];
+  for (const tile of liveTiles) {
+    if (tile.item.project === projId) projectTileYs.push(tile.y);
+  }
+  if (projectTileYs.length === 0) return;
+
+  const neighborSrcs = new Set();
+  for (const tile of liveTiles) {
+    if (projectSrcSet.has(tile.item.src)) continue;
+    for (const py of projectTileYs) {
+      if (Math.abs(tile.y - py) < vh) {
+        neighborSrcs.add(tile.item.src);
+        break;
+      }
+    }
+  }
+  for (const src of neighborSrcs) {
+    const img = new Image();
+    img.src = src; // fetchPriority='auto' (défaut) → browser priorise, mieux que 'low' du préfill phase 2
+  }
+}
+
 // Focus le projet : ses tiles → focused, les autres → dimmed, suffix TL → "pour <Nom>"
 // + indicateur de navigation (N/M ↑ ↓) à côté du nom.
 function focusProject(projId) {
@@ -199,6 +241,7 @@ function focusProject(projId) {
     .filter((item) => item.project === projId)
     .sort((a, b) => a.src.localeCompare(b.src));
   currentImageIndex = 0;
+  preloadProjectAndNeighbors(projId);
   // Clear nav le temps du typewriter du suffix-name, puis typewriter du nav en chaîne.
   const nav = document.querySelector('.ui-corner__project-nav');
   if (nav) nav.replaceChildren();
