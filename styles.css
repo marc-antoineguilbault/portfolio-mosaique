@@ -107,6 +107,11 @@
   cursor: pointer;
   font-size: inherit;
   font-family: inherit;
+  /* line-height + vertical-align explicites : le user-agent default du <button>
+     est line-height: normal (~1.2×), qui élargit la line-box du parent et décale
+     verticalement le texte "Marc-Antoine..." quand le nav apparaît. */
+  line-height: 1;
+  vertical-align: baseline;
   padding: 0;
   transition: color 0.2s ease;
 }
@@ -114,9 +119,12 @@
   color: #fff;
 }
 /* ↑ ↓ pendant le typewriter (avant que le DOM des boutons cliquables soit en place) :
-   même rouge que les boutons → pas de saut gris→rouge en fin de typewriter. */
+   même rouge que les boutons → pas de saut gris→rouge en fin de typewriter.
+   line-height: 1 hérité de .ui-corner, mais explicite pour parité avec le bouton. */
 .ui-corner__nav-arrow {
   color: #ff3030;
+  line-height: 1;
+  vertical-align: baseline;
 }
 
 /* Liste verticale des projets, injectée dans le suffix au clic sur le label TL.
