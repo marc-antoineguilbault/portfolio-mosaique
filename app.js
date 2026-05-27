@@ -144,7 +144,7 @@ function typewriteProjectNav() {
     const elapsed = now - start;
     const charsShown = Math.min(fullText.length, Math.floor(elapsed / CHAR_MS) + 1);
     if (charsShown < fullText.length) {
-      nav.textContent = fullText.slice(0, charsShown);
+      renderNavTypewriterFrame(nav, fullText.slice(0, charsShown));
       navTypewriterRAF = requestAnimationFrame(step);
     } else {
       // Fin du typewriter → remplace par DOM avec boutons cliquables.
@@ -153,6 +153,22 @@ function typewriteProjectNav() {
     }
   }
   navTypewriterRAF = requestAnimationFrame(step);
+}
+
+// Pendant le typewriter, ↑ et ↓ sont wrappés dans un span rouge → cohérence
+// visuelle avec les boutons finaux (qui sont rouges aussi).
+function renderNavTypewriterFrame(nav, s) {
+  nav.replaceChildren();
+  for (const ch of s) {
+    if (ch === '↑' || ch === '↓') {
+      const span = document.createElement('span');
+      span.className = 'ui-corner__nav-arrow';
+      span.textContent = ch;
+      nav.appendChild(span);
+    } else {
+      nav.appendChild(document.createTextNode(ch));
+    }
+  }
 }
 
 // Focus le projet : ses tiles → focused, les autres → dimmed, suffix TL → "pour <Nom>"

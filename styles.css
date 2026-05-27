@@ -105,11 +105,16 @@
   cursor: pointer;
   font-size: inherit;
   font-family: inherit;
-  padding: 0 2px;
+  padding: 0;
   transition: color 0.2s ease;
 }
 .ui-corner__nav-btn:hover {
   color: #fff;
+}
+/* ↑ ↓ pendant le typewriter (avant que le DOM des boutons cliquables soit en place) :
+   même rouge que les boutons → pas de saut gris→rouge en fin de typewriter. */
+.ui-corner__nav-arrow {
+  color: #ff3030;
 }
 
 /* Liste verticale des projets, injectée dans le suffix au clic sur le label TL.
