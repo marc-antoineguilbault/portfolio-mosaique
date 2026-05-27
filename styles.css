@@ -99,9 +99,18 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  /* iOS Chrome/Safari : empêche le pull-to-refresh et le rubber-band overscroll
+     qui interfèrent avec le touchmove → scroll fluide sans résistance. */
+  overscroll-behavior: none;
   background: #000;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   cursor: none;
+}
+
+/* iOS : body fixed coupe tout scroll natif résiduel (la viewport fait déjà position:fixed). */
+body {
+  position: fixed;
+  inset: 0;
 }
 
 #cursor {
