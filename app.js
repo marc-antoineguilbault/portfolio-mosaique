@@ -1266,6 +1266,10 @@ function rebuildLayout() {
   const { h } = getViewportSize();
   computeLayout();
   lcpPromoted = false;
+  // Reset offset AVANT la boucle : on écrit les transforms avec offset=0, sinon les tiles
+  // hors VISIBLE_MARGIN (mais dans DETACH_MARGIN) gardent leur ancien transform et se
+  // superposent visuellement quand on retourne à la taille initiale après resize.
+  offset = 0;
   for (const tile of liveTiles) {
     const pos = placeNext(tile.item);
     tile.x = pos.x;
@@ -1276,6 +1280,11 @@ function rebuildLayout() {
     tile.colIdx = pos.colIdx;
     tile.el.style.width = `${pos.w}px`;
     tile.el.style.height = `${pos.h}px`;
+    // Force l'écriture du transform pour TOUTES les tiles : frame() ne réécrit que les
+    // tiles inView (VISIBLE_MARGIN). Sans ça, les tiles attachées hors viewport gardent
+    // leur ancienne position après resize → superposition au retour à la taille initiale.
+    const stagger = COL_STAGGER[tile.colIdx] ?? 0;
+    tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y + stagger}px, 0)`;
     const meta = tile.el.querySelector('.tile-meta');
     if (meta) {
       meta.style.width = `${colWidth}px`;
@@ -1285,7 +1294,6 @@ function rebuildLayout() {
     }
   }
   fillUntil(h * 2);
-  offset = 0;
 }
 
 let resizeTimer;
