@@ -74,64 +74,49 @@ function focusProject(projId) {
 }
 
 // ─── Menu liste de clients ──────────────────────────────────────────────────
-// Au clic sur "Marc-Antoine Guilbault, Lead Designer UI", on cache la mosaïque et on affiche
-// une liste verticale des projets. Hover d'un nom → suffix TL "pour <Nom>". Clic → ferme la
-// liste + focus le projet (= mosaïque réapparait avec le projet en focus). Re-clic sur le
-// label TL → ferme la liste sans focus.
+// Au clic sur "Marc-Antoine Guilbault, Lead Designer UI", on cache la mosaïque et on
+// transforme le suffix TL en "pour " suivi d'une <ul> verticale de TOUS les projets.
+// Le 1er projet s'aligne inline avec "pour", les suivants tombent en colonne en dessous
+// (flow naturel via display: inline-block + list-style: none).
 let clientListOpen = false;
-const clientListEl = document.createElement('nav');
-clientListEl.className = 'client-list';
-clientListEl.setAttribute('aria-hidden', 'true');
-const clientListUl = document.createElement('ul');
-// Aligne verticalement le suffix-name (le nom dans "pour <Nom>") sur l'item hover de la liste
-// → le projet "se duplique" visuellement à la même hauteur que son entrée dans le menu.
-function alignSuffixWith(itemEl) {
-  const tl = document.querySelector('.ui-corner--tl');
-  if (!tl || !itemEl) return;
-  const tlRect = tl.getBoundingClientRect();
-  const itemRect = itemEl.getBoundingClientRect();
-  const paddingTop = parseFloat(getComputedStyle(tl).paddingTop) || 28;
-  const dy = itemRect.top - (tlRect.top + paddingTop);
-  document.documentElement.style.setProperty('--suffix-name-y', `${dy}px`);
-}
-function resetSuffixAlignment() {
-  document.documentElement.style.setProperty('--suffix-name-y', '0px');
-}
-
-projects.forEach((p) => {
-  const li = document.createElement('li');
-  li.className = 'client-list__item';
-  li.dataset.projectId = p.id;
-  li.textContent = p.name;
-  li.addEventListener('mouseenter', () => { animateSuffix(p.name); alignSuffixWith(li); });
-  li.addEventListener('mouseleave', () => { animateSuffix(''); resetSuffixAlignment(); });
-  li.addEventListener('click', () => {
-    resetSuffixAlignment();
-    closeClientList();
-    focusProject(p.id);
-  });
-  clientListUl.appendChild(li);
-});
-clientListEl.appendChild(clientListUl);
-document.body.appendChild(clientListEl);
 
 function openClientList() {
+  if (clientListOpen) return;
   clientListOpen = true;
   document.body.classList.add('is-client-list');
-  clientListEl.setAttribute('aria-hidden', 'false');
+  const suffix = document.querySelector('.ui-corner__suffix');
+  if (!suffix) return;
+  if (typewriterRAF) { cancelAnimationFrame(typewriterRAF); typewriterRAF = null; }
+  suffix.replaceChildren();
+  suffix.appendChild(document.createTextNode(' pour '));
+  const ul = document.createElement('ul');
+  ul.className = 'ui-corner__suffix-list';
+  projects.forEach((p) => {
+    const li = document.createElement('li');
+    li.className = 'ui-corner__suffix-item';
+    li.dataset.projectId = p.id;
+    li.textContent = p.name;
+    li.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      closeClientList();
+      focusProject(p.id);
+    });
+    ul.appendChild(li);
+  });
+  suffix.appendChild(ul);
 }
 
 function closeClientList() {
   if (!clientListOpen) return;
   clientListOpen = false;
   document.body.classList.remove('is-client-list');
-  clientListEl.setAttribute('aria-hidden', 'true');
-  animateSuffix('');
+  const suffix = document.querySelector('.ui-corner__suffix');
+  if (suffix) suffix.replaceChildren();
 }
 
-// Click sur le label TL → toggle. On ignore les clics sur le suffix (a-link future-proof).
+// Click sur le label TL → toggle. On ignore les clics sur les liens et les items déjà gérés.
 document.querySelector('.ui-corner--tl')?.addEventListener('click', (e) => {
-  if (e.target.closest('a, .ui-corner__suffix')) return;
+  if (e.target.closest('a, .ui-corner__suffix-item')) return;
   if (clientListOpen) closeClientList();
   else { unfocusProject(); openClientList(); }
 });
