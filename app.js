@@ -963,6 +963,46 @@ function fillUntil(targetHeight) {
   }
 }
 
+// Phase 2 préfill : crée des tiles pour les srcs non vues par fillUntil(h*3).
+// Batché via requestIdleCallback pour ne pas bloquer le main thread > 2ms par tour.
+function prefillRemainingSources(deadline) {
+  prefillHandle = null;
+  let counter = liveTiles.length;
+  const hasDeadline = deadline && typeof deadline.timeRemaining === 'function';
+  let iterSinceCheck = 0;
+  while (placedSrcs.size < pool.length) {
+    if (hasDeadline && iterSinceCheck >= 3 && deadline.timeRemaining() < 2) {
+      prefillHandle = idle(prefillRemainingSources);
+      return;
+    }
+    const item = pickRandom();
+    const pos = placeNext(item);
+    const tile = createTile(item, pos, String(++counter), 'low');
+    liveTiles.push(tile);
+    placedSrcs.add(item.src);
+    iterSinceCheck++;
+  }
+}
+
+// Flush sync : appelé par scrollToCurrentImage si la src cible n'est pas dans liveTiles.
+// Boucle sans budget (l'utilisateur attend déjà l'animation smoothScroll de 700ms).
+function flushPrefillSync() {
+  if (prefillHandle !== null) {
+    cancelIdle(prefillHandle);
+    prefillHandle = null;
+  }
+  let counter = liveTiles.length;
+  const safety = pool.length * 3;
+  let iter = 0;
+  while (placedSrcs.size < pool.length && iter++ < safety) {
+    const item = pickRandom();
+    const pos = placeNext(item);
+    const tile = createTile(item, pos, String(++counter), 'low');
+    liveTiles.push(tile);
+    placedSrcs.add(item.src);
+  }
+}
+
 function topUpIfNeeded() {
   const { h: vh } = getViewportSize();
   const maxVel = Math.max(...colVelocityMultipliers);
