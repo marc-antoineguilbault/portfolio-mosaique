@@ -400,9 +400,10 @@ body {
   will-change: transform, opacity;
 }
 
-/* Apparition : chaque ligne remonte de 24px → 0, staggered via --line-delay (défini en JS). */
-.tile:hover .tile-meta__line-inner,
-.tile--project-focused .tile-meta__line-inner {
+/* Apparition : chaque ligne remonte de 24px → 0, staggered via --line-delay (défini en JS).
+   Note : déclenchée UNIQUEMENT au hover (= desktop). Le clic projet ne fait plus apparaître
+   la meta sous les maquettes (focus = juste dim des autres tiles + suffix TL). */
+.tile:hover .tile-meta__line-inner {
   transform: translateY(0);
   opacity: 1;
   transition:

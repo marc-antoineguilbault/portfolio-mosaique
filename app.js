@@ -8,11 +8,8 @@ const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').mat
 const HAS_HOVER = window.matchMedia('(hover: hover)').matches;
 
 const GAP = 48;
-const GAP_Y = 220; /* augmenté pour laisser la place au bloc .tile-meta sous chaque tuile */
-// Gap réduit DANS un trio (entre les 2 mobiles et la tablet qui les suit dans la cadence).
-// Le gap normal GAP_Y est appliqué SEULEMENT après la dernière tile du trio (la tablet) →
-// chaque trio "2 mobiles + 1 tablet" forme un bloc visuellement compact.
-const GAP_Y_TIGHT = 80;
+// Gap vertical uniforme entre toutes les tiles (mobile→tablet, tablet→mobile, mobile→mobile).
+const GAP_Y = 120;
 const BASE_VELOCITY = 30;
 const WHEEL_GAIN = 0.5;
 
@@ -753,11 +750,7 @@ function fillUntil(targetHeight) {
   let counter = liveTiles.length;
   while (Math.min(...colHeights) < targetHeight) {
     const item = pickRandom();
-    // pickRandom() a déjà incrémenté cycleIdx → position courante = (cycleIdx - 1) % cycle.
-    // Gap normal seulement après la dernière tile du trio (= la tablet) pour séparer les trios.
-    const posInCycle = (cycleIdx - 1) % TYPE_CYCLE.length;
-    const isLastInCycle = posInCycle === TYPE_CYCLE.length - 1;
-    const pos = placeNext(item, isLastInCycle ? GAP_Y : GAP_Y_TIGHT);
+    const pos = placeNext(item);
     const tile = createTile(item, pos, String(++counter));
     liveTiles.push(tile);
   }
