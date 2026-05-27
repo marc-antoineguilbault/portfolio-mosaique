@@ -804,17 +804,22 @@ function startMomentum() {
   momentumRaf = requestAnimationFrame(step);
 }
 
+// Gain tactile : un swipe physique de 100 px déplace 150 px de contenu (perception plus réactive).
+const TOUCH_GAIN = 1.5;
+
 viewport.addEventListener('touchstart', (e) => {
   paused = true;
   stopMomentum();
   lastTouchY = e.touches[0].clientY;
   lastTouchTime = performance.now();
-}, { passive: true });
+}, { passive: false });
 
 viewport.addEventListener('touchmove', (e) => {
+  // passive: false + preventDefault → on prend la main sur le scroll natif iOS/Android.
+  e.preventDefault();
   const ty = e.touches[0].clientY;
   const now = performance.now();
-  const dy = lastTouchY - ty;
+  const dy = (lastTouchY - ty) * TOUCH_GAIN;
   const dt = now - lastTouchTime;
   offset += dy;
   const floor = minLiveTileY - SCROLL_TOP_Y;
@@ -823,7 +828,7 @@ viewport.addEventListener('touchmove', (e) => {
   if (dt > 0) touchVelocity = (dy / dt) * 1000;
   lastTouchY = ty;
   lastTouchTime = now;
-}, { passive: true });
+}, { passive: false });
 
 window.addEventListener('touchend', () => { paused = false; startMomentum(); });
 window.addEventListener('touchcancel', () => { paused = false; stopMomentum(); });
