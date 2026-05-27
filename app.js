@@ -181,9 +181,21 @@ function renderNavTypewriterFrame(nav, s) {
 }
 
 // Au focus d'un projet, promote en fetchpriority='high' les srcs du projet (l'user va
-// les voir via ↑↓) et en 'auto' les voisines (tiles autres projets dans la zone visible
-// autour des positions cibles). Évite le flash blanc quand l'user navigue rapidement
-// vers une maquette dont le voisinage est encore en fetch low priority du préfill phase 2.
+// les voir via ↑↓) et en 'auto' les voisines. Préchargement via <link rel="preload"
+// type="image/avif"> : les browsers AVIF-capable préchargent l'AVIF (cache hit au render
+// du <picture>) ; les autres ignorent (type mismatch) et fetchent le WebP au render.
+// Évite le flash blanc quand l'user navigue rapidement vers une maquette dont le
+// voisinage est encore en fetch low priority du préfill phase 2.
+function preloadAvif(src, priority) {
+  const link = document.createElement('link');
+  link.rel = 'preload';
+  link.as = 'image';
+  link.type = 'image/avif';
+  if (priority && priority !== 'auto') link.fetchPriority = priority;
+  link.href = src.replace(/\.webp$/, '.avif');
+  document.head.appendChild(link);
+}
+
 function preloadProjectAndNeighbors(projId) {
   // 1. Toujours précharger les srcs du projet (high priority) — dérivé du pool, indépendant
   //    de l'état de liveTiles (au cas où le préfill phase 2 n'a pas encore fini).
@@ -191,9 +203,7 @@ function preloadProjectAndNeighbors(projId) {
     pool.filter((item) => item.project === projId).map((i) => i.src)
   );
   for (const src of projectSrcSet) {
-    const img = new Image();
-    img.fetchPriority = 'high';
-    img.src = src;
+    preloadAvif(src, 'high');
   }
 
   // 2. Voisines (auto priority) : tiles déjà placées dont la position Y est < 1 viewport
@@ -217,8 +227,7 @@ function preloadProjectAndNeighbors(projId) {
     }
   }
   for (const src of neighborSrcs) {
-    const img = new Image();
-    img.src = src; // fetchPriority='auto' (défaut) → browser priorise, mieux que 'low' du préfill phase 2
+    preloadAvif(src, 'auto');
   }
 }
 
@@ -882,6 +891,15 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
   tileScroll.addEventListener('scroll', updateScrollbar, { passive: true });
 
   if (item.src) {
+    // <picture> + AVIF source : les browsers AVIF-capable (Chrome, Safari 16+, Firefox 93+,
+    // ~95% du trafic) servent l'AVIF (-63% vs WebP). Fallback automatique sur le WebP pour
+    // les autres. L'<img> reste référencé pour extractGlowColors (rend depuis pixels affichés).
+    const picture = document.createElement('picture');
+    const sourceAvif = document.createElement('source');
+    sourceAvif.type = 'image/avif';
+    sourceAvif.srcset = item.src.replace(/\.webp$/, '.avif');
+    picture.appendChild(sourceAvif);
+
     const img = document.createElement('img');
     if (fetchPriority !== 'auto') img.fetchPriority = fetchPriority;
     img.src = item.src;
@@ -909,7 +927,8 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
     };
     if (img.complete && img.naturalWidth > 0) onImgLoaded();
     else img.addEventListener('load', onImgLoaded, { once: true });
-    content.appendChild(img);
+    picture.appendChild(img);
+    content.appendChild(picture);
     content.classList.add('tile-content--image');
     if (item.locked) attachLock(inner, img);
   } else {
