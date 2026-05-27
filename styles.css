@@ -15,7 +15,7 @@
   font-family: 'Suisse Int\'l', 'Suisse Intl', 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 13px;
   letter-spacing: 0.01em;
-  color: rgba(255, 255, 255, 0.85);
+  color: #fff;
 }
 
 /* Assombrissement global des projets au survol d'un texte UI. */
