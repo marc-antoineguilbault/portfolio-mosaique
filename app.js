@@ -56,6 +56,28 @@ function unfocusProject() {
   animateSuffix('');
 }
 
+// Scroll la mosaïque pour amener la 1ère tile du projet en haut du viewport (smooth).
+function scrollToFirstProjectTile(projId) {
+  if (!projId) return;
+  let targetY = Infinity;
+  for (const tile of liveTiles) {
+    if (tile.item.project === projId && tile.y < targetY) targetY = tile.y;
+  }
+  if (targetY === Infinity) return;
+  const TOP_MARGIN = 80;
+  const targetOffset = Math.max(minLiveTileY - SCROLL_TOP_Y, targetY - TOP_MARGIN);
+  const startOffset = offset;
+  const startTime = performance.now();
+  const DURATION = 700;
+  function step(now) {
+    const t = Math.min((now - startTime) / DURATION, 1);
+    const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+    offset = startOffset + (targetOffset - startOffset) * eased;
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
 // Focus le projet : ses tiles → focused, les autres → dimmed, suffix TL → "pour <Nom>".
 function focusProject(projId) {
   if (!projId) return;
@@ -100,6 +122,7 @@ function openClientList() {
       ev.stopPropagation();
       closeClientList();
       focusProject(p.id);
+      scrollToFirstProjectTile(p.id);
     });
     ul.appendChild(li);
   });
