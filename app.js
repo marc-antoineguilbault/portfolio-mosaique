@@ -106,7 +106,7 @@ function renderProjectNav() {
   nav.replaceChildren();
   const total = currentProjectImages.length;
   if (!total) return;
-  nav.appendChild(document.createTextNode(` (${currentImageIndex + 1}/${total} `));
+  nav.appendChild(document.createTextNode(' ('));
   const upBtn = document.createElement('button');
   upBtn.className = 'ui-corner__nav-btn';
   upBtn.type = 'button';
@@ -114,7 +114,7 @@ function renderProjectNav() {
   upBtn.textContent = '↑';
   upBtn.addEventListener('click', (ev) => { ev.stopPropagation(); navigateToProjectImage(-1); });
   nav.appendChild(upBtn);
-  nav.appendChild(document.createTextNode(' | '));
+  nav.appendChild(document.createTextNode(` ${currentImageIndex + 1}/${total} `));
   const downBtn = document.createElement('button');
   downBtn.className = 'ui-corner__nav-btn';
   downBtn.type = 'button';
@@ -136,7 +136,7 @@ function typewriteProjectNav() {
   const total = currentProjectImages.length;
   if (!total) return;
   if (navTypewriterRAF) cancelAnimationFrame(navTypewriterRAF);
-  const fullText = ` (${currentImageIndex + 1}/${total} ↑ | ↓)`;
+  const fullText = ` (↑ ${currentImageIndex + 1}/${total} ↓)`;
   const CHAR_MS = 16;
   const start = performance.now();
   nav.replaceChildren();
