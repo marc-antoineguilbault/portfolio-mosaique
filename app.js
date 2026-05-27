@@ -656,6 +656,10 @@ function createTile(item, pos, label) {
       lockSvg.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       return;
     }
+    // Mobile/tactile : pas de focus projet au tap (la mécanique focus+dim+meta visible
+    // n'est utile qu'en desktop où le hover montre déjà la meta). On garde juste le clic
+    // sur le lock pour les projets confidentiels.
+    if (!HAS_HOVER) return;
     const proj = el.dataset.project;
     if (!proj) return;
     if (currentFocusedProject === proj) {
