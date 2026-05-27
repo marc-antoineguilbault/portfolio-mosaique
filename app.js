@@ -1336,3 +1336,14 @@ window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(rebuildLayout, 150);
 });
+
+// Service Worker : cache-first sur les assets immuables (images + JS/CSS versionnés),
+// network-first sur le HTML. 2e visite = quasi-instantanée. Registered en window.load
+// pour ne pas concurrencer le boot critique du portfolio.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // SW pas crucial — silent fail si bloqué (file://, env de dev, etc.)
+    });
+  });
+}
