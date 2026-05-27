@@ -114,7 +114,7 @@ function renderProjectNav() {
   upBtn.textContent = '↑';
   upBtn.addEventListener('click', (ev) => { ev.stopPropagation(); navigateToProjectImage(-1); });
   nav.appendChild(upBtn);
-  nav.appendChild(document.createTextNode(' '));
+  nav.appendChild(document.createTextNode(' | '));
   const downBtn = document.createElement('button');
   downBtn.className = 'ui-corner__nav-btn';
   downBtn.type = 'button';
@@ -136,7 +136,7 @@ function typewriteProjectNav() {
   const total = currentProjectImages.length;
   if (!total) return;
   if (navTypewriterRAF) cancelAnimationFrame(navTypewriterRAF);
-  const fullText = ` (${currentImageIndex + 1}/${total} ↑ ↓)`;
+  const fullText = ` (${currentImageIndex + 1}/${total} ↑ | ↓)`;
   const CHAR_MS = 16;
   const start = performance.now();
   nav.replaceChildren();
