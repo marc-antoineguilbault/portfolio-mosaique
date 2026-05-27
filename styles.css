@@ -535,14 +535,12 @@ body {
 }
 
 
-/* Menu liste de clients : ouvert au clic sur le label TL "Marc-Antoine Guilbault…".
-   La mosaïque (.viewport) fade-out, une liste verticale des projets apparaît centrée. */
+/* Menu liste de clients : ouvert au clic sur le label TL. Placé juste SOUS le label TL
+   (= top-left), aligné horizontalement sur lui. La mosaïque (.viewport) fade-out. */
 .client-list {
   position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  top: 64px;        /* padding-top 28 + hauteur label ~16 + petit gap = ~64 */
+  left: 48px;       /* aligné sur le padding-left du .ui-corner */
   z-index: 9999;
   opacity: 0;
   pointer-events: none;
@@ -560,23 +558,22 @@ body.is-client-list .client-list { opacity: 1; pointer-events: auto; }
   list-style: none;
   padding: 0;
   margin: 0;
-  text-align: center;
+  text-align: left;
   font-family: 'Suisse Int\'l', 'Suisse Intl', 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: clamp(20px, 3.2vw, 36px);
-  line-height: 1.5;
+  font-size: 13px;          /* matche le label TL */
+  line-height: 1.8;
 }
 
 .client-list__item {
   color: rgba(255, 255, 255, 0.55);
   cursor: pointer;
-  padding: 6px 0;
   transition: color 0.25s ease;
 }
 .client-list__item:hover {
   color: #fff;
 }
 
-/* Mobile : liste plus serrée pour rentrer sur petit écran. */
+/* Mobile : aligné sur le padding réduit du .ui-corner. */
 @media (max-width: 600px) {
-  .client-list ul { font-size: clamp(22px, 6vw, 28px); }
+  .client-list { top: 50px; left: 24px; }
 }
