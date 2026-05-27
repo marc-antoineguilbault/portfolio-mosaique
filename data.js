@@ -18,7 +18,7 @@ export const projects = [
   { id: 'centre-pompidou',    name: 'Centre Pompidou',         desc: 'Un espace numérique où les œuvres se dévoilent en profondeur.',                                          images: buildImages('centre-pompidou',    1, 1, 'webp') },
   { id: 'pozzo-di-borgo',     name: 'Pozzo Di Borgo (Parfums)',desc: 'Un e-shop où chaque parfum raconte l’histoire d’un membre de la famille Pozzo Di Borgo.',                 images: buildImages('pozzo-di-borgo',     1, 2, 'webp') },
   { id: 'quintessence-paris', name: 'Quintessence Paris',      desc: 'Un site marchand où chaque senteur ouvre la porte d’une pièce d’un hôtel particulier parisien.',          images: buildImages('quintessence-paris', 2, 4, 'webp') },
-  { id: 'courvoisier',        name: 'Courvoisier',             desc: 'Un site vitrine où chaque verre raconte un instant d’exception.',                                        images: buildImages('courvoisier',        0, 2, 'webp', true) },
+  { id: 'courvoisier',        name: 'Courvoisier',             desc: 'Un site vitrine qui dévoiles les moments privilégiés de consommations du Cognac.',                       images: buildImages('courvoisier',        0, 2, 'webp', true) },
   { id: 'royal-canin',        name: 'Royal Canin',             desc: 'Une landing page d’enrôlement pour rejoindre les ambassadeurs santé de la marque.',                      images: buildImages('royal-canin',        1, 0, 'webp') },
   { id: 'porsche-macan',      name: 'Porsche Macan',           desc: 'Une landing page où chaque détail technique se transforme en émotion de conduite.',                      images: buildImages('porsche-macan',      1, 0, 'webp') },
 ];
