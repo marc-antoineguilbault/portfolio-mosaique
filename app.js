@@ -92,7 +92,7 @@ function scrollToCurrentImage() {
   const targetSrc = currentProjectImages[currentImageIndex].src;
   let targetY = findMinTileY(targetSrc);
   if (targetY === Infinity) {
-    flushPrefillSync();
+    flushPrefillSync(targetSrc);
     targetY = findMinTileY(targetSrc);
     if (targetY === Infinity) return; // sécurité, ne devrait pas arriver
   }
@@ -995,7 +995,9 @@ function prefillRemainingSources(deadline) {
 
 // Flush sync : appelé par scrollToCurrentImage si la src cible n'est pas dans liveTiles.
 // Boucle sans budget (l'utilisateur attend déjà l'animation smoothScroll de 700ms).
-function flushPrefillSync() {
+// Si targetSrc est fourni, on s'arrête dès que cette src est placée (perf au click ↑↓).
+// Sinon, on fill tout le pool restant.
+function flushPrefillSync(targetSrc) {
   if (prefillHandle !== null) {
     cancelIdle(prefillHandle);
     prefillHandle = null;
@@ -1009,6 +1011,7 @@ function flushPrefillSync() {
     const tile = createTile(item, pos, String(++counter), 'low');
     liveTiles.push(tile);
     placedSrcs.add(item.src);
+    if (targetSrc && item.src === targetSrc) break;
   }
 }
 
@@ -1219,6 +1222,7 @@ init();
 function rebuildLayout() {
   const { h } = getViewportSize();
   computeLayout();
+  lcpPromoted = false;
   for (const tile of liveTiles) {
     const pos = placeNext(tile.item);
     tile.x = pos.x;
