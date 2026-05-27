@@ -94,6 +94,14 @@
   color: #ff3030;
 }
 
+/* Le suffix-name peut descendre verticalement (set via JS) pour s'aligner avec l'item
+   hover de la liste client → le nom semble "se dupliquer" à la hauteur du menu. */
+.ui-corner__suffix-name {
+  display: inline-block;
+  transform: translateY(var(--suffix-name-y, 0px));
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 
 html, body {
   width: 100%;

@@ -83,14 +83,30 @@ const clientListEl = document.createElement('nav');
 clientListEl.className = 'client-list';
 clientListEl.setAttribute('aria-hidden', 'true');
 const clientListUl = document.createElement('ul');
+// Aligne verticalement le suffix-name (le nom dans "pour <Nom>") sur l'item hover de la liste
+// → le projet "se duplique" visuellement à la même hauteur que son entrée dans le menu.
+function alignSuffixWith(itemEl) {
+  const tl = document.querySelector('.ui-corner--tl');
+  if (!tl || !itemEl) return;
+  const tlRect = tl.getBoundingClientRect();
+  const itemRect = itemEl.getBoundingClientRect();
+  const paddingTop = parseFloat(getComputedStyle(tl).paddingTop) || 28;
+  const dy = itemRect.top - (tlRect.top + paddingTop);
+  document.documentElement.style.setProperty('--suffix-name-y', `${dy}px`);
+}
+function resetSuffixAlignment() {
+  document.documentElement.style.setProperty('--suffix-name-y', '0px');
+}
+
 projects.forEach((p) => {
   const li = document.createElement('li');
   li.className = 'client-list__item';
   li.dataset.projectId = p.id;
   li.textContent = p.name;
-  li.addEventListener('mouseenter', () => animateSuffix(p.name));
-  li.addEventListener('mouseleave', () => animateSuffix(''));
+  li.addEventListener('mouseenter', () => { animateSuffix(p.name); alignSuffixWith(li); });
+  li.addEventListener('mouseleave', () => { animateSuffix(''); resetSuffixAlignment(); });
   li.addEventListener('click', () => {
+    resetSuffixAlignment();
     closeClientList();
     focusProject(p.id);
   });
