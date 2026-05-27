@@ -55,6 +55,71 @@ function unfocusProject() {
   });
   animateSuffix('');
 }
+
+// Focus le projet : ses tiles → focused, les autres → dimmed, suffix TL → "pour <Nom>".
+function focusProject(projId) {
+  if (!projId) return;
+  currentFocusedProject = projId;
+  document.querySelectorAll('.tile').forEach((t) => {
+    if (t.dataset.project === projId) {
+      t.classList.add('tile--project-focused');
+      t.classList.remove('tile--project-dimmed');
+    } else {
+      t.classList.add('tile--project-dimmed');
+      t.classList.remove('tile--project-focused');
+    }
+  });
+  const name = projectNameById.get(projId);
+  if (name) animateSuffix(name);
+}
+
+// ─── Menu liste de clients ──────────────────────────────────────────────────
+// Au clic sur "Marc-Antoine Guilbault, Lead Designer UI", on cache la mosaïque et on affiche
+// une liste verticale des projets. Hover d'un nom → suffix TL "pour <Nom>". Clic → ferme la
+// liste + focus le projet (= mosaïque réapparait avec le projet en focus). Re-clic sur le
+// label TL → ferme la liste sans focus.
+let clientListOpen = false;
+const clientListEl = document.createElement('nav');
+clientListEl.className = 'client-list';
+clientListEl.setAttribute('aria-hidden', 'true');
+const clientListUl = document.createElement('ul');
+projects.forEach((p) => {
+  const li = document.createElement('li');
+  li.className = 'client-list__item';
+  li.dataset.projectId = p.id;
+  li.textContent = p.name;
+  li.addEventListener('mouseenter', () => animateSuffix(p.name));
+  li.addEventListener('mouseleave', () => animateSuffix(''));
+  li.addEventListener('click', () => {
+    closeClientList();
+    focusProject(p.id);
+  });
+  clientListUl.appendChild(li);
+});
+clientListEl.appendChild(clientListUl);
+document.body.appendChild(clientListEl);
+
+function openClientList() {
+  clientListOpen = true;
+  document.body.classList.add('is-client-list');
+  clientListEl.setAttribute('aria-hidden', 'false');
+}
+
+function closeClientList() {
+  if (!clientListOpen) return;
+  clientListOpen = false;
+  document.body.classList.remove('is-client-list');
+  clientListEl.setAttribute('aria-hidden', 'true');
+  animateSuffix('');
+}
+
+// Click sur le label TL → toggle. On ignore les clics sur le suffix (a-link future-proof).
+document.querySelector('.ui-corner--tl')?.addEventListener('click', (e) => {
+  if (e.target.closest('a, .ui-corner__suffix')) return;
+  if (clientListOpen) closeClientList();
+  else { unfocusProject(); openClientList(); }
+});
+// ──────────────────────────────────────────────────────────────────────────
 let typewriterRAF = null;
 
 // Rend le suffix avec " pour " statique + le nom dans un .ui-corner__suffix-name (colorisable).
@@ -668,23 +733,8 @@ function createTile(item, pos, label) {
     if (!HAS_HOVER) return;
     const proj = el.dataset.project;
     if (!proj) return;
-    if (currentFocusedProject === proj) {
-      // Toggle off : retour à l'état initial
-      unfocusProject();
-    } else {
-      currentFocusedProject = proj;
-      document.querySelectorAll('.tile').forEach((t) => {
-        if (t.dataset.project === proj) {
-          t.classList.add('tile--project-focused');
-          t.classList.remove('tile--project-dimmed');
-        } else {
-          t.classList.add('tile--project-dimmed');
-          t.classList.remove('tile--project-focused');
-        }
-      });
-      const name = projectNameById.get(proj);
-      if (name) animateSuffix(name);
-    }
+    if (currentFocusedProject === proj) unfocusProject();
+    else focusProject(proj);
   });
 
   // Méta sous la tuile : largeur fixe = 1 colonne. Pour les tablets (2 cols),
