@@ -95,20 +95,26 @@
 }
 
 /* Liste verticale des projets, injectée dans le suffix au clic sur le label TL.
-   inline-block + vertical-align baseline → le 1er <li> s'aligne sur le baseline de "pour",
-   les suivants tombent en dessous en flow naturel. */
+   Astuce d'alignement : line-height: 1 sur les <li> = même hauteur de ligne que le label
+   parent → vertical-align: top fait coïncider le top et le baseline du 1er <li> avec "pour".
+   L'espacement entre items est géré par padding-bottom (pas line-height). */
 .ui-corner__suffix-list {
   display: inline-block;
   vertical-align: top;
   list-style: none;
   padding: 0;
   margin: 0;
+  line-height: 1;
 }
 .ui-corner__suffix-item {
   color: #ff3030;
   cursor: pointer;
-  line-height: 1.6;
+  line-height: 1;
+  padding-bottom: 10px;
   transition: color 0.2s ease;
+}
+.ui-corner__suffix-item:last-child {
+  padding-bottom: 0;
 }
 .ui-corner__suffix-item:hover {
   color: #fff;
