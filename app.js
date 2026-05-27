@@ -8,8 +8,11 @@ const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').mat
 const HAS_HOVER = window.matchMedia('(hover: hover)').matches;
 
 const GAP = 48;
-// Gap vertical uniforme entre toutes les tiles (mobile→tablet, tablet→mobile, mobile→mobile).
-const GAP_Y = 120;
+// Gap vertical entre tiles. Desktop 220px (espace pour la meta au hover), mobile 80px
+// (la meta n'apparaît plus au tap → on densifie la mosaïque). Recalculé dans computeLayout().
+const GAP_Y_DESKTOP = 220;
+const GAP_Y_MOBILE = 80;
+let GAP_Y = GAP_Y_DESKTOP;
 const BASE_VELOCITY = 30;
 const WHEEL_GAIN = 0.5;
 
@@ -121,6 +124,8 @@ function getViewportSize() {
 function computeLayout() {
   const { w: vw } = getViewportSize();
   cols = getColsForViewport(vw);
+  // Mobile (2 cols) : gap réduit, sinon gap desktop. Cohérent avec getColsForViewport.
+  GAP_Y = cols <= 2 ? GAP_Y_MOBILE : GAP_Y_DESKTOP;
   colWidth = (vw - (cols + 1) * GAP) / cols;
   colHeights = new Array(cols).fill(0).map((_, i) => GAP + (INITIAL_OFFSETS[i] ?? -100));
   colVelocityMultipliers = new Array(cols).fill(0).map((_, i) => GROUP_VELOCITIES[Math.floor(i / 2) % GROUP_VELOCITIES.length]);
