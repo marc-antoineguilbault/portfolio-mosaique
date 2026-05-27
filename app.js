@@ -56,7 +56,9 @@ function unfocusProject() {
   animateSuffix('');
   currentProjectImages = [];
   currentImageIndex = 0;
-  renderProjectNav();
+  if (navTypewriterRAF) { cancelAnimationFrame(navTypewriterRAF); navTypewriterRAF = null; }
+  const nav = document.querySelector('.ui-corner__project-nav');
+  if (nav) nav.replaceChildren();
 }
 
 // Anime offset → targetOffset en ease-out cubic. Clamp au floor pour cohérence.
@@ -97,6 +99,7 @@ function navigateToProjectImage(delta) {
   renderProjectNav();
 }
 
+// Flèches inversées : ↑ = précédent (1→N→...), ↓ = suivant (1→2→...)
 function renderProjectNav() {
   const nav = document.querySelector('.ui-corner__project-nav');
   if (!nav) return;
@@ -104,26 +107,53 @@ function renderProjectNav() {
   const total = currentProjectImages.length;
   if (!total) return;
   nav.appendChild(document.createTextNode(` (${currentImageIndex + 1}/${total} `));
-  const next = document.createElement('button');
-  next.className = 'ui-corner__nav-btn';
-  next.type = 'button';
-  next.setAttribute('aria-label', 'Maquette suivante');
-  next.textContent = '↑';
-  next.addEventListener('click', (ev) => { ev.stopPropagation(); navigateToProjectImage(1); });
-  nav.appendChild(next);
+  const upBtn = document.createElement('button');
+  upBtn.className = 'ui-corner__nav-btn';
+  upBtn.type = 'button';
+  upBtn.setAttribute('aria-label', 'Maquette précédente');
+  upBtn.textContent = '↑';
+  upBtn.addEventListener('click', (ev) => { ev.stopPropagation(); navigateToProjectImage(-1); });
+  nav.appendChild(upBtn);
   nav.appendChild(document.createTextNode(' '));
-  const prev = document.createElement('button');
-  prev.className = 'ui-corner__nav-btn';
-  prev.type = 'button';
-  prev.setAttribute('aria-label', 'Maquette précédente');
-  prev.textContent = '↓';
-  prev.addEventListener('click', (ev) => { ev.stopPropagation(); navigateToProjectImage(-1); });
-  nav.appendChild(prev);
+  const downBtn = document.createElement('button');
+  downBtn.className = 'ui-corner__nav-btn';
+  downBtn.type = 'button';
+  downBtn.setAttribute('aria-label', 'Maquette suivante');
+  downBtn.textContent = '↓';
+  downBtn.addEventListener('click', (ev) => { ev.stopPropagation(); navigateToProjectImage(1); });
+  nav.appendChild(downBtn);
   nav.appendChild(document.createTextNode(')'));
 }
 
 // Wrapper conservé pour le clic depuis la liste client.
 function scrollToFirstProjectTile() { scrollToCurrentImage(); }
+
+// Typewriter du nav (1/N ↑ ↓) après que le suffix-name ait fini son typewriter.
+let navTypewriterRAF = null;
+function typewriteProjectNav() {
+  const nav = document.querySelector('.ui-corner__project-nav');
+  if (!nav) return;
+  const total = currentProjectImages.length;
+  if (!total) return;
+  if (navTypewriterRAF) cancelAnimationFrame(navTypewriterRAF);
+  const fullText = ` (${currentImageIndex + 1}/${total} ↑ ↓)`;
+  const CHAR_MS = 16;
+  const start = performance.now();
+  nav.replaceChildren();
+  function step(now) {
+    const elapsed = now - start;
+    const charsShown = Math.min(fullText.length, Math.floor(elapsed / CHAR_MS) + 1);
+    if (charsShown < fullText.length) {
+      nav.textContent = fullText.slice(0, charsShown);
+      navTypewriterRAF = requestAnimationFrame(step);
+    } else {
+      // Fin du typewriter → remplace par DOM avec boutons cliquables.
+      navTypewriterRAF = null;
+      renderProjectNav();
+    }
+  }
+  navTypewriterRAF = requestAnimationFrame(step);
+}
 
 // Focus le projet : ses tiles → focused, les autres → dimmed, suffix TL → "pour <Nom>"
 // + indicateur de navigation (N/M ↑ ↓) à côté du nom.
@@ -139,14 +169,16 @@ function focusProject(projId) {
       t.classList.remove('tile--project-focused');
     }
   });
-  const name = projectNameById.get(projId);
-  if (name) animateSuffix(name);
   // Prépare la nav inter-maquettes : liste des images du projet, tri par src (m01,m02,t01,t02).
   currentProjectImages = pool
     .filter((item) => item.project === projId)
     .sort((a, b) => a.src.localeCompare(b.src));
   currentImageIndex = 0;
-  renderProjectNav();
+  // Clear nav le temps du typewriter du suffix-name, puis typewriter du nav en chaîne.
+  const nav = document.querySelector('.ui-corner__project-nav');
+  if (nav) nav.replaceChildren();
+  const name = projectNameById.get(projId);
+  if (name) animateSuffix(name, typewriteProjectNav);
 }
 
 // ─── Menu liste de clients ──────────────────────────────────────────────────
@@ -215,7 +247,7 @@ function renderSuffix(suffix, text) {
   suffix.appendChild(nameSpan);
 }
 
-function animateSuffix(name) {
+function animateSuffix(name, onDone) {
   const suffix = document.querySelector('.ui-corner__suffix');
   if (!suffix) return;
   if (typewriterRAF) cancelAnimationFrame(typewriterRAF);
@@ -239,6 +271,7 @@ function animateSuffix(name) {
     } else {
       renderSuffix(suffix, toText);
       typewriterRAF = null;
+      if (onDone) onDone();
     }
   }
   typewriterRAF = requestAnimationFrame(step);
