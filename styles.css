@@ -94,6 +94,24 @@
   color: #ff3030;
 }
 
+/* Indicateur de navigation (N/M ↑ ↓) à côté du nom du projet focused. */
+.ui-corner__project-nav {
+  color: rgba(255, 255, 255, 0.55);
+}
+.ui-corner__nav-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  padding: 0 2px;
+  transition: color 0.2s ease;
+}
+.ui-corner__nav-btn:hover {
+  color: #fff;
+}
+
 /* Liste verticale des projets, injectée dans le suffix au clic sur le label TL.
    Astuce d'alignement : line-height: 1 sur les <li> = même hauteur de ligne que le label
    parent → vertical-align: top fait coïncider le top et le baseline du 1er <li> avec "pour".

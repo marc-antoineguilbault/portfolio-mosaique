@@ -54,31 +54,79 @@ function unfocusProject() {
     t.classList.remove('tile--project-focused', 'tile--project-dimmed');
   });
   animateSuffix('');
+  currentProjectImages = [];
+  currentImageIndex = 0;
+  renderProjectNav();
 }
 
-// Scroll la mosaïque pour amener la 1ère tile du projet en haut du viewport (smooth).
-function scrollToFirstProjectTile(projId) {
-  if (!projId) return;
-  let targetY = Infinity;
-  for (const tile of liveTiles) {
-    if (tile.item.project === projId && tile.y < targetY) targetY = tile.y;
-  }
-  if (targetY === Infinity) return;
-  const TOP_MARGIN = 80;
-  const targetOffset = Math.max(minLiveTileY - SCROLL_TOP_Y, targetY - TOP_MARGIN);
+// Anime offset → targetOffset en ease-out cubic. Clamp au floor pour cohérence.
+function smoothScrollOffset(targetOffset, duration = 700) {
   const startOffset = offset;
   const startTime = performance.now();
-  const DURATION = 700;
   function step(now) {
-    const t = Math.min((now - startTime) / DURATION, 1);
-    const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+    const t = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
     offset = startOffset + (targetOffset - startOffset) * eased;
     if (t < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
 }
 
-// Focus le projet : ses tiles → focused, les autres → dimmed, suffix TL → "pour <Nom>".
+// État de navigation entre les maquettes d'un projet focused.
+let currentProjectImages = [];
+let currentImageIndex = 0;
+const TOP_MARGIN = 80;
+
+function scrollToCurrentImage() {
+  if (!currentProjectImages.length) return;
+  const targetSrc = currentProjectImages[currentImageIndex].src;
+  let targetY = Infinity;
+  for (const tile of liveTiles) {
+    if (tile.item.src === targetSrc && tile.y < targetY) targetY = tile.y;
+  }
+  if (targetY === Infinity) return;
+  const targetOffset = Math.max(minLiveTileY - SCROLL_TOP_Y, targetY - TOP_MARGIN);
+  smoothScrollOffset(targetOffset);
+}
+
+function navigateToProjectImage(delta) {
+  const total = currentProjectImages.length;
+  if (!total) return;
+  currentImageIndex = (currentImageIndex + delta + total) % total;
+  scrollToCurrentImage();
+  renderProjectNav();
+}
+
+function renderProjectNav() {
+  const nav = document.querySelector('.ui-corner__project-nav');
+  if (!nav) return;
+  nav.replaceChildren();
+  const total = currentProjectImages.length;
+  if (!total) return;
+  nav.appendChild(document.createTextNode(` (${currentImageIndex + 1}/${total} `));
+  const next = document.createElement('button');
+  next.className = 'ui-corner__nav-btn';
+  next.type = 'button';
+  next.setAttribute('aria-label', 'Maquette suivante');
+  next.textContent = '↑';
+  next.addEventListener('click', (ev) => { ev.stopPropagation(); navigateToProjectImage(1); });
+  nav.appendChild(next);
+  nav.appendChild(document.createTextNode(' '));
+  const prev = document.createElement('button');
+  prev.className = 'ui-corner__nav-btn';
+  prev.type = 'button';
+  prev.setAttribute('aria-label', 'Maquette précédente');
+  prev.textContent = '↓';
+  prev.addEventListener('click', (ev) => { ev.stopPropagation(); navigateToProjectImage(-1); });
+  nav.appendChild(prev);
+  nav.appendChild(document.createTextNode(')'));
+}
+
+// Wrapper conservé pour le clic depuis la liste client.
+function scrollToFirstProjectTile() { scrollToCurrentImage(); }
+
+// Focus le projet : ses tiles → focused, les autres → dimmed, suffix TL → "pour <Nom>"
+// + indicateur de navigation (N/M ↑ ↓) à côté du nom.
 function focusProject(projId) {
   if (!projId) return;
   currentFocusedProject = projId;
@@ -93,6 +141,12 @@ function focusProject(projId) {
   });
   const name = projectNameById.get(projId);
   if (name) animateSuffix(name);
+  // Prépare la nav inter-maquettes : liste des images du projet, tri par src (m01,m02,t01,t02).
+  currentProjectImages = pool
+    .filter((item) => item.project === projId)
+    .sort((a, b) => a.src.localeCompare(b.src));
+  currentImageIndex = 0;
+  renderProjectNav();
 }
 
 // ─── Menu liste de clients ──────────────────────────────────────────────────
