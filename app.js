@@ -371,6 +371,18 @@ function shouldSkipPrefill() {
   return false;
 }
 
+// A11y + SEO : alt descriptif sur chaque <img> de maquette.
+// Format : "Maquette mobile 01 — Liquides Paris" / "Maquette tablette 02 — Centre Pompidou"
+function describeImage(item) {
+  const name = projectNameById.get(item.project) ?? item.project;
+  const match = item.src.match(/\/([mt])(\d+)\./);
+  const typeLabel = item.type === 'mobile' ? 'mobile' : 'tablette';
+  const num = match ? match[2] : '';
+  return num
+    ? `Maquette ${typeLabel} ${num} — ${name}`
+    : `Maquette ${typeLabel} — ${name}`;
+}
+
 function getColsForViewport(w) {
   if (w >= 900) return 4;
   if (w >= 600) return 3;
@@ -873,10 +885,14 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
     const img = document.createElement('img');
     if (fetchPriority !== 'auto') img.fetchPriority = fetchPriority;
     img.src = item.src;
-    img.alt = '';
+    img.alt = describeImage(item);
     img.draggable = false;
     img.decoding = 'async';
+    // Skip glow extraction sur saveData/2G : extractGlowColors crée un canvas + lit les pixels
+    // (coûteux GPU + CPU). Le glow CSS reste sur sa couleur seedée par défaut (colorFromSeed).
+    const skipHeavyVisuals = shouldSkipPrefill();
     const applyGlow = () => {
+      if (skipHeavyVisuals) return;
       const colors = extractGlowColors(img);
       if (colors && colors.length === 3) {
         el.style.setProperty('--tile-glow-1', colors[0]);
