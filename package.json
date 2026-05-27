@@ -1,0 +1,14 @@
+{
+  "name": "portfolio-mosaique",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portfolio one-page de Marc-Antoine Guilbault — mosaïque masonry animée, vanilla JS, GitHub Pages.",
+  "scripts": {
+    "dev": "python3 -m http.server 8771",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0"
+  }
+}
