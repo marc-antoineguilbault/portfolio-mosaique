@@ -79,14 +79,23 @@ let currentProjectImages = [];
 let currentImageIndex = 0;
 const TOP_MARGIN = 80;
 
-function scrollToCurrentImage() {
-  if (!currentProjectImages.length) return;
-  const targetSrc = currentProjectImages[currentImageIndex].src;
+function findMinTileY(targetSrc) {
   let targetY = Infinity;
   for (const tile of liveTiles) {
     if (tile.item.src === targetSrc && tile.y < targetY) targetY = tile.y;
   }
-  if (targetY === Infinity) return;
+  return targetY;
+}
+
+function scrollToCurrentImage() {
+  if (!currentProjectImages.length) return;
+  const targetSrc = currentProjectImages[currentImageIndex].src;
+  let targetY = findMinTileY(targetSrc);
+  if (targetY === Infinity) {
+    flushPrefillSync();
+    targetY = findMinTileY(targetSrc);
+    if (targetY === Infinity) return; // sécurité, ne devrait pas arriver
+  }
   const targetOffset = Math.max(minLiveTileY - SCROLL_TOP_Y, targetY - TOP_MARGIN);
   smoothScrollOffset(targetOffset);
 }
@@ -1198,6 +1207,9 @@ function init() {
   }
   computeLayout();
   fillUntil(h * 3);
+  if (!shouldSkipPrefill()) {
+    prefillHandle = idle(prefillRemainingSources);
+  }
   lastFrameTime = performance.now();
   requestAnimationFrame(frame);
 }
