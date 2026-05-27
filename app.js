@@ -9,6 +9,10 @@ const HAS_HOVER = window.matchMedia('(hover: hover)').matches;
 
 const GAP = 48;
 const GAP_Y = 220; /* augmenté pour laisser la place au bloc .tile-meta sous chaque tuile */
+// Gap réduit DANS un trio (entre les 2 mobiles et la tablet qui les suit dans la cadence).
+// Le gap normal GAP_Y est appliqué SEULEMENT après la dernière tile du trio (la tablet) →
+// chaque trio "2 mobiles + 1 tablet" forme un bloc visuellement compact.
+const GAP_Y_TIGHT = 80;
 const BASE_VELOCITY = 30;
 const WHEEL_GAIN = 0.5;
 
@@ -142,7 +146,7 @@ function frameHeightForInner(w, ratio) {
   return (w - pad) / ratio + pad;
 }
 
-function placeNext(item) {
+function placeNext(item, gapBelow = GAP_Y) {
   if (item.type === 'mobile') {
     let i = 0;
     for (let k = 1; k < cols; k++) {
@@ -152,7 +156,7 @@ function placeNext(item) {
     const y = colHeights[i];
     const w = colWidth;
     const h = frameHeightForInner(w, RATIOS.mobile);
-    colHeights[i] = y + h + GAP_Y;
+    colHeights[i] = y + h + gapBelow;
     return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[i], colIdx: i };
   } else {
     let bestI = 0;
@@ -168,8 +172,8 @@ function placeNext(item) {
     const y = Math.max(colHeights[bestI], colHeights[bestI + 1]);
     const w = 2 * colWidth + GAP;
     const h = frameHeightForInner(w, RATIOS.tablet);
-    colHeights[bestI] = y + h + GAP_Y;
-    colHeights[bestI + 1] = y + h + GAP_Y;
+    colHeights[bestI] = y + h + gapBelow;
+    colHeights[bestI + 1] = y + h + gapBelow;
     return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[bestI], colIdx: bestI };
   }
 }
@@ -749,7 +753,11 @@ function fillUntil(targetHeight) {
   let counter = liveTiles.length;
   while (Math.min(...colHeights) < targetHeight) {
     const item = pickRandom();
-    const pos = placeNext(item);
+    // pickRandom() a déjà incrémenté cycleIdx → position courante = (cycleIdx - 1) % cycle.
+    // Gap normal seulement après la dernière tile du trio (= la tablet) pour séparer les trios.
+    const posInCycle = (cycleIdx - 1) % TYPE_CYCLE.length;
+    const isLastInCycle = posInCycle === TYPE_CYCLE.length - 1;
+    const pos = placeNext(item, isLastInCycle ? GAP_Y : GAP_Y_TIGHT);
     const tile = createTile(item, pos, String(++counter));
     liveTiles.push(tile);
   }
