@@ -770,7 +770,21 @@ const SCROLL_TOP_Y = -240;
 
 viewport.addEventListener('mousedown', () => { paused = true; });
 window.addEventListener('mouseup', () => { paused = false; });
-viewport.addEventListener('touchstart', () => { paused = true; }, { passive: true });
+
+// Tactile : swipe pour scroller la mosaïque (équivalent du wheel desktop).
+let lastTouchY = 0;
+viewport.addEventListener('touchstart', (e) => {
+  paused = true;
+  lastTouchY = e.touches[0].clientY;
+}, { passive: true });
+viewport.addEventListener('touchmove', (e) => {
+  const ty = e.touches[0].clientY;
+  // Swipe up (doigt monte) = lastY > ty = deltaY positif → on défile vers le bas du contenu.
+  offset += (lastTouchY - ty);
+  const floor = minLiveTileY - SCROLL_TOP_Y;
+  if (offset < floor) offset = floor;
+  lastTouchY = ty;
+}, { passive: true });
 window.addEventListener('touchend', () => { paused = false; });
 window.addEventListener('touchcancel', () => { paused = false; });
 
