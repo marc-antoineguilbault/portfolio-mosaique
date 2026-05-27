@@ -133,6 +133,9 @@ html, body {
   inset: 0;
   overflow: hidden;
   background: #000;
+  /* Tactile : on prend le contrôle des swipes via touchmove → empêche le browser de
+     les interpréter comme un pan natif sur les enfants scrollables (.tile-scroll). */
+  touch-action: none;
 }
 
 .scroller {

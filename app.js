@@ -771,22 +771,62 @@ const SCROLL_TOP_Y = -240;
 viewport.addEventListener('mousedown', () => { paused = true; });
 window.addEventListener('mouseup', () => { paused = false; });
 
-// Tactile : swipe pour scroller la mosaïque (équivalent du wheel desktop).
+// Tactile : swipe pour scroller la mosaïque + momentum (inertie style iOS).
 let lastTouchY = 0;
+let lastTouchTime = 0;
+let touchVelocity = 0;     // px/s, signe = direction (positif = doigt vers le haut = défilement vers le bas)
+let momentumRaf = null;
+const MOMENTUM_FRICTION = 0.94;   // décrément par frame ≈16ms (≈0.94^60 ≈ 0.024 en 1s)
+const MOMENTUM_MIN_PX_PER_S = 30; // sous ce seuil on arrête
+
+function stopMomentum() {
+  if (momentumRaf) cancelAnimationFrame(momentumRaf);
+  momentumRaf = null;
+  touchVelocity = 0;
+}
+
+function startMomentum() {
+  if (Math.abs(touchVelocity) < MOMENTUM_MIN_PX_PER_S) return;
+  let lastT = performance.now();
+  function step(now) {
+    const dt = (now - lastT) / 1000;
+    lastT = now;
+    offset += touchVelocity * dt;
+    const floor = minLiveTileY - SCROLL_TOP_Y;
+    if (offset < floor) { offset = floor; stopMomentum(); return; }
+    touchVelocity *= MOMENTUM_FRICTION;
+    if (Math.abs(touchVelocity) > MOMENTUM_MIN_PX_PER_S) {
+      momentumRaf = requestAnimationFrame(step);
+    } else {
+      stopMomentum();
+    }
+  }
+  momentumRaf = requestAnimationFrame(step);
+}
+
 viewport.addEventListener('touchstart', (e) => {
   paused = true;
+  stopMomentum();
   lastTouchY = e.touches[0].clientY;
+  lastTouchTime = performance.now();
 }, { passive: true });
+
 viewport.addEventListener('touchmove', (e) => {
   const ty = e.touches[0].clientY;
-  // Swipe up (doigt monte) = lastY > ty = deltaY positif → on défile vers le bas du contenu.
-  offset += (lastTouchY - ty);
+  const now = performance.now();
+  const dy = lastTouchY - ty;
+  const dt = now - lastTouchTime;
+  offset += dy;
   const floor = minLiveTileY - SCROLL_TOP_Y;
   if (offset < floor) offset = floor;
+  // Velocity en px/s pour le momentum au lâcher
+  if (dt > 0) touchVelocity = (dy / dt) * 1000;
   lastTouchY = ty;
+  lastTouchTime = now;
 }, { passive: true });
-window.addEventListener('touchend', () => { paused = false; });
-window.addEventListener('touchcancel', () => { paused = false; });
+
+window.addEventListener('touchend', () => { paused = false; startMomentum(); });
+window.addEventListener('touchcancel', () => { paused = false; stopMomentum(); });
 
 // Clic sur le fond (= dans le viewport, hors d'une tile) → désélectionne le projet focused.
 viewport.addEventListener('click', (e) => {
