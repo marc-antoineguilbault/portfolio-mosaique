@@ -4,6 +4,38 @@
   box-sizing: border-box;
 }
 
+/* Skip link a11y : visible uniquement au focus clavier (Tab depuis le top).
+   Saute la déco TL pour atteindre la mosaïque directement. */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 100000;
+  padding: 12px 20px;
+  background: #fff;
+  color: #000;
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  text-decoration: none;
+  border-radius: 4px;
+  transform: translateY(-200%);
+  transition: transform 0.15s ease;
+}
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 2px solid #ff3030;
+  outline-offset: 2px;
+}
+
+/* Focus visible (clavier uniquement, pas au clic souris) sur tiles + boutons interactifs.
+   :focus-visible respecte les conventions OS, plus respectueux que :focus. */
+.tile-inner:focus-visible,
+.ui-corner__nav-btn:focus-visible,
+.ui-corner__suffix-item:focus-visible {
+  outline: 2px solid #ff3030;
+  outline-offset: 4px;
+}
+
 /* ─── UI overlay : 4 coins (identité, rôle, statut, contact) + dégradé d'arrière-plan ─── */
 .ui-overlay {
   position: fixed;

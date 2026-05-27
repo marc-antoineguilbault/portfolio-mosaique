@@ -269,6 +269,7 @@ function openClientList() {
   if (clientListOpen) return;
   clientListOpen = true;
   document.body.classList.add('is-client-list');
+  document.querySelector('.ui-corner--tl')?.setAttribute('aria-expanded', 'true');
   const suffix = document.querySelector('.ui-corner__suffix');
   if (!suffix) return;
   if (typewriterRAF) { cancelAnimationFrame(typewriterRAF); typewriterRAF = null; }
@@ -281,31 +282,64 @@ function openClientList() {
     li.className = 'ui-corner__suffix-item';
     li.dataset.projectId = p.id;
     li.textContent = p.name;
-    li.addEventListener('click', (ev) => {
-      ev.stopPropagation();
+    // A11y : focusable au clavier + activable via Enter/Space.
+    li.tabIndex = 0;
+    li.setAttribute('role', 'button');
+    li.setAttribute('aria-label', `Voir les maquettes de ${p.name}`);
+    const activate = () => {
       closeClientList();
       focusProject(p.id);
       scrollToFirstProjectTile(p.id);
+    };
+    li.addEventListener('click', (ev) => { ev.stopPropagation(); activate(); });
+    li.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        ev.stopPropagation();
+        activate();
+      }
     });
     ul.appendChild(li);
   });
   suffix.appendChild(ul);
+  // Focus le premier item après ouverture pour permettre la nav clavier immédiate.
+  ul.firstElementChild?.focus();
 }
 
 function closeClientList() {
   if (!clientListOpen) return;
   clientListOpen = false;
   document.body.classList.remove('is-client-list');
+  document.querySelector('.ui-corner--tl')?.setAttribute('aria-expanded', 'false');
   const suffix = document.querySelector('.ui-corner__suffix');
   if (suffix) suffix.replaceChildren();
 }
 
 // Click sur le label TL → toggle. On ignore les clics sur les liens et les items déjà gérés.
-document.querySelector('.ui-corner--tl')?.addEventListener('click', (e) => {
+const tlLabel = document.querySelector('.ui-corner--tl');
+tlLabel?.addEventListener('click', (e) => {
   if (e.target.closest('a, .ui-corner__suffix-item')) return;
   if (clientListOpen) closeClientList();
   else { unfocusProject(); openClientList(); }
 });
+// A11y : le label TL est focusable et ouvre la liste via Enter/Space.
+if (tlLabel) {
+  tlLabel.tabIndex = 0;
+  tlLabel.setAttribute('role', 'button');
+  tlLabel.setAttribute('aria-label', 'Ouvrir la liste des projets');
+  tlLabel.setAttribute('aria-expanded', 'false');
+  tlLabel.addEventListener('keydown', (ev) => {
+    if ((ev.key === 'Enter' || ev.key === ' ') && !ev.target.closest('a, .ui-corner__suffix-item, .ui-corner__nav-btn')) {
+      ev.preventDefault();
+      if (clientListOpen) closeClientList();
+      else { unfocusProject(); openClientList(); }
+    } else if (ev.key === 'Escape' && clientListOpen) {
+      ev.preventDefault();
+      closeClientList();
+      tlLabel.focus();
+    }
+  });
+}
 // ──────────────────────────────────────────────────────────────────────────
 let typewriterRAF = null;
 
