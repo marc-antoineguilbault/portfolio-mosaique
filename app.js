@@ -719,7 +719,7 @@ const poolByType = {
 };
 const poolIndices = { mobile: 0, tablet: 0 };
 
-const TYPE_CYCLE = ['mobile', 'tablet'];
+const TYPE_CYCLE = ['mobile', 'mobile', 'tablet'];
 let cycleIdx = 0;
 
 function pickRandom() {
