@@ -253,10 +253,11 @@ body {
   border-radius: var(--tile-radius-outer, 32px);
   z-index: 1;
   transition: --glow-alpha 0.6s ease-out, opacity 0.6s ease;
-  /* CSS containment : isole le layout/style/paint d'une tile → frame() écrit les transforms
+  /* CSS containment : isole le layout/style d'une tile → frame() écrit les transforms
      de 51 tiles sans déclencher de recalcul global. Mesurable au scroll mobile (FPS plus
-     stable). 'size' exclu : la hauteur est dynamique selon ratio mobile/tablet. */
-  contain: layout style paint;
+     stable). 'paint' EXCLU : il clipperait .tile-meta (position absolute, top:100%, sous
+     la tile) → la description au hover disparaîtrait. 'size' exclu : hauteur dynamique. */
+  contain: layout style;
 }
 
 /* Apparition au load : chaque tuile remonte de 60px en fadant, staggered via --enter-delay.

@@ -45,6 +45,19 @@ test.describe('Portfolio smoke', () => {
     await expect(page.locator('.ui-corner__project-nav')).toContainText('3/4');
   });
 
+  test('regression : .tile ne clippe pas la meta (pas de contain:paint)', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('.tile').first().waitFor({ timeout: 3000 });
+    // contain:paint clipperait .tile-meta (top:100%, sous la tile) → desc invisible au hover.
+    const contain = await page.locator('.tile').first().evaluate(
+      (el) => getComputedStyle(el).contain
+    );
+    expect(contain).not.toContain('paint');
+    // La meta + sa description doivent exister dans le DOM de la tile.
+    const hasMeta = await page.locator('.tile').first().locator('.tile-meta__desc, .tile-meta__line').count();
+    expect(hasMeta).toBeGreaterThan(0);
+  });
+
   test('a11y : skip link visible au focus', async ({ page }) => {
     await page.goto('/');
     await page.keyboard.press('Tab');
