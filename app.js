@@ -767,7 +767,7 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
     picture.appendChild(img);
     content.appendChild(picture);
     content.classList.add('tile-content--image');
-    if (item.locked) attachLock(inner, img);
+    if (item.locked) attachLock(inner, img, item.project);
   } else {
     const hueMatch = color.match(/hsl\((\d+)/);
     const hue = hueMatch ? hueMatch[1] : 0;

@@ -2,11 +2,20 @@
 // n'importe quelle saisie + Entrée débloque toutes les tuiles verrouillées
 // (passées et futures, via le Set `lockedEntries`).
 //
-// API : attachLock(inner, imgEl) — appelée par createTile pour les items.locked.
+// Exception : les projets listés dans PERMANENT_PROJECTS restent verrouillés
+// en permanence. Le champ mot de passe s'affiche toujours mais aucune saisie
+// ne les déverrouille (feedback shake + champ vidé), et ils sont exclus de
+// unlockAll même si une autre tuile déclenche le déverrouillage global.
+//
+// API : attachLock(inner, imgEl, project) — appelée par createTile pour les items.locked.
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const lockedEntries = new Set();
 let unlockedAll = false;
+
+// Projets jamais déverrouillables (slug = data.js `project`).
+const PERMANENT_PROJECTS = new Set(['courvoisier']);
+const isPermanent = (project) => PERMANENT_PROJECTS.has(project);
 
 function createLockSvg() {
   // Adapté de Noun Project — lock-8106161 by Win Ningsih.
@@ -31,7 +40,8 @@ function createLockSvg() {
 
 function unlockAll() {
   unlockedAll = true;
-  for (const entry of lockedEntries) {
+  for (const entry of [...lockedEntries]) {
+    if (isPermanent(entry.project)) continue; // jamais déverrouillé
     entry.imgEl.classList.remove('tile-img--locked');
     entry.overlayEl.style.opacity = '0';
     entry.lockSvg.style.opacity = '0';
@@ -41,8 +51,25 @@ function unlockAll() {
       entry.lockSvg.remove();
       if (entry.inputEl) entry.inputEl.remove();
     }, 900);
+    lockedEntries.delete(entry);
   }
-  lockedEntries.clear();
+  // Les entrées permanentes restent dans lockedEntries (toujours verrouillées).
+}
+
+// Feedback d'échec : secoue le champ et le vide, sans déverrouiller.
+function rejectInput(input) {
+  input.value = '';
+  input.animate(
+    [
+      { transform: 'translateX(0)' },
+      { transform: 'translateX(-6px)' },
+      { transform: 'translateX(6px)' },
+      { transform: 'translateX(-4px)' },
+      { transform: 'translateX(4px)' },
+      { transform: 'translateX(0)' },
+    ],
+    { duration: 360, easing: 'ease-in-out' },
+  );
 }
 
 function showPasswordInput(entry, inner) {
@@ -60,7 +87,10 @@ function showPasswordInput(entry, inner) {
   input.addEventListener('mousedown', e => e.stopPropagation());
   input.addEventListener('keydown', (e) => {
     e.stopPropagation();
-    if (e.key === 'Enter' && input.value.length > 0) unlockAll();
+    if (e.key === 'Enter' && input.value.length > 0) {
+      if (isPermanent(entry.project)) rejectInput(input); // jamais déverrouillé
+      else unlockAll();
+    }
   });
   input.addEventListener('blur', () => {
     if (input.value.length === 0) {
@@ -72,15 +102,16 @@ function showPasswordInput(entry, inner) {
   setTimeout(() => input.focus(), 0);
 }
 
-export function attachLock(inner, imgEl) {
-  if (unlockedAll) return;
+export function attachLock(inner, imgEl, project) {
+  // Les projets permanents se verrouillent toujours, même après un unlockAll global.
+  if (unlockedAll && !isPermanent(project)) return;
   imgEl.classList.add('tile-img--locked');
   const overlay = document.createElement('div');
   overlay.className = 'tile-overlay-locked';
   inner.appendChild(overlay);
   const lockSvg = createLockSvg();
   inner.appendChild(lockSvg);
-  const entry = { imgEl, overlayEl: overlay, lockSvg, inputEl: null };
+  const entry = { imgEl, overlayEl: overlay, lockSvg, inputEl: null, project };
   lockedEntries.add(entry);
   lockSvg.addEventListener('click', (ev) => {
     ev.stopPropagation();
