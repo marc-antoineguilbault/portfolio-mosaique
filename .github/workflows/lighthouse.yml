@@ -13,16 +13,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Serve site locally
-        run: |
-          python3 -m http.server 8080 &
-          sleep 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --omit=optional
+
+      - name: Build (esbuild minify → dist/)
+        run: npm run build
 
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v12
         with:
-          urls: |
-            http://localhost:8080
           configPath: ./.lighthouserc.json
           uploadArtifacts: true
           temporaryPublicStorage: true
