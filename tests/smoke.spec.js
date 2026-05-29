@@ -59,7 +59,8 @@ test.describe('Portfolio smoke', () => {
 
   test('regression : .tile ne clippe pas la meta (pas de contain:paint)', async ({ page }) => {
     await page.goto('/');
-    await page.locator('.tile').first().waitFor({ timeout: 3000 });
+    // Pas de timeout court : la latence du 1er paint des tuiles (init() après app.js + data + modules + AVIF) varie sous charge machine — un cap court rejoue le flake. On laisse le test timeout (30 s), comme le reste de la suite.
+    await page.locator('.tile').first().waitFor();
     // contain:paint clipperait .tile-meta (top:100%, sous la tile) → desc invisible au hover.
     const contain = await page.locator('.tile').first().evaluate(
       (el) => getComputedStyle(el).contain

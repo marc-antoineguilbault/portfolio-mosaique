@@ -14,7 +14,8 @@ test.use(iPhone);
 test.describe('Mobile (tactile) — interactions désactivées', () => {
   test('phrase du haut inerte + révélation meta gardée par hover', async ({ page }) => {
     await page.goto('/');
-    await page.locator('.tile').first().waitFor({ timeout: 5000 });
+    // Pas de timeout court : la latence du 1er paint des tuiles (init() après app.js + data + modules + AVIF) varie sous charge machine — un cap court rejoue le flake. On laisse le test timeout (30 s), comme le reste de la suite.
+    await page.locator('.tile').first().waitFor();
 
     // Contexte bien tactile (pas de hover).
     expect(await page.evaluate(() => matchMedia('(hover: hover)').matches)).toBe(false);
