@@ -603,10 +603,15 @@ const cursorEl = document.getElementById('cursor');
 // Position globale du curseur (en coords viewport). Utilisée pour le radial-gradient du
 // contour de chaque tile, projeté dans son repère local par frame() à chaque rAF.
 let mouseX = 0, mouseY = 0;
+// true dès que la souris a bougé depuis la dernière frame. Permet de ne réécrire
+// --cursor-x/y que quand nécessaire → supprime le repaint continu du contour pendant
+// le défilement auto quand la souris est immobile.
+let cursorDirty = true;
 
 window.addEventListener('mousemove', (e) => {
   mouseX = e.clientX;
   mouseY = e.clientY;
+  cursorDirty = true;
   // Transform = compositing GPU pur (pas de layout). translate(-50%, -50%) centre le rond.
   cursorEl.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
 });
@@ -1132,9 +1137,14 @@ function frame(t) {
       continue;
     }
     tile.el.style.transform = `translate3d(${tile.x}px, ${ty}px, 0)`;
-    tile.el.style.setProperty('--cursor-x', ((mouseX - tile.x) / tile.w) * 100 + '%');
-    tile.el.style.setProperty('--cursor-y', ((mouseY - ty) / tile.h) * 100 + '%');
+    if (cursorDirty) {
+      tile.el.style.setProperty('--cursor-x', ((mouseX - tile.x) / tile.w) * 100 + '%');
+      tile.el.style.setProperty('--cursor-y', ((mouseY - ty) / tile.h) * 100 + '%');
+    }
   }
+  // Une fois toutes les tiles de la frame traitées, on acquitte le dirty : les prochaines
+  // frames n'écriront plus --cursor-x/y tant que la souris ne rebougera pas.
+  cursorDirty = false;
   // Reverse splice pour les hard-recycles (préserve les indices)
   for (let i = toRemove.length - 1; i >= 0; i--) {
     const tile = liveTiles[toRemove[i]];
