@@ -268,6 +268,19 @@ function focusProject(projId) {
 // (flow naturel via display: inline-block + list-style: none).
 let clientListOpen = false;
 
+// Phrase de bio affichée en bas de l'écran quand la liste des projets est ouverte
+// (reprise du statut "Lead Designer Interactif" du Portfolio Personnel).
+const BIO_TEXT = "Je maîtrise des systèmes, les ordonne, les décline et les enrichis. La rigueur dans chaque détail.";
+// Décalage entre l'apparition de deux noms consécutifs (cascade).
+const CASCADE_STEP_MS = 55;
+
+// Aligne le bord gauche de la phrase de bio sur la colonne des noms de projet.
+function alignBio() {
+  const ul = document.querySelector('.ui-corner__suffix-list');
+  const bio = document.querySelector('.ui-bio');
+  if (ul && bio) bio.style.left = `${Math.round(ul.getBoundingClientRect().left)}px`;
+}
+
 function openClientList() {
   if (clientListOpen) return;
   clientListOpen = true;
@@ -280,11 +293,13 @@ function openClientList() {
   suffix.appendChild(document.createTextNode(' pour '));
   const ul = document.createElement('ul');
   ul.className = 'ui-corner__suffix-list';
-  projects.forEach((p) => {
+  projects.forEach((p, i) => {
     const li = document.createElement('li');
     li.className = 'ui-corner__suffix-item';
     li.dataset.projectId = p.id;
     li.textContent = p.name;
+    // Cascade : chaque nom apparaît décalé du précédent (0 si reduced-motion).
+    li.style.setProperty('--enter-delay', `${REDUCED_MOTION ? 0 : i * CASCADE_STEP_MS}ms`);
     // A11y : focusable au clavier + activable via Enter/Space.
     li.tabIndex = 0;
     li.setAttribute('role', 'button');
@@ -305,6 +320,17 @@ function openClientList() {
     ul.appendChild(li);
   });
   suffix.appendChild(ul);
+
+  // Phrase de bio en bas de l'écran : apparaît juste après le dernier nom (délai =
+  // durée totale de la cascade), alignée en x sur la colonne des noms. L'animation CSS
+  // (fill-mode both) la garde masquée pendant le délai → pas de flash avant l'alignement.
+  const bio = document.createElement('p');
+  bio.className = 'ui-bio';
+  bio.textContent = BIO_TEXT;
+  bio.style.setProperty('--bio-delay', `${REDUCED_MOTION ? 0 : projects.length * CASCADE_STEP_MS}ms`);
+  document.querySelector('.ui-overlay')?.appendChild(bio);
+  requestAnimationFrame(alignBio);
+
   // Focus le premier item après ouverture pour permettre la nav clavier immédiate.
   ul.firstElementChild?.focus();
 }
@@ -316,6 +342,7 @@ function closeClientList() {
   document.querySelector('.ui-corner--tl')?.setAttribute('aria-expanded', 'false');
   const suffix = document.querySelector('.ui-corner__suffix');
   if (suffix) suffix.replaceChildren();
+  document.querySelector('.ui-bio')?.remove();
 }
 
 // Click sur le label TL → toggle la liste des projets. On ignore les clics sur les
@@ -1176,6 +1203,7 @@ let resizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(rebuildLayout, 150);
+  if (clientListOpen) alignBio();
 });
 
 // Service Worker : cache-first sur les assets immuables (images + JS/CSS versionnés),
