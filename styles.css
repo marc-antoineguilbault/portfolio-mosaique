@@ -490,6 +490,10 @@ body {
   top: 100%;
   left: 0;
   padding-top: 16px;
+  /* Masquée par défaut : le texte des <p> n'est révélé qu'une fois splitté en lignes
+     (.tile-meta__line-inner repasse en visibility: visible). Sans ça, le texte brut
+     non encore splitté resterait visible au repos (le split est différé au survol). */
+  visibility: hidden;
   color: rgba(255, 255, 255, 0.85);
   font-family: 'Suisse Int\'l', 'Suisse Intl', 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   pointer-events: none;
@@ -513,6 +517,9 @@ body {
 
 .tile-meta__line-inner {
   display: block;
+  /* Contourne le visibility: hidden de .tile-meta : seules les lignes réellement
+     splittées sont rendues (l'opacity gère ensuite l'apparition au survol). */
+  visibility: visible;
   transform: translateY(24px);
   opacity: 0;
   transition:
