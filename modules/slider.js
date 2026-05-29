@@ -326,14 +326,24 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
       return { finalLeft, finalTop, dist: Math.abs(finalLeft - curLeft) };
     });
     root.getBoundingClientRect();                          // reflow : fige les positions de départ
-    // Play SYNCHRONE (pas de rAF) : après le reflow, changer transition + transform déclenche la
-    // transition CSS start→final. Plus robuste qu'un rAF (qui peut être gelé quand la page ne peint
-    // pas : onglet de fond, headless) → sinon les diapos resteraient bloquées hors écran.
-    state.slideEls.forEach((el, i) => {
-      const delay = i === index ? 0 : Math.min(targets[i].dist / W, 1) * ENTRY_STAGGER_MAX_MS;
-      el.style.transition = `transform ${FLIP_MS}ms ${FLIP_EASE} ${delay}ms`;
-      el.style.transform = `translate(${targets[i].finalLeft}px, ${targets[i].finalTop}px)`;
-    });
+    // Play : on attend une frame (double rAF) que les positions de départ soient PAINTÉES avant de
+    // changer transition + transform pour déclencher la CSS transition. C'est le pattern le plus
+    // fiable (Chrome optimise parfois le sync en ne peintant que l'état final → cut visible).
+    // setTimeout(60ms) en fallback : si rAF est throttlé (onglet de fond, headless), on déclenche
+    // quand même les transforms cibles (pas d'animation visible dans ce cas, mais l'état logique
+    // est posé pour les mesures et la transition reprend dès que la page repeint).
+    let triggered = false;
+    const playFinal = () => {
+      if (triggered || !state) return;
+      triggered = true;
+      state.slideEls.forEach((el, i) => {
+        const delay = i === index ? 0 : Math.min(targets[i].dist / W, 1) * ENTRY_STAGGER_MAX_MS;
+        el.style.transition = `transform ${FLIP_MS}ms ${FLIP_EASE} ${delay}ms`;
+        el.style.transform = `translate(${targets[i].finalLeft}px, ${targets[i].finalTop}px)`;
+      });
+    };
+    requestAnimationFrame(() => requestAnimationFrame(playFinal));
+    setTimeout(playFinal, 60);
     setTimeout(() => {                                     // cleanup → rend la main à layout()/CSS
       if (!state) return;
       state.slideEls.forEach((el) => { el.style.transition = ''; });
