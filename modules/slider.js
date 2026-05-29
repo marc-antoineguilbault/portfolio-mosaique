@@ -297,25 +297,20 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
     if (!e.target.closest('.slider__slide')) exitSlider();
   });
 
-  document.body.appendChild(root);
-
-  // ─── Animation d'ouverture ──────────────────────────────────────────────────
-  // Continuité avec le clic : la diapo CLIQUÉE (courante) part de la position verticale de sa
-  // tuile (originRect.top, même X) et glisse jusqu'au centre. Les VOISINES arrivent depuis le
-  // bord de leur côté (à gauche → depuis la gauche, à droite → depuis la droite) jusqu'à leur
-  // position de layout. Stagger ∝ distance horizontale (les plus proches entrent en premier).
-  // Positions finales = state.lefts (posées par layout()) ; layout() les a posées calque DÉTACHÉ
-  // (pas de transition) → on (re)part d'une position de départ ici, après appendChild, pour animer.
+  // ─── Animation d'ouverture (pré-position START AVANT appendChild) ──────────
+  // CRUCIAL : on pose les transforms de DÉPART AVANT d'attacher la racine au DOM. Comme ça, quand
+  // les diapos deviennent visibles via appendChild, elles APPARAISSENT au start (hors écran pour
+  // les voisines, sur la tuile pour la cliquée). Puis une frame plus tard (rAF), on transitionne
+  // vers final via CSS transition → le browser peint forcément le start avant la cible.
+  // Sans cette pré-position, layout() posait final, appendChild rendait final, et Chrome
+  // optimisait en zappant l'état start → cut visible.
+  let entranceTargets = null;
   if (originRect && !REDUCED_MOTION) {
     const { slides, index } = state;
     const W = window.innerWidth;
     const centerY = window.innerHeight / 2;
     const curLeft = state.lefts[index];
-    // Animation via Web Animations API (el.animate) : déclencheur EXPLICITE que le compositor
-    // exécute toujours, indépendamment des quirks de CSS transition (le pattern sync ou rAF se
-    // faisait optimiser par Chrome → cut visible au lieu du slide-in). Ici l'API crée une
-    // Animation que le browser garantit d'interpoler entre les 2 keyframes.
-    state.slideEls.forEach((el, i) => {
+    entranceTargets = state.slideEls.map((el, i) => {
       const sz = slideSize(slides[i].type);
       const finalLeft = state.lefts[i];
       const finalTop = centerY - sz.h / 2;
@@ -323,18 +318,30 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
       // Voisines : départ depuis le bord de leur côté (gauche depuis la gauche, droite depuis la droite).
       const startLeft = i === index ? originRect.left : (finalLeft < curLeft ? -(sz.w + 60) : W + 60);
       const startTop  = i === index ? originRect.top : finalTop;
-      const delay = i === index ? 0 : Math.min(Math.abs(finalLeft - curLeft) / W, 1) * ENTRY_STAGGER_MAX_MS;
-      // Pose la position cible en inline : après l'animation (fill:'backwards' = applique start
-      // PENDANT le delay, rien après), c'est le transform inline qui s'applique → état stable final.
-      el.style.transform = `translate(${finalLeft}px, ${finalTop}px)`;
-      el.animate(
-        [
-          { transform: `translate(${startLeft}px, ${startTop}px)` },
-          { transform: `translate(${finalLeft}px, ${finalTop}px)` }
-        ],
-        { duration: FLIP_MS, delay, easing: FLIP_EASE, fill: 'backwards' }
-      );
+      el.style.transition = 'none';
+      el.style.transform = `translate(${startLeft}px, ${startTop}px)`;
+      return { finalLeft, finalTop, dist: Math.abs(finalLeft - curLeft) };
     });
+  }
+
+  document.body.appendChild(root);
+
+  if (entranceTargets) {
+    root.getBoundingClientRect();                          // commit du DOM attaché à l'état start
+    requestAnimationFrame(() => {                          // laisse une frame pour peindre le start
+      if (!state) return;
+      const W2 = window.innerWidth;
+      state.slideEls.forEach((el, i) => {
+        const t = entranceTargets[i];
+        const delay = i === state.index ? 0 : Math.min(t.dist / W2, 1) * ENTRY_STAGGER_MAX_MS;
+        el.style.transition = `transform ${FLIP_MS}ms ${FLIP_EASE} ${delay}ms`;
+        el.style.transform = `translate(${t.finalLeft}px, ${t.finalTop}px)`;
+      });
+    });
+    setTimeout(() => {                                     // cleanup → rend la main à CSS/layout()
+      if (!state) return;
+      state.slideEls.forEach((el) => { el.style.transition = ''; });
+    }, FLIP_MS + ENTRY_STAGGER_MAX_MS + 100);
   }
 
   attachDrag();
