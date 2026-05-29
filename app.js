@@ -868,9 +868,17 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
   meta.appendChild(desc);
   el.appendChild(meta);
 
+  // Split différé au 1er survol : évite le burst de ~50 reflows synchrones au boot
+  // (fillUntil crée toutes les tuiles d'un coup ; chaque split force 2 reflows).
+  // Sur mobile (pas de hover), le split n'est jamais déclenché.
+  el.addEventListener('mouseenter', () => {
+    if (!meta.dataset.split) {
+      splitMetaIntoLines(meta);
+      meta.dataset.split = '1';
+    }
+  }, { passive: true });
+
   scroller.appendChild(el);
-  // Split de la meta en lignes APRES insertion DOM (besoin du layout pour mesurer).
-  splitMetaIntoLines(meta);
   // Adopte l'état focus en cours (si une nouvelle tuile arrive après un clic sur projet)
   if (currentFocusedProject) {
     if (item.project === currentFocusedProject) el.classList.add('tile--project-focused');
@@ -1209,8 +1217,9 @@ function rebuildLayout() {
     if (meta) {
       meta.style.width = `${colWidth}px`;
       meta.style.left = tile.item.type === 'tablet' ? `${colWidth + GAP}px` : '0';
-      // colWidth a changé → wrap des lignes a changé : re-splitter à partir du texte original.
-      splitMetaIntoLines(meta);
+      // Re-splitter uniquement les métas déjà traitées : les autres seront splittées
+      // au 1er survol, à ce moment-là la largeur sera déjà à jour.
+      if (meta.dataset.split) splitMetaIntoLines(meta);
     }
   }
   fillUntil(h * 2);
