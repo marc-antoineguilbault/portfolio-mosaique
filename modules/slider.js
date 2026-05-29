@@ -129,24 +129,33 @@ function layout() {
     }
     if (prev && Math.abs(lefts[i] - prev[i]) > totalW / 2) wrapped.push(i);
   });
-  // Diapos qui wrappent : téléportées (sans transition) JUSTE hors écran, du côté d'où elles
-  // arrivent (déduit du sens du déplacement), PUIS animées vers leur cible → elles GLISSENT depuis
-  // le bord. Ni traversée d'écran (l'ancien bug), ni arrivée « en cut » (pas de pop directement
-  // dans une position de peek déjà clippée au bord).
-  // Δ = translation rigide commune à toutes les diapos non-wrappées (la courante incluse) entre
-  // l'ancien et le nouveau layout. On fait DÉMARRER chaque diapo qui wrappe à (cible − Δ) : un cran
-  // « avant » sa cible, du côté d'où elle arrive (hors écran). Elle parcourt alors exactement Δ, à
-  // la MÊME vitesse que le reste du ruban → mouvement synchrone (plus de diapo « qui arrive plus
-  // vite »), sans traversée d'écran ni arrivée « en cut ».
+  // Wraps : on distingue les LEAVING (diapo VISIBLE au layout précédent, qui doit partir hors champ
+  // dans la direction naturelle du shift) des ARRIVING (diapo HORS CHAMP au layout précédent, qui
+  // arrive en peek visible). Sans cette distinction, une diapo qui quittait le peek-gauche se faisait
+  // téléporter au bord opposé → vue comme un CUT (bug rapporté sur IMG-0).
+  //   – LEAVING : on remplace sa cible par (prev + Δ), elle glisse off-screen avec le reste du ruban,
+  //     à la même vitesse. La vraie cible logique sera atteinte au prochain layout (ARRIVING depuis
+  //     hors champ → téléport + animation classique).
+  //   – ARRIVING : téléport à (cible − Δ) hors champ puis animation CSS vers la cible (comportement
+  //     d'origine, nécessaire pour ne pas voir la diapo « traverser » l'écran pour arriver en peek).
   const delta = prev ? lefts[index] - prev[index] : 0;   // 1er layout (prev absent) : aucune wrappée
+  const wrappedLeaving = [], wrappedArriving = [];
   for (const i of wrapped) {
+    const sz = sizes[i];
+    const prevVisible = prev[i] + sz.w > 0 && prev[i] < W;
+    (prevVisible ? wrappedLeaving : wrappedArriving).push(i);
+  }
+  // LEAVING : on remplace lefts[i] par (prev + Δ) → glisse naturellement hors champ avec le ruban.
+  for (const i of wrappedLeaving) lefts[i] = prev[i] + delta;
+  // ARRIVING : téléport à (cible − Δ) puis animation CSS vers la cible.
+  for (const i of wrappedArriving) {
     state.slideEls[i].style.transition = 'none';
     state.slideEls[i].style.transform = `translate(${lefts[i] - delta}px, ${tops[i]}px)`;
   }
-  if (wrapped.length) void root.offsetWidth;             // fige la position de départ (hors écran)
-  // Toutes les diapos rejoignent leur cible avec la transition CSS, du même déplacement Δ.
+  if (wrappedArriving.length) void root.offsetWidth;     // fige les positions de départ (hors écran)
+  // Toutes les diapos rejoignent leur cible (transition CSS .slider__slide 500ms).
   state.slideEls.forEach((slide, i) => {
-    if (wrapped.includes(i)) slide.style.transition = '';
+    if (wrappedArriving.includes(i)) slide.style.transition = '';
     slide.style.transform = `translate(${lefts[i]}px, ${tops[i]}px)`;
   });
   state.lefts = lefts;
