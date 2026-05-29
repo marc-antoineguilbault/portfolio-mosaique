@@ -434,7 +434,9 @@ body {
    visibilité finale n'est déclenchée qu'au hover de la tile → fade in/out fluide. */
 .tile-scrollbar {
   position: absolute;
-  right: 8px;
+  /* Dans le passe-partout noir (.tile-frame padding) : centre de la bande = --frame-padding / 2
+     (−0.5px pour centrer le trait de 1px), +1px de décalage optique vers la gauche. */
+  right: calc(var(--frame-padding, 12px) / 2 + 0.5px);
   top: 50px;
   bottom: 50px;
   width: 1px;
