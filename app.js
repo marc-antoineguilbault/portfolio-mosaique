@@ -720,6 +720,12 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
   el.style.width = `${pos.w}px`;
   el.style.height = `${pos.h}px`;
   el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
+  // frame() ne réécrit --cursor-x/y qu'au mouvement souris ; une tuile créée pendant le
+  // défilement (souris immobile) resterait sinon sur le fallback CSS (contour centré).
+  // On l'initialise donc ici sur la position souris connue, comme les tuiles voisines.
+  const tyInit = pos.y - offset * pos.velocityMultiplier + (COL_STAGGER[pos.colIdx] ?? 0);
+  el.style.setProperty('--cursor-x', ((mouseX - pos.x) / pos.w) * 100 + '%');
+  el.style.setProperty('--cursor-y', ((mouseY - tyInit) / pos.h) * 100 + '%');
 
   const color = colorFromSeed(item.seed);
   el.style.setProperty('--tile-glow-color', color);
@@ -870,13 +876,16 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
 
   // Split différé au 1er survol : évite le burst de ~50 reflows synchrones au boot
   // (fillUntil crée toutes les tuiles d'un coup ; chaque split force 2 reflows).
-  // Sur mobile (pas de hover), le split n'est jamais déclenché.
-  el.addEventListener('mouseenter', () => {
-    if (!meta.dataset.split) {
-      splitMetaIntoLines(meta);
-      meta.dataset.split = '1';
-    }
-  }, { passive: true });
+  // Garde HAS_HOVER : sur tactile pur la méta n'est jamais révélée (CSS @media hover),
+  // inutile de splitter — et on évite un split parasite déclenché par un hover collant.
+  if (HAS_HOVER) {
+    el.addEventListener('mouseenter', () => {
+      if (!meta.dataset.split) {
+        splitMetaIntoLines(meta);
+        meta.dataset.split = '1';
+      }
+    }, { passive: true });
+  }
 
   scroller.appendChild(el);
   // Adopte l'état focus en cours (si une nouvelle tuile arrive après un clic sur projet)
