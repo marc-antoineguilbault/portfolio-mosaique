@@ -181,6 +181,11 @@ export function sliderGo(delta) { go(delta); }
 export function openSlider({ projId, startSrc, originRect, onClosed, onFinished, onNav, tileSize, attachTilt, attachScroll }) {
   if (root) return;
   const slides = projectSlides(projId);
+  // Précharge EAGER toutes les maquettes du projet dès l'ouverture, en parallèle et en priorité
+  // haute. Les <img> des diapos puiseront ensuite dans le cache HTTP → nav instantanée même vers
+  // une maquette pas encore vue (sinon le navigateur déprioritise les diapos hors-écran et on les
+  // voit apparaître au fil des clics).
+  for (const item of slides) { const pre = new Image(); pre.fetchPriority = 'high'; pre.src = item.src; }
   const index = Math.max(0, slides.findIndex((s) => s.src === startSrc));
   // Ancre horizontale = centre X de la tuile cliquée (fallback centre écran si pas d'originRect,
   // ex. ouverture via la liste clients). La courante reste posée sur ce X (pas de recentrage).
