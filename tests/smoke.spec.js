@@ -23,40 +23,6 @@ test.describe('Portfolio smoke', () => {
     await expect(page.locator('.ui-corner__suffix-item').first()).toContainText('Liquides Paris');
   });
 
-  test('focus un projet → suffix "pour <Nom>" + nav (↑ N/M ↓)', async ({ page }) => {
-    await page.goto('/');
-    await page.locator('.ui-corner--tl').click();
-    await page.locator('.ui-corner__suffix-item', { hasText: 'Liquides Paris' }).click();
-    // Le typewriter prend ~500ms à finir.
-    await expect(page.locator('.ui-corner__suffix')).toContainText('pour Liquides Paris', { timeout: 2000 });
-    await expect(page.locator('.ui-corner__project-nav')).toContainText('1/4', { timeout: 2000 });
-  });
-
-  test('nav ↑ et ↓ change l\'index courant', async ({ page }) => {
-    await page.goto('/');
-    await page.locator('.ui-corner--tl').click();
-    await page.locator('.ui-corner__suffix-item', { hasText: 'Liquides Paris' }).click();
-
-    const nav = page.locator('.ui-corner__project-nav');
-    const nextBtn = nav.locator('.ui-corner__nav-btn[aria-label="Maquette suivante"]');
-
-    // Le <button> cliquable n'existe qu'à la toute fin du typewriter du nav : typewriteProjectNav()
-    // ne remplace le texte animé par les vrais boutons (renderProjectNav) qu'une fois l'animation
-    // terminée. Attendre que le bouton soit visible est donc le signal d'état fiable « typewriter
-    // fini » — robuste sous charge, là où le waitForTimeout(800) fixe partait parfois trop tôt.
-    await expect(nextBtn).toBeVisible({ timeout: 5000 });
-    await expect(nav).toContainText('1/4');
-
-    await nextBtn.click();
-    await expect(nav).toContainText('2/4');
-
-    // navigateToProjectImage() recrée le nav (nav.replaceChildren) à chaque clic → on ré-attend
-    // l'actionnabilité du bouton fraîchement rendu avant le 2e clic plutôt que de cliquer à l'aveugle.
-    await expect(nextBtn).toBeVisible();
-    await nextBtn.click();
-    await expect(nav).toContainText('3/4');
-  });
-
   test('regression : .tile ne clippe pas la meta (pas de contain:paint)', async ({ page }) => {
     await page.goto('/');
     // Pas de timeout court : la latence du 1er paint des tuiles (init() après app.js + data + modules + AVIF) varie sous charge machine — un cap court rejoue le flake. On laisse le test timeout (30 s), comme le reste de la suite.

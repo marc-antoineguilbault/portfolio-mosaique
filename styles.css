@@ -126,8 +126,8 @@
   color: #ff3030;
 }
 
-/* Indicateur de navigation (N/M ↑ ↓) à côté du nom du projet focused.
-   Couleur de base blanche → ( N/M ) en blanc. Les ↑ ↓ ont leur propre rouge
+/* Indicateur de navigation (← N/M →) à côté du nom du projet pendant le slider.
+   Couleur de base blanche → ( N/M ) en blanc. Les ← → ont leur propre rouge
    via .ui-corner__nav-arrow (typewriter) et .ui-corner__nav-btn (DOM final). */
 .ui-corner__project-nav {
   color: #fff;
@@ -148,6 +148,9 @@
   transition: color 0.2s ease;
 }
 .ui-corner__nav-btn:hover {
+  color: #fff;
+}
+.ui-corner__nav-count {
   color: #fff;
 }
 /* ↑ ↓ pendant le typewriter (avant que le DOM des boutons cliquables soit en place) :
@@ -238,7 +241,9 @@ body {
   border-radius: 50%;
   background: rgba(180, 180, 180, 0.55);
   pointer-events: none;
-  z-index: 1000;
+  /* Au-dessus de l'overlay slider (z 20000) : sinon le curseur custom passe derrière et
+     disparaît quand le slider est ouvert. */
+  z-index: 21000;
   /* Transform set en JS à chaque mousemove (perf : GPU compositing, pas de layout). */
   transition:
     width 0.4s cubic-bezier(0.4, 0, 0.4, 1),
@@ -365,8 +370,10 @@ body {
   transition: opacity 0.45s ease;
 }
 
-/* Tablet : Y plus court, même spread que mobile. */
-.tile[data-type="tablet"] .tile-frame {
+/* Tablet : Y plus court, même spread que mobile. Même règle pour les diapos tablette du
+   slider → glow strictement identique à la mosaïque (pas de drift entre les deux contextes). */
+.tile[data-type="tablet"] .tile-frame,
+.slider__slide[data-type="tablet"] .tile-frame {
   --glow-spread: -120px;
   --glow-y: 80px;
 }
@@ -447,7 +454,8 @@ body {
   transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.tile:hover .tile-scrollbar.is-active {
+.tile:hover .tile-scrollbar.is-active,
+.slider__slide:hover .tile-scrollbar.is-active {
   opacity: 1;
 }
 
@@ -545,16 +553,6 @@ body {
   }
 }
 
-/* Compositable (opacity vs filter brightness) → pas de repaint, transition GPU pure. */
-.tile--project-dimmed .tile-scroll {
-  opacity: 0.18;
-}
-
-/* Contour atténué quand la tile est dimmed (focus sur un autre projet). */
-.tile--project-dimmed .tile-frame::before {
-  opacity: 0.2;
-}
-
 .tile-meta__subtitle {
   font-size: 12px;
   letter-spacing: 0.04em;
@@ -648,6 +646,7 @@ body {
   .tile:hover {
     --glow-alpha: 1;
   }
+  .slider__slide { transition: none !important; }
 }
 
 /* Input sans habillage : pas de fond, pas de bord. Le caret blanc reste visible
@@ -679,3 +678,85 @@ body {
   transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 body.is-client-list .viewport { opacity: 0; pointer-events: none; }
+
+/* Slider (ouvert OU en fermeture) : le chrome UI — dégradés décoratifs + textes des coins
+   (identité TL, email TR) — reste AU-DESSUS de tout, DANS TOUS LES CAS : par dessus le slider
+   (z 20000) ET la mosaïque qui remonte à 20001 pendant le retour des tuiles. z 20002 > 20001 >
+   20000 ; seul #cursor (21000) passe encore au-dessus. Les gradients ne sont plus masqués → le
+   dégradé de lisibilité reste posé sur le slider comme sur les tuiles entrantes. */
+body[data-mode="slider"] .ui-overlay { z-index: 20002; }
+/* Le coin TL affiche "pour <Nom> (← N/M →)" : seuls les boutons de nav doivent capter le clic.
+   Le reste du label (texte) passe en pointer-events:none → un clic dans cette zone traverse
+   jusqu'au slider et le ferme (clic dans le vide), sans rouvrir la liste clients. Le coin TR
+   (email) garde son pointer-events:auto hérité → lien mailto toujours cliquable. */
+body[data-mode="slider"] .ui-corner--tl { pointer-events: none; }
+body[data-mode="slider"] .ui-corner--tl .ui-corner__nav-btn { pointer-events: auto; }
+
+/* Fermeture du slider — retour des tuiles : la mosaïque passe AU-DESSUS de l'overlay slider
+   (z 20001 > 20000) avec un fond transparent (le #000 du body sert de backdrop) → les tuiles des
+   autres projets, qui reviennent du haut et du bas, arrivent « par dessus » les diapos en train de
+   disparaître au lieu de glisser dessous. Le chrome UI (.ui-overlay z 20002) et #cursor (21000)
+   restent strictement au-dessus. Classe posée/retirée par returnTiles (app.js). */
+body.is-returning .viewport {
+  z-index: 20001;
+  background: transparent;
+}
+
+/* ─── Slider projet ──────────────────────────────────────────────────────── */
+.slider {
+  position: fixed;
+  inset: 0;
+  z-index: 20000; /* au-dessus de tout : ui-overlay (10001), canvas onde (9999), etc. */
+  background: #000;
+  overflow: hidden;
+}
+.slider__track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.slider__slide {
+  position: absolute;
+  /* left/top:0 + transform absolu posé par layout() (slider.js) : la diapo garde sa taille
+     mosaïque, ancrée en X sur la tuile cliquée et recentrée verticalement (pas d'agrandissement).
+     TOUTES les diapos sont positionnées dès l'ouverture (plus de far masquée) ; l'overflow:hidden
+     du .slider clippe celles hors écran et celles qui chevauchent les bords débordent. */
+  left: 0; top: 0;
+  transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1), opacity 500ms ease;
+  will-change: transform, opacity;
+}
+
+/* Apparence IDENTIQUE à une tuile mosaïque : la structure .tile-frame > .tile-inner > scroll
+   hérite du radius (outer/inner), du box-shadow glow coloré et de la lumière ::after. Comme dans
+   la mosaïque, ces effets n'apparaissent qu'AU SURVOL de la diapo (plus de "toujours actif").
+   - Glow coloré : on rejoue @keyframes glow-breathe (anime --glow-alpha) au hover du slide, iso
+     à la mosaïque (.tile:hover). Les couleurs --tile-glow-1/2/3 sont posées par diapo en JS.
+   - Lumière radiale : la règle mosaïque .tile-inner:hover::after { opacity:1 } s'applique déjà
+     (la diapo a un .tile-inner) ; on double via .slider__slide:hover par robustesse. */
+.slider__slide:hover .tile-frame { animation: glow-breathe 2.6s ease-in-out infinite; }
+.slider__slide:hover .tile-inner::after { opacity: 1; }
+
+/* Méta sous chaque diapo : identique à la mosaïque mais TOUJOURS visible (le hover mosaïque
+   .tile:hover ne cible pas .slider__slide ; le texte n'est pas splitté ici donc les <p> bruts
+   s'affichent dès que le bloc est opaque). */
+.slider__slide .tile-meta {
+  opacity: 1;
+  pointer-events: none;
+  /* Fondu de sortie : à la fermeture (.slider.is-closing), les descriptions sous CHAQUE diapo
+     s'effacent pendant que la maquette cliquée retourne à sa place (FLIP retour). */
+  transition: opacity 0.4s ease;
+}
+.slider.is-closing .slider__slide .tile-meta {
+  opacity: 0;
+}
+.slider__scroll {
+  width: 100%; height: 100%;
+  overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: none; border-radius: inherit;
+}
+.slider__scroll::-webkit-scrollbar { width: 0; height: 0; }
+.slider__scroll img { width: 100%; height: auto; display: block; }
+/* .slider__counter, .slider__arrow, .slider__arrow--prev, .slider__arrow--next
+   supprimés : navigation désormais dans le coin TL via .ui-corner__project-nav */
