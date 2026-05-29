@@ -311,43 +311,30 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
     const W = window.innerWidth;
     const centerY = window.innerHeight / 2;
     const curLeft = state.lefts[index];
-    const targets = state.slideEls.map((el, i) => {
+    // Animation via Web Animations API (el.animate) : déclencheur EXPLICITE que le compositor
+    // exécute toujours, indépendamment des quirks de CSS transition (le pattern sync ou rAF se
+    // faisait optimiser par Chrome → cut visible au lieu du slide-in). Ici l'API crée une
+    // Animation que le browser garantit d'interpoler entre les 2 keyframes.
+    state.slideEls.forEach((el, i) => {
       const sz = slideSize(slides[i].type);
       const finalLeft = state.lefts[i];
       const finalTop = centerY - sz.h / 2;
-      // First : cliquée → depuis sa tuile (vertical, X inchangé) ; voisine → hors écran du côté
-      // vers lequel elle est posée (gauche/droite), déjà à hauteur centrée.
-      // Cliquée : départ visuel depuis la tuile CLIQUÉE (originRect.left), même si l'algo a shifté
-      // anchorX. La diapo glisse alors verticalement ET légèrement horizontalement (0 si pas de shift).
+      // Cliquée : départ depuis la tuile (originRect) — continuité avec le clic.
+      // Voisines : départ depuis le bord de leur côté (gauche depuis la gauche, droite depuis la droite).
       const startLeft = i === index ? originRect.left : (finalLeft < curLeft ? -(sz.w + 60) : W + 60);
       const startTop  = i === index ? originRect.top : finalTop;
-      el.style.transition = 'none';
-      el.style.transform = `translate(${startLeft}px, ${startTop}px)`;
-      return { finalLeft, finalTop, dist: Math.abs(finalLeft - curLeft) };
+      const delay = i === index ? 0 : Math.min(Math.abs(finalLeft - curLeft) / W, 1) * ENTRY_STAGGER_MAX_MS;
+      // Pose la position cible en inline : après l'animation (fill:'backwards' = applique start
+      // PENDANT le delay, rien après), c'est le transform inline qui s'applique → état stable final.
+      el.style.transform = `translate(${finalLeft}px, ${finalTop}px)`;
+      el.animate(
+        [
+          { transform: `translate(${startLeft}px, ${startTop}px)` },
+          { transform: `translate(${finalLeft}px, ${finalTop}px)` }
+        ],
+        { duration: FLIP_MS, delay, easing: FLIP_EASE, fill: 'backwards' }
+      );
     });
-    root.getBoundingClientRect();                          // reflow : fige les positions de départ
-    // Play : on attend une frame (double rAF) que les positions de départ soient PAINTÉES avant de
-    // changer transition + transform pour déclencher la CSS transition. C'est le pattern le plus
-    // fiable (Chrome optimise parfois le sync en ne peintant que l'état final → cut visible).
-    // setTimeout(60ms) en fallback : si rAF est throttlé (onglet de fond, headless), on déclenche
-    // quand même les transforms cibles (pas d'animation visible dans ce cas, mais l'état logique
-    // est posé pour les mesures et la transition reprend dès que la page repeint).
-    let triggered = false;
-    const playFinal = () => {
-      if (triggered || !state) return;
-      triggered = true;
-      state.slideEls.forEach((el, i) => {
-        const delay = i === index ? 0 : Math.min(targets[i].dist / W, 1) * ENTRY_STAGGER_MAX_MS;
-        el.style.transition = `transform ${FLIP_MS}ms ${FLIP_EASE} ${delay}ms`;
-        el.style.transform = `translate(${targets[i].finalLeft}px, ${targets[i].finalTop}px)`;
-      });
-    };
-    requestAnimationFrame(() => requestAnimationFrame(playFinal));
-    setTimeout(playFinal, 60);
-    setTimeout(() => {                                     // cleanup → rend la main à layout()/CSS
-      if (!state) return;
-      state.slideEls.forEach((el) => { el.style.transition = ''; });
-    }, FLIP_MS + ENTRY_STAGGER_MAX_MS + 80);
   }
 
   attachDrag();
