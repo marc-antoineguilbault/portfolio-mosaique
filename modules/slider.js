@@ -11,6 +11,7 @@ const HAS_HOVER = window.matchMedia('(hover: hover)').matches;
 const FLIP_MS = 700;
 const FLIP_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
 const LAYOUT_MS = 500;   // = durée de transition de .slider__slide (styles.css)
+const ENTRY_STAGGER_MAX_MS = 100;   // décalage max entre voisines à l'ouverture (les + proches d'abord)
 
 const SWIPE_THRESHOLD = 80;
 
@@ -238,31 +239,43 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
 
   document.body.appendChild(root);
 
-  // ─── FLIP d'ouverture : recentrage VERTICAL de la SEULE diapo courante ──────
-  // La diapo a la taille mosaïque (= taille de la tuile = originRect), et anchorX = centre X
-  // de la tuile → X final == X d'origine. La seule différence est Y : la courante apparaît
-  // PILE sur la tuile (originRect.top) puis glisse verticalement jusqu'au centre. Pas de scale,
-  // pas de décalage X. On anime le transform du .slider__slide (Y), réécrit ensuite par layout().
-  // Les voisines sont STATIQUES à la position posée par layout() (plus d'apparition une-par-une).
+  // ─── Animation d'ouverture ──────────────────────────────────────────────────
+  // Continuité avec le clic : la diapo CLIQUÉE (courante) part de la position verticale de sa
+  // tuile (originRect.top, même X) et glisse jusqu'au centre. Les VOISINES arrivent depuis le
+  // bord de leur côté (à gauche → depuis la gauche, à droite → depuis la droite) jusqu'à leur
+  // position de layout. Stagger ∝ distance horizontale (les plus proches entrent en premier).
+  // Positions finales = state.lefts (posées par layout()) ; layout() les a posées calque DÉTACHÉ
+  // (pas de transition) → on (re)part d'une position de départ ici, après appendChild, pour animer.
   if (originRect && !REDUCED_MOTION) {
     const { slides, index } = state;
-    const sizeCur = slideSize(slides[index].type);
-    const cur = state.slideEls[index];
-    const sz = slideSize(slides[index].type);
-    const p = slidePos(0, sz, sizeCur);
-    // First : départ à originRect.top (X final inchangé = X d'origine).
-    cur.style.transition = 'none';
-    cur.style.transform = `translate(${p.left}px, ${originRect.top}px)`;
-    // Reflow pour figer l'état "first", puis play vers la position finale (centre vertical).
-    root.getBoundingClientRect();
-    requestAnimationFrame(() => {
-      if (!state) return;
-      cur.style.transition = `transform ${FLIP_MS}ms ${FLIP_EASE}`;
-      cur.style.transform = `translate(${p.left}px, ${p.top}px)`;
+    const W = window.innerWidth;
+    const centerY = window.innerHeight / 2;
+    const curLeft = state.lefts[index];
+    const targets = state.slideEls.map((el, i) => {
+      const sz = slideSize(slides[i].type);
+      const finalLeft = state.lefts[i];
+      const finalTop = centerY - sz.h / 2;
+      // First : cliquée → depuis sa tuile (vertical, X inchangé) ; voisine → hors écran du côté
+      // vers lequel elle est posée (gauche/droite), déjà à hauteur centrée.
+      const startLeft = i === index ? finalLeft : (finalLeft < curLeft ? -(sz.w + 60) : W + 60);
+      const startTop  = i === index ? originRect.top : finalTop;
+      el.style.transition = 'none';
+      el.style.transform = `translate(${startLeft}px, ${startTop}px)`;
+      return { finalLeft, finalTop, dist: Math.abs(finalLeft - curLeft) };
     });
-    setTimeout(() => {                                     // cleanup → rend la main à layout()
-      if (cur) cur.style.transition = '';
-    }, FLIP_MS + 60);
+    root.getBoundingClientRect();                          // reflow : fige les positions de départ
+    // Play SYNCHRONE (pas de rAF) : après le reflow, changer transition + transform déclenche la
+    // transition CSS start→final. Plus robuste qu'un rAF (qui peut être gelé quand la page ne peint
+    // pas : onglet de fond, headless) → sinon les diapos resteraient bloquées hors écran.
+    state.slideEls.forEach((el, i) => {
+      const delay = i === index ? 0 : Math.min(targets[i].dist / W, 1) * ENTRY_STAGGER_MAX_MS;
+      el.style.transition = `transform ${FLIP_MS}ms ${FLIP_EASE} ${delay}ms`;
+      el.style.transform = `translate(${targets[i].finalLeft}px, ${targets[i].finalTop}px)`;
+    });
+    setTimeout(() => {                                     // cleanup → rend la main à layout()/CSS
+      if (!state) return;
+      state.slideEls.forEach((el) => { el.style.transition = ''; });
+    }, FLIP_MS + ENTRY_STAGGER_MAX_MS + 80);
   }
 
   attachDrag();
