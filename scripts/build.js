@@ -6,8 +6,9 @@
 // Le contenu dist/ est ensuite uploadé comme artifact GitHub Pages.
 
 import { build } from 'esbuild';
-import { cp, mkdir, rm, stat } from 'node:fs/promises';
+import { cp, mkdir, rm, stat, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 
 const DIST = 'dist';
 
@@ -37,8 +38,24 @@ async function buildCss() {
   });
 }
 
+async function hashFile(path) {
+  const buf = await readFile(path);
+  return createHash('sha256').update(buf).digest('hex').slice(0, 10);
+}
+
 async function copyStatic() {
-  await cp('index.html', `${DIST}/index.html`);
+  // index.html : remplace les cache-busters ?v=NN par un hash du CONTENU bundlé
+  // (app.js / styles.css). Le service worker sert les assets versionnés en
+  // cache-first ; un hash garantit qu'un changement de contenu change l'URL,
+  // donc invalide le cache (plus de bump manuel oubliable de ?v=).
+  const jsHash = await hashFile(`${DIST}/app.js`);
+  const cssHash = await hashFile(`${DIST}/styles.css`);
+  const html = (await readFile('index.html', 'utf8'))
+    .replace(/app\.js\?v=[^"']*/g, `app.js?v=${jsHash}`)
+    .replace(/styles\.css\?v=[^"']*/g, `styles.css?v=${cssHash}`);
+  await writeFile(`${DIST}/index.html`, html);
+  console.log(`cache-bust : app.js?v=${jsHash}  styles.css?v=${cssHash}`);
+
   await cp('favicon.svg', `${DIST}/favicon.svg`);
   await cp('sw.js', `${DIST}/sw.js`);
   await cp('CNAME', `${DIST}/CNAME`);
