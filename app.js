@@ -53,8 +53,10 @@ const projectDescById = new Map(projects.map((p) => [p.id, p.desc]));
 function unfocusProject() {
   if (!currentFocusedProject) return;
   currentFocusedProject = null;
-  document.querySelectorAll('.tile').forEach((t) => {
-    t.classList.remove('tile--project-focused', 'tile--project-dimmed');
+  // Sur liveTiles (et non le DOM) : inclut les tuiles détachées par le recyclage, sinon
+  // elles réapparaîtraient sans nettoyage de classe au rattachement.
+  liveTiles.forEach((t) => {
+    t.el.classList.remove('tile--project-focused', 'tile--project-dimmed');
   });
   animateSuffix('');
   currentProjectImages = [];
@@ -239,13 +241,16 @@ function preloadProjectAndNeighbors(projId) {
 function focusProject(projId) {
   if (!projId) return;
   currentFocusedProject = projId;
-  document.querySelectorAll('.tile').forEach((t) => {
-    if (t.dataset.project === projId) {
-      t.classList.add('tile--project-focused');
-      t.classList.remove('tile--project-dimmed');
+  // Sur liveTiles (et non le DOM) : inclut les tuiles détachées par le recyclage. Sans ça,
+  // une tuile détachée puis rattachée pendant le scroll vers le projet réapparaît sans la
+  // classe → non grisée (visible surtout via la liste de projets, qui scrolle au clic).
+  liveTiles.forEach((t) => {
+    if (t.item.project === projId) {
+      t.el.classList.add('tile--project-focused');
+      t.el.classList.remove('tile--project-dimmed');
     } else {
-      t.classList.add('tile--project-dimmed');
-      t.classList.remove('tile--project-focused');
+      t.el.classList.add('tile--project-dimmed');
+      t.el.classList.remove('tile--project-focused');
     }
   });
   // Prépare la nav inter-maquettes : liste des images du projet, tri par src (m01,m02,t01,t02).
