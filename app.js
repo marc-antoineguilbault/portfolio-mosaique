@@ -318,15 +318,19 @@ function closeClientList() {
   if (suffix) suffix.replaceChildren();
 }
 
-// Click sur le label TL → toggle. On ignore les clics sur les liens et les items déjà gérés.
+// Click sur le label TL → toggle la liste des projets. On ignore les clics sur les
+// liens et les items déjà gérés.
+// Desktop/souris UNIQUEMENT : sur tactile (mobile), le tap sur la phrase du haut ne
+// doit pas ouvrir la liste → on ne pose ni handler ni sémantique bouton. La phrase
+// reste alors du texte statique.
 const tlLabel = document.querySelector('.ui-corner--tl');
-tlLabel?.addEventListener('click', (e) => {
-  if (e.target.closest('a, .ui-corner__suffix-item')) return;
-  if (clientListOpen) closeClientList();
-  else { unfocusProject(); openClientList(); }
-});
-// A11y : le label TL est focusable et ouvre la liste via Enter/Space.
-if (tlLabel) {
+if (HAS_HOVER && tlLabel) {
+  tlLabel.addEventListener('click', (e) => {
+    if (e.target.closest('a, .ui-corner__suffix-item')) return;
+    if (clientListOpen) closeClientList();
+    else { unfocusProject(); openClientList(); }
+  });
+  // A11y : le label TL est focusable et ouvre la liste via Enter/Space.
   tlLabel.tabIndex = 0;
   tlLabel.setAttribute('role', 'button');
   tlLabel.setAttribute('aria-label', 'Ouvrir la liste des projets');

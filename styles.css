@@ -498,13 +498,17 @@ body {
 
 /* Apparition : chaque ligne remonte de 24px → 0, staggered via --line-delay (défini en JS).
    Note : déclenchée UNIQUEMENT au hover (= desktop). Le clic projet ne fait plus apparaître
-   la meta sous les maquettes (focus = juste dim des autres tiles + suffix TL). */
-.tile:hover .tile-meta__line-inner {
-  transform: translateY(0);
-  opacity: 1;
-  transition:
-    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1) var(--line-delay, 0s),
-    opacity 0.6s ease var(--line-delay, 0s);
+   la meta sous les maquettes (focus = juste dim des autres tiles + suffix TL).
+   Gardée derrière @media (hover: hover) : sur tactile, un tap déclenche :hover (hover
+   collant) → sans ce garde, le texte de la meta apparaîtrait au tap en mobile. */
+@media (hover: hover) {
+  .tile:hover .tile-meta__line-inner {
+    transform: translateY(0);
+    opacity: 1;
+    transition:
+      transform 0.8s cubic-bezier(0.22, 1, 0.36, 1) var(--line-delay, 0s),
+      opacity 0.6s ease var(--line-delay, 0s);
+  }
 }
 
 /* Compositable (opacity vs filter brightness) → pas de repaint, transition GPU pure. */
