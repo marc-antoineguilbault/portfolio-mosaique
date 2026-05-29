@@ -70,23 +70,40 @@ function layout() {
   const totalW = sizes.reduce((acc, z) => acc + z.w, 0) + (N - 1) * GAP;  // largeur totale du ruban
   const lefts = new Array(N);
   const rels = new Array(N);                 // décalage circulaire vs courante
-  lefts[index] = anchorX - sizes[index].w / 2;   // courante ANCRÉE sur la tuile cliquée (pas de recentrage X)
   rels[index] = 0;
-  // Répartition gauche/droite des voisines : la courante reste à anchorX, on choisit COMBIEN
-  // passent à gauche pour que le RUBAN soit le plus centré possible sur le viewport autour de cette
-  // ancre → on comble au mieux les deux bords (« hors champ », pas de vide). Cible : extension
-  // gauche (de anchorX au bord gauche du ruban) ext ≈ anchorX + (totalW - W) / 2. leftCount peut
-  // valoir 0 (toutes les voisines à DROITE) : indispensable quand on clique près du bord GAUCHE →
-  // on remplit la droite avec +1 puis le début de +2 (le vide signalé sur Pozzo). Clamp : au moins
-  // 1 voisine à droite (carousel circulaire : la 1re suit la dernière) → leftCount ≤ N - 2.
-  const leftTarget = anchorX + (totalW - W) / 2;
+  // Répartition gauche/droite + ancrage : on cherche le couple (leftCount, anchorX_ajusté) qui
+  // garantit que les DEUX bords du ruban débordent (peek visible de chaque côté). La courante reste
+  // au plus près de la tuile cliquée — anchorX n'est shifté que si AUCUN leftCount ne permet le
+  // double-overflow à l'anchorX original. Le shift est alors MINIMAL (clamp dans la plage valide
+  // la plus proche). Plage valide pour un leftCount k : anchorX ∈ (ext_k − (totalW − W), ext_k).
+  // En cas de shift égal entre candidats : le plus centré (ext_k ≈ leftTarget) gagne.
   const maxLeft = Math.max(0, N - 2);
-  let leftCount = 0, bestErr = Infinity, ext = sizes[index].w / 2;
-  for (let k = 0; k <= maxLeft; k++) {
-    if (Math.abs(ext - leftTarget) < bestErr) { bestErr = Math.abs(ext - leftTarget); leftCount = k; }
-    ext += GAP + sizes[((index - (k + 1)) % N + N) % N].w;   // extension gauche cumulée (k voisines)
+  const leftTarget = anchorX + (totalW - W) / 2;
+  // Marge MIN d'overflow visible (px) sur CHAQUE bord : sans elle, le clamp tombe pile à la
+  // frontière → bord du ruban juste à 0 ou à W → peek invisible (« touche mais ne déborde pas »).
+  // 60px ≈ 4% du viewport 1470, imperceptible sur le shift d'anchor, mais visible côté peek.
+  const MIN_OVERFLOW = 60;
+  const candidates = [];
+  {
+    let ext = sizes[index].w / 2;
+    for (let k = 0; k <= maxLeft; k++) {
+      const lo = ext - (totalW - W) + MIN_OVERFLOW;
+      const hi = ext - MIN_OVERFLOW;
+      const clamped = lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, anchorX));
+      candidates.push({ k, clamped, shift: Math.abs(clamped - anchorX), centerErr: Math.abs(ext - leftTarget) });
+      ext += GAP + sizes[((index - (k + 1)) % N + N) % N].w;
+    }
   }
+  candidates.sort((a, b) => a.shift - b.shift || a.centerErr - b.centerErr);
+  const chosen = candidates[0];
+  const leftCount = chosen.k;
   const rightCount = N - 1 - leftCount;
+  // anchorX ajusté (≈ original si aucun shift nécessaire). Mis à jour dans state pour cohérence
+  // avec slidePos / drag / navs suivantes. La tuile cliquée reste la référence visuelle de
+  // l'ouverture : l'entrance FLIP démarre depuis originRect, pas depuis lefts[index] (cf. openSlider).
+  const adjustedAnchorX = chosen.clamped;
+  state.anchorX = adjustedAnchorX;
+  lefts[index] = adjustedAnchorX - sizes[index].w / 2;
   // Droite : voisines circulaires index+1, index+2, … (mod N) → la 1re suit la dernière.
   let edge = lefts[index] + sizes[index].w;
   for (let step = 1; step <= rightCount; step++) {
@@ -129,15 +146,14 @@ function layout() {
     }
     if (prev && Math.abs(lefts[i] - prev[i]) > totalW / 2) wrapped.push(i);
   });
-  // Wraps : on distingue les LEAVING (diapo VISIBLE au layout précédent, qui doit partir hors champ
-  // dans la direction naturelle du shift) des ARRIVING (diapo HORS CHAMP au layout précédent, qui
-  // arrive en peek visible). Sans cette distinction, une diapo qui quittait le peek-gauche se faisait
-  // téléporter au bord opposé → vue comme un CUT (bug rapporté sur IMG-0).
-  //   – LEAVING : on remplace sa cible par (prev + Δ), elle glisse off-screen avec le reste du ruban,
-  //     à la même vitesse. La vraie cible logique sera atteinte au prochain layout (ARRIVING depuis
-  //     hors champ → téléport + animation classique).
-  //   – ARRIVING : téléport à (cible − Δ) hors champ puis animation CSS vers la cible (comportement
-  //     d'origine, nécessaire pour ne pas voir la diapo « traverser » l'écran pour arriver en peek).
+  // Wraps : LEAVING (visible avant, va loin hors champ) glisse off-screen en DEUX phases pour ne
+  // pas cutter ET garder le bord opposé rempli après la transition :
+  //   – phase 1 (transition CSS 500ms) : transform animé vers (prev + Δ) → glisse off-screen avec
+  //     le reste du ruban, smooth, à la même vitesse.
+  //   – phase 2 (setTimeout après LAYOUT_MS) : SNAP invisible vers la vraie cible logique lefts[i]
+  //     (right peek dans le sens forward) → le bord opposé se remplit, état stable.
+  // ARRIVING (hors champ avant, arrive en peek visible) : téléport à (cible − Δ) puis animation CSS
+  // vers la cible (comportement d'origine, nécessaire pour ne pas voir la diapo traverser l'écran).
   const delta = prev ? lefts[index] - prev[index] : 0;   // 1er layout (prev absent) : aucune wrappée
   const wrappedLeaving = [], wrappedArriving = [];
   for (const i of wrapped) {
@@ -145,19 +161,49 @@ function layout() {
     const prevVisible = prev[i] + sz.w > 0 && prev[i] < W;
     (prevVisible ? wrappedLeaving : wrappedArriving).push(i);
   }
-  // LEAVING : on remplace lefts[i] par (prev + Δ) → glisse naturellement hors champ avec le ruban.
-  for (const i of wrappedLeaving) lefts[i] = prev[i] + delta;
-  // ARRIVING : téléport à (cible − Δ) puis animation CSS vers la cible.
+  // Annule + APPLIQUE les snaps en attente d'un layout précédent. Application immédiate pour que le
+  // transform rendu corresponde à la position logique (sinon une diapo mi-animation aurait son
+  // transform désynchronisé de state.lefts et la nouvelle transition partirait du mauvais point).
+  state.pendingSnaps = state.pendingSnaps || {};
+  for (const i in state.pendingSnaps) {
+    const ps = state.pendingSnaps[i];
+    clearTimeout(ps.timeoutId);
+    const el = state.slideEls[+i];
+    if (el) {
+      el.style.transition = 'none';
+      el.style.transform = `translate(${ps.finalLeft}px, ${ps.finalTop}px)`;
+      el.getBoundingClientRect();
+      el.style.transition = '';
+    }
+  }
+  state.pendingSnaps = {};
+  // ARRIVING : téléport hors champ à (cible − Δ) puis animation CSS vers la cible.
   for (const i of wrappedArriving) {
     state.slideEls[i].style.transition = 'none';
     state.slideEls[i].style.transform = `translate(${lefts[i] - delta}px, ${tops[i]}px)`;
   }
   if (wrappedArriving.length) void root.offsetWidth;     // fige les positions de départ (hors écran)
-  // Toutes les diapos rejoignent leur cible (transition CSS .slider__slide 500ms).
+  // Applique les transforms. LEAVING phase 1 : transform animé vers (prev + Δ) hors champ.
   state.slideEls.forEach((slide, i) => {
     if (wrappedArriving.includes(i)) slide.style.transition = '';
-    slide.style.transform = `translate(${lefts[i]}px, ${tops[i]}px)`;
+    const x = wrappedLeaving.includes(i) ? prev[i] + delta : lefts[i];
+    slide.style.transform = `translate(${x}px, ${tops[i]}px)`;
   });
+  // LEAVING phase 2 : après la transition, SNAP invisible vers la vraie cible logique lefts[i].
+  for (const i of wrappedLeaving) {
+    const finalLeft = lefts[i], finalTop = tops[i];
+    const timeoutId = setTimeout(() => {
+      if (!state || !state.pendingSnaps || !state.pendingSnaps[i]) return;
+      delete state.pendingSnaps[i];
+      const el = state.slideEls[i];
+      if (!el) return;
+      el.style.transition = 'none';
+      el.style.transform = `translate(${finalLeft}px, ${finalTop}px)`;
+      el.getBoundingClientRect();
+      el.style.transition = '';
+    }, LAYOUT_MS + 20);
+    state.pendingSnaps[i] = { timeoutId, finalLeft, finalTop };
+  }
   state.lefts = lefts;
 }
 
@@ -271,7 +317,9 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
       const finalTop = centerY - sz.h / 2;
       // First : cliquée → depuis sa tuile (vertical, X inchangé) ; voisine → hors écran du côté
       // vers lequel elle est posée (gauche/droite), déjà à hauteur centrée.
-      const startLeft = i === index ? finalLeft : (finalLeft < curLeft ? -(sz.w + 60) : W + 60);
+      // Cliquée : départ visuel depuis la tuile CLIQUÉE (originRect.left), même si l'algo a shifté
+      // anchorX. La diapo glisse alors verticalement ET légèrement horizontalement (0 si pas de shift).
+      const startLeft = i === index ? originRect.left : (finalLeft < curLeft ? -(sz.w + 60) : W + 60);
       const startTop  = i === index ? originRect.top : finalTop;
       el.style.transition = 'none';
       el.style.transform = `translate(${startLeft}px, ${startTop}px)`;
@@ -363,6 +411,7 @@ export function closeSlider() {
   if (!root || state.closing) return;
   state.closing = true;
   root.classList.add('is-closing');                   // fondu de sortie des descriptions (CSS)
+  if (state.pendingSnaps) { for (const ps of Object.values(state.pendingSnaps)) clearTimeout(ps.timeoutId); state.pendingSnaps = {}; }
   const cb = state.onClosed;
   const onFinished = state.onFinished;
   const origin = state.originRect;
