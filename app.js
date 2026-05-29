@@ -270,7 +270,11 @@ let clientListOpen = false;
 
 // Phrase de bio affichée en bas de l'écran quand la liste des projets est ouverte
 // (reprise du statut "Lead Designer Interactif" du Portfolio Personnel).
-const BIO_TEXT = "Je maîtrise des systèmes, les ordonne, les décline et les enrichis. La rigueur dans chaque détail.";
+// Deux lignes : retour à la ligne avant "La rigueur".
+const BIO_LINES = [
+  'Je maîtrise des systèmes, les ordonne, les décline et les enrichis.',
+  'La rigueur dans chaque détail.',
+];
 // Décalage entre l'apparition de deux noms consécutifs (cascade).
 const CASCADE_STEP_MS = 55;
 
@@ -326,7 +330,10 @@ function openClientList() {
   // (fill-mode both) la garde masquée pendant le délai → pas de flash avant l'alignement.
   const bio = document.createElement('p');
   bio.className = 'ui-bio';
-  bio.textContent = BIO_TEXT;
+  BIO_LINES.forEach((line, i) => {
+    if (i) bio.appendChild(document.createElement('br'));
+    bio.appendChild(document.createTextNode(line));
+  });
   bio.style.setProperty('--bio-delay', `${REDUCED_MOTION ? 0 : projects.length * CASCADE_STEP_MS}ms`);
   document.querySelector('.ui-overlay')?.appendChild(bio);
   requestAnimationFrame(alignBio);
