@@ -490,10 +490,11 @@ body {
   top: 100%;
   left: 0;
   padding-top: 16px;
-  /* Masquée par défaut : le texte des <p> n'est révélé qu'une fois splitté en lignes
-     (.tile-meta__line-inner repasse en visibility: visible). Sans ça, le texte brut
-     non encore splitté resterait visible au repos (le split est différé au survol). */
-  visibility: hidden;
+  /* Masquée à l'œil par défaut via opacity (et NON visibility/display) : le texte brut
+     non encore splitté ne doit pas s'afficher au repos, mais doit rester dans l'arbre
+     d'accessibilité et indexable (lecteurs d'écran / SEO). Révélée au survol (desktop) ;
+     forcée visible en reduced-motion. Le split, lui, est différé au 1er survol. */
+  opacity: 0;
   color: rgba(255, 255, 255, 0.85);
   font-family: 'Suisse Int\'l', 'Suisse Intl', 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   pointer-events: none;
@@ -503,6 +504,8 @@ body {
 /* Lift léger de la meta au rollover (synchro avec le lift de la tile en JS). */
 @media (hover: hover) {
   .tile:hover .tile-meta {
+    /* Révèle le bloc méta au survol (desktop). Les lignes gèrent leur propre stagger. */
+    opacity: 1;
     transform: translateY(-8px);
   }
 }
@@ -517,9 +520,6 @@ body {
 
 .tile-meta__line-inner {
   display: block;
-  /* Contourne le visibility: hidden de .tile-meta : seules les lignes réellement
-     splittées sont rendues (l'opacity gère ensuite l'apparition au survol). */
-  visibility: visible;
   transform: translateY(24px);
   opacity: 0;
   transition:
@@ -633,6 +633,11 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  /* reduced-motion : la méta reste lisible en permanence (indépendamment du survol),
+     comme avant le split différé — on neutralise le masquage par opacity. */
+  .tile-meta {
+    opacity: 1 !important;
   }
   .tile-meta__line-inner {
     transform: none !important;
