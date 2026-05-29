@@ -12,7 +12,7 @@
  * Bump CACHE_VERSION quand le service worker change. L'activate purge les anciens caches.
  */
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `portfolio-${CACHE_VERSION}`;
 
 self.addEventListener('install', (event) => {
