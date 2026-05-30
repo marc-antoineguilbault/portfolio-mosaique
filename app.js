@@ -443,16 +443,15 @@ function exitFocus() {
   };
 
   const phase3a = () => {
-    // M0 retourne à sa position Y mosaïque AVANT que les autres apparaissent.
+    // M0 retourne à sa position Y mosaïque, EN PARALLÈLE avec phase 3b (autres réapparaissent).
+    // Toutes les anims (clones out, M0 Y, autres in) tournent simultanément T+0 → T+700.
     if (userClickedTile && !REDUCED_MOTION) {
       const tile = liveTiles.find((t) => t.el === userClickedTile.el) || userClickedTile;
       const ty = tile.y - offset * tile.velocityMultiplier + (COL_STAGGER[tile.colIdx] ?? 0);
       userClickedTile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
       userClickedTile.el.style.transform = `translate3d(${userClickedTile.x}px, ${ty}px, 0)`;
-      setTimeout(phase3b, EXIT_MS + 50);
-    } else {
-      phase3b();
     }
+    phase3b();
   };
 
   const phase2 = () => {
