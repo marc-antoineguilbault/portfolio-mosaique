@@ -65,7 +65,7 @@ const EXIT_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
 // gauche, ancien cliquée sort, nouveau clone wrap arrive de droite).
 const FOCUS_ROW_STAGGER_MS = 150;
 let focusList = [];     // [{el, item, x, y, w, h, isClone}, ...] — index 0 = cliquée
-let pastClones = [];    // anciennes cliquées (clones) shiftées à gauche après advance, nettoyées à exitFocus
+let pastSlots = [];     // [{el, x, y, isClone}, ...] — anciennes cliquées qui drift à gauche à chaque advance
 let userClickedTile = null;   // la tuile mosaïque que l'user a cliquée à l'origine (pour restauration)
 let advancing = false;
 
@@ -180,9 +180,9 @@ function advance() {
   const W = window.innerWidth;
   const oldCliquee = focusList[0];
 
-  // Shift UNIFORME de -(cliquée.w + GAP) pour TOUS les slots, cliquée incluse. Le ruban glisse
-  // à gauche d'un cran sans qu'aucun élément ne soit forcé hors-écran. La cliquée prend la
-  // position "M-1" (à gauche de la cliquée slot), reste visible si l'écran le permet.
+  // Shift UNIFORME de -(cliquée.w + GAP) pour TOUS les slots, cliquée incluse + pastSlots
+  // (anciennes cliquées déjà off cliquée slot). Le ruban entier ET les anciennes drift ensemble
+  // → pas de pile-up à -127 après plusieurs advances.
   const delta = -(oldCliquee.w + GAP);
   for (let i = 0; i < focusList.length; i++) {
     const slot = focusList[i];
@@ -190,6 +190,12 @@ function advance() {
     slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
     slot.el.style.transform = `translate3d(${newX}px, ${slot.y}px, 0)`;
     slot.x = newX;
+  }
+  for (const past of pastSlots) {
+    const newX = past.x + delta;
+    past.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+    past.el.style.transform = `translate3d(${newX}px, ${past.y}px, 0)`;
+    past.x = newX;
   }
 
   // Nouveau clone wrap (image de l'ancienne cliquée) à la dernière position, arrive de droite.
@@ -227,24 +233,19 @@ function advance() {
   // 5. focusedTile pointe maintenant sur la nouvelle cliquée (focusList[0]) pour le click handler.
   focusedTile = { el: focusList[0].el, item: focusList[0].item };
 
-  // 6. Cleanup post-anim. L'ancienne cliquée garde son transform shifté (visible à gauche jusqu'à
-  // ce qu'elle sorte naturellement de l'écran après plusieurs advances). Ne PAS la retirer du DOM
-  // ni reset son transform : elle doit rester là où elle a été shiftée.
+  // 5b. Ancienne cliquée → pastSlots (continuera à drift à gauche à chaque advance).
+  pastSlots.push({ el: removed.el, x: removed.x, y: removed.y, isClone: removed.isClone });
+
+  // 6. Cleanup post-anim. Marqueurs is-focused-tile pour CSS hide (tuile mosaïque originale).
   setTimeout(() => {
-    if (removed.isClone) {
-      // Clone passé → ajoute à pastClones pour cleanup à exitFocus.
-      pastClones.push(removed.el);
-    }
-    // Si c'est la tuile mosaïque originale (userClickedTile) : KEEP is-focused-tile + focused flag
-    // pour que CSS hide ne la masque pas (elle doit rester visible à sa position shiftée) et que
-    // returnTiles la restaure à sa position mosaïque à l'exit.
     if (!focusList[0].isClone) focusList[0].el.classList.add('is-focused-tile');
     advancing = false;
   }, EXIT_MS + 50);
 }
 
-// Retire tous les clones (focusList + pastClones). Clones in focusList → anim vers off-screen
-// droite puis remove. pastClones (déjà off-screen gauche) → remove direct du DOM.
+// Retire tous les clones (focusList + pastSlots). Clones in focusList → anim vers off-screen
+// droite puis remove. pastSlots clones (déjà drifted gauche) → remove direct du DOM. pastSlots
+// non-clones (= userClickedTile shiftée) → reset transform à mosaïque (returnTiles s'en chargera).
 function removeFocusClones() {
   const W = window.innerWidth;
   const cloneSlots = focusList.filter((s) => s.isClone);
@@ -255,8 +256,11 @@ function removeFocusClones() {
     slot.el.style.transform = `translate3d(${startX}px, ${slot.y}px, 0)`;
   }
   setTimeout(() => { for (const slot of cloneSlots) slot.el.remove(); }, EXIT_MS + 50);
-  for (const el of pastClones) el.remove();
-  pastClones = [];
+  for (const past of pastSlots) {
+    if (past.isClone) past.el.remove();
+    // non-clones (userClickedTile) : leave inline transform, returnTiles le restaurera via focused flag.
+  }
+  pastSlots = [];
   focusList = [];
 }
 
