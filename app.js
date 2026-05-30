@@ -329,9 +329,15 @@ function exitFocus() {
     ? userTileX - pastSlots[0].x
     : 0;
 
-  const phase3 = () => {
-    // Sources du projet (hidées via CSS pendant focus, sauf is-focused-tile = userClickedTile).
-    // On les fade in EN MÊME TEMPS que returnTiles ramène les autres projets.
+  // Phase 3a : M0 (userClickedTile) retourne à sa position Y mosaïque.
+  // Phase 3b (après) : autres projets reviennent + sources du même projet fadent in.
+  const phase3b = () => {
+    // M0 déjà à sa position mosaïque. Clear focused flag pour que returnTiles ne la re-handle pas.
+    if (userClickedTile) {
+      const liveTile = liveTiles.find((t) => t.el === userClickedTile.el);
+      if (liveTile) delete liveTile.focused;
+    }
+    // Sources du projet hidées via CSS pendant focus → fade in en sync avec returnTiles.
     const sources = projId
       ? [...document.querySelectorAll(`.tile[data-project="${projId}"]:not([data-focus-clone]):not(.is-focused-tile)`)]
       : [];
@@ -341,9 +347,7 @@ function exitFocus() {
         el.style.opacity = '0';
       }
     }
-    // Remove data-focus-proj AVANT is-focused-tile : sinon le CSS hide kick in sur userClickedTile
-    // (flicker opacity:0 instant puis revert). Avec data-focus-proj parti d'abord, la règle ne
-    // matche plus rien, removing is-focused-tile devient no-op.
+    // Remove data-focus-proj AVANT is-focused-tile pour éviter flicker.
     delete document.body.dataset.focusProj;
     for (const slot of focusList) {
       if (!slot.isClone) slot.el.classList.remove('is-focused-tile');
@@ -360,9 +364,22 @@ function exitFocus() {
     returnTiles(() => { resumeMosaic(); setMode('mosaic'); });
   };
 
+  const phase3a = () => {
+    // M0 retourne à sa position Y mosaïque AVANT que les autres apparaissent.
+    if (userClickedTile && !REDUCED_MOTION) {
+      const tile = liveTiles.find((t) => t.el === userClickedTile.el) || userClickedTile;
+      const ty = tile.y - offset * tile.velocityMultiplier + (COL_STAGGER[tile.colIdx] ?? 0);
+      userClickedTile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+      userClickedTile.el.style.transform = `translate3d(${userClickedTile.x}px, ${ty}px, 0)`;
+      setTimeout(phase3b, EXIT_MS + 50);
+    } else {
+      phase3b();
+    }
+  };
+
   const phase2 = () => {
     removeFocusClones();
-    setTimeout(phase3, EXIT_MS / 2);
+    setTimeout(phase3a, EXIT_MS / 2);
   };
 
   if (Math.abs(reverseShift) > 1 && !REDUCED_MOTION) {
