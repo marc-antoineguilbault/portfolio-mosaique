@@ -311,6 +311,11 @@ body {
      stable). 'paint' EXCLU : il clipperait .tile-meta (position absolute, top:100%, sous
      la tile) → la description au hover disparaîtrait. 'size' exclu : hauteur dynamique. */
   contain: layout style;
+  /* Perf #4 : content-visibility skip rendering quand hors viewport (natif browser, en plus
+     du detach manuel). contain-intrinsic-size réserve les dimensions pour ne pas casser
+     scroll/layout quand la tile redevient visible. Mosaïque utilisée 2 ratios principaux. */
+  content-visibility: auto;
+  contain-intrinsic-size: 348px 723px;
 }
 
 /* Apparition au load : chaque tuile remonte de 60px en fadant, staggered via --enter-delay.

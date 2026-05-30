@@ -996,15 +996,19 @@ function attachTilt(inner) {
     }
   }
 
+  // Perf #1 : BCR memoizé au mouseenter, réutilisé dans mousemove. Évite un layout reflow
+  // synchrone à chaque mousemove (60+ Hz sur trackpad → diff énorme sur les Long Tasks).
+  let cachedRect = null;
+
   inner.addEventListener('mouseenter', (e) => {
     cursorEl.classList.add('locked');
     // Arrête le défilement auto de la mosaïque le temps qu'on examine le projet.
     hoverPaused = true;
     // Perf : lire le layout AVANT d'écrire transform (évite un reflow synchrone).
-    const rect = inner.getBoundingClientRect();
+    cachedRect = inner.getBoundingClientRect();
     // Init current à la position du curseur (évite un "snap depuis le centre" au 1er hover).
-    targetX = currentX = (e.clientX - rect.left) / rect.width;
-    targetY = currentY = (e.clientY - rect.top) / rect.height;
+    targetX = currentX = (e.clientX - cachedRect.left) / cachedRect.width;
+    targetY = currentY = (e.clientY - cachedRect.top) / cachedRect.height;
     // Lift initial sans tilt — "respiration" verticale avant la déformation 3D.
     liftStartTime = performance.now();
     frame.style.transform = `perspective(${TILT_PERSPECTIVE}px) translateY(-${HOVER_LIFT_PX}px)`;
@@ -1015,7 +1019,8 @@ function attachTilt(inner) {
   });
 
   inner.addEventListener('mousemove', (e) => {
-    const rect = inner.getBoundingClientRect();
+    if (!cachedRect) cachedRect = inner.getBoundingClientRect();
+    const rect = cachedRect;
     const cx = rect.width / 2;
     const cy = rect.height / 2;
     const px = e.clientX - rect.left;
@@ -1041,6 +1046,7 @@ function attachTilt(inner) {
     cursorEl.classList.remove('locked');
     hoverPaused = false;
     active = false;
+    cachedRect = null;                                    // invalide cache au mouseleave
     // Le tick continue jusqu'à ce que la lumière ait rattrapé sa dernière target, puis s'arrête.
   });
 }
@@ -1131,6 +1137,10 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
     img.alt = describeImage(item);
     img.draggable = false;
     img.decoding = 'async';
+    // Perf #3 : loading="lazy" sauf si haute priorité (above-the-fold initial). Pour les
+    // tuiles spawnées au scroll (hors-viewport au moment du append), browser delay le fetch
+    // jusqu'à approche du viewport → réduit bandwidth + CPU initial.
+    if (fetchPriority !== 'high') img.loading = 'lazy';
     // Skip glow extraction sur saveData/2G : extractGlowColors crée un canvas + lit les pixels
     // (coûteux GPU + CPU). Le glow CSS reste sur sa couleur seedée par défaut (colorFromSeed).
     const skipHeavyVisuals = shouldSkipPrefill();
@@ -1507,7 +1517,12 @@ function frame(t) {
       // Dans la zone DOM mais pas dans la zone visible : skip les writes (économie de CPU)
       continue;
     }
-    tile.el.style.transform = `translate3d(${tile.x}px, ${ty}px, 0)`;
+    // Perf #6 : skip transform write si ty inchangé (cas pause / idle / hoverPaused).
+    // Évite des centaines de style writes inutiles par seconde quand le scroll ne bouge pas.
+    if (tile._lastTy !== ty) {
+      tile.el.style.transform = `translate3d(${tile.x}px, ${ty}px, 0)`;
+      tile._lastTy = ty;
+    }
     if (cursorDirty) {
       tile.el.style.setProperty('--cursor-x', ((mouseX - tile.x) / tile.w) * 100 + '%');
       tile.el.style.setProperty('--cursor-y', ((mouseY - ty) / tile.h) * 100 + '%');
