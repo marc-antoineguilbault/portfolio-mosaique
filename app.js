@@ -323,6 +323,11 @@ function exitFocus() {
 
   // Track projId AVANT de null userClickedTile (utile en phase 3 pour fader les sources).
   const projId = userClickedTile?.item?.project;
+  // SNAPSHOT des éléments marqués is-focused-tile AVANT que removeFocusClones (phase 2) ne vide
+  // focusList. Sinon, phase 3b itère une liste vide et la classe persiste sur M0 → CSS hide
+  // l'exclut au focus suivant du même projet (M0 reste visible derrière la nouvelle vue).
+  const focusedEls = focusList.filter((s) => !s.isClone).map((s) => s.el);
+  const pastFocusedEls = pastSlots.filter((s) => !s.isClone).map((s) => s.el);
 
   // Exit en 3 phases :
   //   1. Reverse shift : ramener M-0 (userClickedTile) à sa position originale → toutes les
@@ -347,9 +352,9 @@ function exitFocus() {
     // opacity:0 (set par focusTile) tient toujours les sources hidées. returnTiles déclenche le
     // fade in via transition opacity EXIT_MS.
     delete document.body.dataset.focusProj;
-    for (const slot of focusList) {
-      if (!slot.isClone) slot.el.classList.remove('is-focused-tile');
-    }
+    // focusList est vide ici (phase 2 l'a vidé) → on utilise les snapshots pris en début d'exit.
+    for (const el of focusedEls) el.classList.remove('is-focused-tile');
+    for (const el of pastFocusedEls) el.classList.remove('is-focused-tile');
     userClickedTile = null;
     returnTiles(() => { resumeMosaic(); setMode('mosaic'); });
   };
