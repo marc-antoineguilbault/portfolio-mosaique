@@ -347,9 +347,9 @@ function removeFocusClones() {
   // disparaissent doivent être EN DESSOUS des projets qui réapparaissent".
   for (const slot of allClones) slot.el.style.zIndex = '0';
 
-  // Fade opacity plus rapide que le slide → trail visible mais clone fade out net
-  // (300ms vs 700ms slide). Easing linear pour percevoir clairement la disparition.
-  const FADE_MS = 300;
+  // Fade rapide : 100ms linear → disparition perceptible AVANT que le clone soit
+  // hors viewport (slide cubic-bezier ease-out → ~85% out-of-view en 150ms).
+  const FADE_MS = 100;
 
   if (rightClones.length && !REDUCED_MOTION) {
     const leftmostX = Math.min(...rightClones.map((s) => s.x));
