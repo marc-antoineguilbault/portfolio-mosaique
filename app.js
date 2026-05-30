@@ -646,10 +646,11 @@ function showProjectLabel(name, idx, total) {
       prev.className = 'ui-corner__project-arrow ui-corner__project-arrow--prev';
       prev.textContent = '⭠';
       prev.setAttribute('aria-label', 'Maquette précédente');
-      prev.disabled = (idx === 0);
+      // Plus de disabled aux extrémités : retreat()/advance() gèrent le rebond + (4/4 →) loop
+      // → le bouton reste cliquable pour déclencher le feedback visuel.
       prev.addEventListener('click', (e) => {
         e.stopPropagation();      // évite que le TL ouvre la liste clients OU que doc ferme le focus
-        if (!prev.disabled) retreat();
+        retreat();
       });
 
       const next = document.createElement('button');
@@ -657,10 +658,9 @@ function showProjectLabel(name, idx, total) {
       next.className = 'ui-corner__project-arrow ui-corner__project-arrow--next';
       next.textContent = '⭢';
       next.setAttribute('aria-label', 'Maquette suivante');
-      next.disabled = (idx === total - 1);
       next.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (!next.disabled) advance();
+        advance();
       });
 
       counter.appendChild(document.createTextNode(' ('));
