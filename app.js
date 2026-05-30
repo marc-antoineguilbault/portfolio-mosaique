@@ -288,7 +288,10 @@ function returnTiles(done) {
     if (tile.detached) continue;
     if (wasHidden) {
       // Source d'un clone projet : transform inchangé, juste restaure opacity en fade.
-      // Même durée que les autres transitions exit (EXIT_MS) pour sync visuel avec autres projets.
+      // CRITIQUE : kill l'anim CSS tile-appear (qui peut être en state=running ct=0 sur sources
+      // récemment spawnées) — sinon elle override ma transition opacity et cause un saut visible
+      // (snap de 0 à la valeur courante de l'animation, ~0.7 si animation à mi-parcours).
+      tile.el.style.animation = 'none';
       tile.el.style.transition = `opacity ${EXIT_MS}ms ease`;
       tile.el.style.opacity = '1';
       animated.push(tile);
