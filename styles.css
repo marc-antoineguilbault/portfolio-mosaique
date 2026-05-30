@@ -311,11 +311,10 @@ body {
      stable). 'paint' EXCLU : il clipperait .tile-meta (position absolute, top:100%, sous
      la tile) → la description au hover disparaîtrait. 'size' exclu : hauteur dynamique. */
   contain: layout style;
-  /* Perf #4 : content-visibility skip rendering quand hors viewport (natif browser, en plus
-     du detach manuel). contain-intrinsic-size réserve les dimensions pour ne pas casser
-     scroll/layout quand la tile redevient visible. Mosaïque utilisée 2 ratios principaux. */
-  content-visibility: auto;
-  contain-intrinsic-size: 348px 723px;
+  /* NB : content-visibility: auto INCOMPATIBLE ici car tuiles position:absolute + transform.
+     Browser utilise la position "intrinsic" (left:0/top:0) pour décider visible, pas la
+     position post-transform → cliquée focus reste un cadre noir. Le detach JS manuel dans
+     frame() (DETACH_MARGIN) couvre déjà ce cas. */
 }
 
 /* Apparition au load : chaque tuile remonte de 60px en fadant, staggered via --enter-delay.
