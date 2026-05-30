@@ -69,11 +69,14 @@ let pastSlots = [];     // [{el, x, y, isClone}, ...] — anciennes cliquées qu
 let userClickedTile = null;   // la tuile mosaïque que l'user a cliquée à l'origine (pour restauration)
 let advancing = false;
 
-function focusTile(clickedTile) {
+function focusTile(clickedTile, forceX) {
   const vh = window.innerHeight;
   const W = window.innerWidth;
   const middleY = vh / 2;
   const targetY = (vh - clickedTile.h) / 2;
+  // forceX optionnel : override x de la cliquée (utilisé par la liste clients pour positionner
+  // M01 au bord gauche). Sinon, garde sa position mosaïque originale.
+  const cliqueeFinalX = forceX != null ? forceX : clickedTile.x;
   clickedTile.focused = true;
 
   const projId = clickedTile.item.project;
@@ -134,9 +137,9 @@ function focusTile(clickedTile) {
   const itemsAfter = allItems.slice(cliqueeIdx + 1);
   const itemsBefore = allItems.slice(0, cliqueeIdx);
 
-  // 1. Positions cibles RAW (cliquée à clickedTile.x, sans ribbonShift).
+  // 1. Positions cibles RAW basées sur cliqueeFinalX (override possible via forceX).
   const rightPositions = [];
-  let edgeRight = clickedTile.x + clickedTile.w;
+  let edgeRight = cliqueeFinalX + clickedTile.w;
   for (const item of itemsAfter) {
     const source = liveTiles.find((t) => t.item && t.item.src === item.src);
     if (!source) continue;
@@ -145,7 +148,7 @@ function focusTile(clickedTile) {
     edgeRight += source.w;
   }
   const leftPositions = [];                                // ordre : M-1 (proche), M-2, … (loin)
-  let edgeLeft = clickedTile.x;
+  let edgeLeft = cliqueeFinalX;
   for (let i = itemsBefore.length - 1; i >= 0; i--) {
     const item = itemsBefore[i];
     const source = liveTiles.find((t) => t.item && t.item.src === item.src);
@@ -154,18 +157,18 @@ function focusTile(clickedTile) {
     leftPositions.push({ item, source, targetX: edgeLeft });
   }
 
-  // 2. Cliquée : RESTE à sa position horizontale originale (clickedTile.x), centrée verticalement.
-  // Les items à gauche peuvent déborder hors-écran si la cliquée est près du bord gauche —
-  // contrainte explicite : la cliquée ne bouge JAMAIS horizontalement.
+  // 2. Cliquée : transform vers cliqueeFinalX (= clickedTile.x par défaut, ou forceX pour
+  // entry via liste clients). userClickedTile.x conserve la vraie position mosaïque (utilisé
+  // par exitFocus.reverseShift pour retourner à la mosaïque).
   if (REDUCED_MOTION) {
     clickedTile.el.style.transition = 'none';
-    clickedTile.el.style.transform = `translate3d(${clickedTile.x}px, ${targetY}px, 0)`;
+    clickedTile.el.style.transform = `translate3d(${cliqueeFinalX}px, ${targetY}px, 0)`;
   } else {
     clickedTile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
-    clickedTile.el.style.transform = `translate3d(${clickedTile.x}px, ${targetY}px, 0)`;
+    clickedTile.el.style.transform = `translate3d(${cliqueeFinalX}px, ${targetY}px, 0)`;
   }
   focusList = [{
-    el: clickedTile.el, item: clickedTile.item, x: clickedTile.x, y: targetY,
+    el: clickedTile.el, item: clickedTile.item, x: cliqueeFinalX, y: targetY,
     w: clickedTile.w, h: clickedTile.h, isClone: false,
   }];
 
@@ -658,17 +661,28 @@ function openClientList() {
     const activate = () => {
       closeClientList();
       if (mode !== 'mosaic') return;
-      // Cherche dans liveTiles la 1re tuile du projet présente à l'écran. Si trouvée → focus.
-      // Sinon : on ferme juste la liste (l'utilisateur scrollera la mosaïque pour trouver).
-      const tile = liveTiles.find((t) => t.item && t.item.project === p.id);
-      if (!tile) return;
+      // Trouve M01 du projet (1ère maquette du pool). Spawn si pas déjà en liveTiles.
+      const m01Item = pool.find((it) => it.project === p.id && /m01/i.test(it.src));
+      if (!m01Item) return;
+      let tile = liveTiles.find((t) => t.item && t.item.src === m01Item.src);
+      if (!tile) {
+        const pos = placeNext(m01Item);
+        tile = createTile(m01Item, pos, String(liveTiles.length + 1), 'high');
+        liveTiles.push(tile);
+        placedSrcs.add(m01Item.src);
+      }
       setMode('focus');
       freezeMosaic();
       focusActive = true;
       focusedTile = tile;
+      document.body.dataset.focusProj = p.id;
+      tile.el.classList.add('is-focused-tile');
       const projName = projectNameById.get(p.id) ?? p.name;
-      showProjectLabel(projName);
-      focusTile(tile);
+      const allInProj = pool.filter((it) => it.project === p.id);
+      const projIdx = allInProj.findIndex((it) => it.src === m01Item.src);
+      showProjectLabel(projName, projIdx, allInProj.length);
+      // forceX = GAP : M01 positionné au bord gauche, ribbon s'étend à droite.
+      focusTile(tile, GAP);
     };
     li.addEventListener('click', (ev) => { ev.stopPropagation(); activate(); });
     li.addEventListener('keydown', (ev) => {
