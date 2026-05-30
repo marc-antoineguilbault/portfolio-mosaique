@@ -1018,15 +1018,21 @@ function attachTilt(inner) {
     if (rafId === null) rafId = requestAnimationFrame(tick);
   });
 
-  inner.addEventListener('mousemove', (e) => {
+  // Perf #7 : rAF coalescing du mousemove. Trackpad fire ~120Hz → 2 events/frame.
+  // Sans coalescing, chaque event = 1 style write transform. Avec, max 1 write/frame.
+  let pendingMoveEvent = null;
+  let moveRafId = null;
+  const processMove = () => {
+    moveRafId = null;
+    const e = pendingMoveEvent;
+    pendingMoveEvent = null;
+    if (!e) return;
     if (!cachedRect) cachedRect = inner.getBoundingClientRect();
     const rect = cachedRect;
     const cx = rect.width / 2;
     const cy = rect.height / 2;
     const px = e.clientX - rect.left;
     const py = e.clientY - rect.top;
-    // Tilt 3D : appliqué uniquement après le délai de lift initial → la tile lift d'abord,
-    // puis la déformation 3D suit le curseur.
     const liftElapsed = performance.now() - liftStartTime;
     if (liftElapsed >= LIFT_BEFORE_TILT_MS) {
       const dx = (px - cx) / cx;
@@ -1035,10 +1041,13 @@ function attachTilt(inner) {
       const rotateX = -dy * TILT_MAX_DEG;
       frame.style.transform = `perspective(${TILT_PERSPECTIVE}px) translateY(-${HOVER_LIFT_PX}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
     }
-    // Lumière : on met à jour la target, le tick rAF lerp vers elle (trail indépendant du lift).
     targetX = px / rect.width;
     targetY = py / rect.height;
     if (rafId === null) rafId = requestAnimationFrame(tick);
+  };
+  inner.addEventListener('mousemove', (e) => {
+    pendingMoveEvent = e;
+    if (moveRafId === null) moveRafId = requestAnimationFrame(processMove);
   });
 
   inner.addEventListener('mouseleave', () => {
@@ -1146,11 +1155,26 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
     const skipHeavyVisuals = shouldSkipPrefill();
     const applyGlow = () => {
       if (skipHeavyVisuals) return;
-      const colors = extractGlowColors(img);
-      if (colors && colors.length === 3) {
-        el.style.setProperty('--tile-glow-1', colors[0]);
-        el.style.setProperty('--tile-glow-2', colors[1]);
-        el.style.setProperty('--tile-glow-3', colors[2]);
+      // Perf #8 : memoize par src — 1 seule extraction par image, jamais re-calculée au recycle.
+      // Perf #20 : defer via requestIdleCallback — glow non-bloquant pour scroll/spawn/paint.
+      const run = () => {
+        let colors = window.__glowCache?.get(item.src);
+        if (!colors) {
+          colors = extractGlowColors(img);
+          if (colors && colors.length === 3) {
+            (window.__glowCache ||= new Map()).set(item.src, colors);
+          }
+        }
+        if (colors && colors.length === 3) {
+          el.style.setProperty('--tile-glow-1', colors[0]);
+          el.style.setProperty('--tile-glow-2', colors[1]);
+          el.style.setProperty('--tile-glow-3', colors[2]);
+        }
+      };
+      if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(run, { timeout: 1500 });
+      } else {
+        setTimeout(run, 0);
       }
     };
     const onImgLoaded = () => {
@@ -1482,7 +1506,7 @@ function frame(t) {
   const vh = window.innerHeight || document.documentElement.clientHeight;
   const VISIBLE_MARGIN = 200;
   const DETACH_MARGIN = 1500;
-  const HARD_RECYCLE = 50000;
+  const HARD_RECYCLE = 10000;             // perf #15 : libère DOM tiles plus tôt sur scroll long
   const toRemove = [];
   let nextMinY = Infinity;
   for (let i = 0; i < liveTiles.length; i++) {
@@ -1524,8 +1548,14 @@ function frame(t) {
       tile._lastTy = ty;
     }
     if (cursorDirty) {
-      tile.el.style.setProperty('--cursor-x', ((mouseX - tile.x) / tile.w) * 100 + '%');
-      tile.el.style.setProperty('--cursor-y', ((mouseY - ty) / tile.h) * 100 + '%');
+      // Perf #19 : skip --cursor-x/y write si valeurs inchangées (cas mouse idle entre frames).
+      const cx = ((mouseX - tile.x) / tile.w) * 100;
+      const cy = ((mouseY - ty) / tile.h) * 100;
+      if (tile._lastCX !== cx || tile._lastCY !== cy) {
+        tile.el.style.setProperty('--cursor-x', cx + '%');
+        tile.el.style.setProperty('--cursor-y', cy + '%');
+        tile._lastCX = cx; tile._lastCY = cy;
+      }
     }
   }
   // Une fois toutes les tiles de la frame traitées, on acquitte le dirty : les prochaines
