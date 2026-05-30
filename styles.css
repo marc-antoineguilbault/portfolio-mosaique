@@ -675,3 +675,6 @@ body.is-client-list .viewport { opacity: 0; pointer-events: none; }
 /* Focus : la cliquée se centre verticalement, les autres tuiles sortent par le haut ou le bas.
    La mosaïque reste à son z-index normal (pas d'overlay) — le fond noir du body est le backdrop. */
 body[data-mode="focus"] .ui-corner--tl { pointer-events: none; }
+/* Pas de descriptions sous les tuiles en mode focus (cliquée ET autres) : override du
+   reveal au hover. !important pour battre @media (hover: hover) .tile:hover .tile-meta. */
+body[data-mode="focus"] .tile-meta { opacity: 0 !important; }
