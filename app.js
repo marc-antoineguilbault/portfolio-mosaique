@@ -1754,7 +1754,7 @@ function frame(t) {
   if (offset < floor) offset = floor;
   // Warp : vélocité lissée → facteur d'étirement n∈[0,1] (REDUCED_MOTION → pas de warp).
   velocityTracker.sample(offset, dt);
-  const warpN = REDUCED_MOTION ? 0 : velocityTracker.normalized();
+  const warpN = REDUCED_MOTION ? 0 : velocityTracker.warpFactor();
   const warpSY = 1 + warpN * WARP_KY;
   const warpSX = 1 - warpN * WARP_KX;
   // Cycling à 3 niveaux pour permettre le scroll up (récupération depuis le cache) :

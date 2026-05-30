@@ -39,4 +39,33 @@ test.describe('velocity tracker', () => {
     });
     expect(n).toBe(0);
   });
+
+  test('warpFactor : overshoot sous 0 (rebond squash) après l\'arrêt du scroll', async ({ page }) => {
+    await page.goto('/');
+    const minW = await page.evaluate(async () => {
+      const { createVelocityTracker } = await import('/modules/velocity.js');
+      const t = createVelocityTracker({ lerp: 0.5, vMin: 200, vMax: 2500 });
+      let off = 0;
+      // scroll soutenu : la cible warp monte
+      for (let i = 0; i < 20; i++) { off += 600; t.sample(off, 0.016); }
+      // arrêt : offset constant → la cible retombe à 0, le ressort doit dépasser sous 0
+      let m = Infinity;
+      for (let i = 0; i < 150; i++) { t.sample(off, 0.016); m = Math.min(m, t.warpFactor()); }
+      return m;
+    });
+    expect(minW).toBeLessThan(0);          // overshoot négatif = squash
+  });
+
+  test('warpFactor : se fige à exactement 0 au repos (coût nul)', async ({ page }) => {
+    await page.goto('/');
+    const w = await page.evaluate(async () => {
+      const { createVelocityTracker } = await import('/modules/velocity.js');
+      const t = createVelocityTracker();
+      let off = 0;
+      for (let i = 0; i < 10; i++) { off += 600; t.sample(off, 0.016); }
+      for (let i = 0; i < 400; i++) { t.sample(off, 0.016); }   // long repos
+      return t.warpFactor();
+    });
+    expect(w).toBe(0);                     // exactement 0 → skip-write réactivé, coût nul
+  });
 });
