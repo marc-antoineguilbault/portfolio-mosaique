@@ -348,15 +348,12 @@ function removeFocusClones() {
   for (const slot of allClones) slot.el.style.zIndex = '0';
 
   // Pas de stagger : tous les clones démarrent T+0, finissent T+EXIT_MS, MÊME delta uniforme.
-  // Opacity duration = EXIT_MS / 2 → 100% transparent atteint à mi-temps du slide.
-  const FADE_MS = EXIT_MS / 2;
   if (rightClones.length && !REDUCED_MOTION) {
     const leftmostX = Math.min(...rightClones.map((s) => s.x));
     const delta = W + 80 - leftmostX;
     for (const slot of rightClones) {
-      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}, opacity ${FADE_MS}ms ${EXIT_EASE}`;
+      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
       slot.el.style.transform = `translate3d(${slot.x + delta}px, ${slot.y}px, 0)`;
-      slot.el.style.setProperty('opacity', '0', 'important');
     }
   } else {
     for (const slot of rightClones) slot.el.remove();
@@ -366,9 +363,8 @@ function removeFocusClones() {
     const rightmostXEnd = Math.max(...leftClones.map((s) => s.x + s.w));
     const delta = -(rightmostXEnd + 80);
     for (const slot of leftClones) {
-      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}, opacity ${FADE_MS}ms ${EXIT_EASE}`;
+      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
       slot.el.style.transform = `translate3d(${slot.x + delta}px, ${slot.y}px, 0)`;
-      slot.el.style.setProperty('opacity', '0', 'important');
     }
   } else {
     for (const slot of leftClones) slot.el.remove();
@@ -457,22 +453,22 @@ function exitFocus() {
   };
 
   const phase3a = () => {
-    // M0 retourne à sa position Y mosaïque, EN PARALLÈLE avec phase 3b (autres réapparaissent).
-    // Toutes les anims (clones out, M0 Y, autres in) tournent simultanément T+0 → T+700.
+    // M0 retourne à sa position Y mosaïque, EN PARALLÈLE avec phase 2 (clones out).
     if (userClickedTile && !REDUCED_MOTION) {
       const tile = liveTiles.find((t) => t.el === userClickedTile.el) || userClickedTile;
       const ty = tile.y - offset * tile.velocityMultiplier + (COL_STAGGER[tile.colIdx] ?? 0);
       userClickedTile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
       userClickedTile.el.style.transform = `translate3d(${userClickedTile.x}px, ${ty}px, 0)`;
     }
-    phase3b();
+    // Phase 3b attend que les clones soient sortis (EXIT_MS) + petit buffer.
+    setTimeout(phase3b, EXIT_MS + 50);
   };
 
   const phase2 = () => {
     removeFocusClones();
-    // Parallélise phase 3a (M0 Y return) avec phase 2 (clones out) au lieu d'attendre 350ms.
-    // Les deux animations durent EXIT_MS (700ms) et finissent ensemble. Phase 3b démarre 50ms
-    // plus tard via le setTimeout interne de phase3a → délai total fin-clones → début-autres = 50ms.
+    // Parallélise phase 3a (M0 Y return) avec phase 2 (clones out). Les 2 durent EXIT_MS.
+    // Phase 3b démarre EXIT_MS + 50 plus tard via setTimeout dans phase3a → autres projets
+    // réapparaissent UNIQUEMENT après que les clones soient sortis de l'écran.
     phase3a();
   };
 
