@@ -184,25 +184,29 @@ function advance() {
   oldCliquee.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
   oldCliquee.el.style.transform = `translate3d(${exitX}px, ${oldCliquee.y}px, 0)`;
 
-  // 2. Chaque slot shift de -(largeur du slot DEVANT lui + GAP). Shifts NON uniformes : le slot
-  // i shift de -(focusList[i-1].w + GAP). M+1 prend la position de la cliquée (shift -cliquée.w),
-  // M+2 prend la position de M+1 (shift -M+1.w), etc. Si M+1 est plus étroit que cliquée,
-  // M+2 shift moins et reste visible plus longtemps.
+  // 2. Recalcul des positions cibles : chaque slot prend la position du précédent dans le nouveau
+  // ruban (cliquée slot conservé à userClickedTile.x). Recompute cumulatif pour contiguïté avec
+  // GAP uniforme — sinon advances enchaînés accumulent overlaps + éléments coincés visibles
+  // à gauche (shifts non uniformes ne préservent pas l'alignement).
+  const cliqueeX = focusList[0].x;
+  let edgeX = cliqueeX;
+  // newPositions[i] = position cible pour le slot qui va devenir focusList[i-1] après shift.
+  // Slot 1 (M+1) devient nouvelle cliquée à cliqueeX. Slot 2 devient M+1 à cliquéeX+M+1.w+GAP. etc.
   for (let i = 1; i < focusList.length; i++) {
     const slot = focusList[i];
-    const leftNeighbor = focusList[i - 1];
-    const shift = -(leftNeighbor.w + GAP);
-    const newX = slot.x + shift;
+    const newX = (i === 1) ? cliqueeX : edgeX + GAP;
     slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
     slot.el.style.transform = `translate3d(${newX}px, ${slot.y}px, 0)`;
     slot.x = newX;
+    edgeX = newX + slot.w;
   }
 
   // 3. Nouveau clone wrap (image de l'ancienne cliquée) à la dernière position, arrive de droite.
   const wrapItem = oldCliquee.item;
   const wrapSource = liveTiles.find((t) => t.item && t.item.src === wrapItem.src);
   const lastSlot = focusList[focusList.length - 1];
-  const wrapX = lastSlot.x + lastSlot.w + GAP;
+  const wrapX = lastSlot.x + lastSlot.w + GAP;   // après la nouvelle dernière position
+
   const wrapH = wrapSource?.h ?? oldCliquee.h;
   const wrapW = wrapSource?.w ?? oldCliquee.w;
   const wrapY = (vh - wrapH) / 2;
