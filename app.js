@@ -58,29 +58,69 @@ const EXIT_MS = 700;
 const EXIT_STAGGER_MAX_MS = 60;
 const EXIT_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
 
-// FOCUS : la cliquée se centre verticalement (X préservé), les autres sortent par le haut
+// FOCUS : la cliquée se centre verticalement (X préservé). Les autres maquettes DU MÊME projet
+// s'alignent à droite de la cliquée (séparées par GAP, identique à la mosaïque), apparaissent les
+// unes après les autres (stagger cumulatif). Les autres tuiles d'AUTRES projets sortent par le haut
 // si centrées au-dessus de vh/2 ou par le bas sinon. mémorise exitDir / focused pour le retour.
+const FOCUS_ROW_STAGGER_MS = 150;
 function focusTile(clickedTile) {
   const vh = window.innerHeight;
   const middleY = vh / 2;
   const targetY = (vh - clickedTile.h) / 2;
   clickedTile.focused = true;
+
+  // Focus row : 1 tuile par autre maquette du projet (préfère les non-detached). Ordre = ordre
+  // du pool (m01, m02, t01, t02 alphabétique).
+  const projId = clickedTile.item.project;
+  const projItems = pool.filter((it) => it.project === projId && it.src !== clickedTile.item.src);
+  const used = new Set([clickedTile]);
+  const focusRow = [];
+  for (const item of projItems) {
+    const tile = liveTiles.find((t) => t.item && t.item.src === item.src && !t.detached && !used.has(t));
+    if (!tile) continue;
+    used.add(tile);
+    focusRow.push(tile);
+  }
+  // Positions cumulatives à droite de la cliquée, séparées par GAP.
+  let edgeX = clickedTile.x + clickedTile.w;
+  for (const tile of focusRow) {
+    edgeX += GAP;
+    tile.focusRowX = edgeX;
+    tile.focusRowY = (vh - tile.h) / 2;
+    edgeX += tile.w;
+  }
+
   if (REDUCED_MOTION) {
     clickedTile.el.style.transition = 'none';
     clickedTile.el.style.transform = `translate3d(${clickedTile.x}px, ${targetY}px, 0)`;
+    for (const tile of focusRow) {
+      tile.focused = true;
+      tile.el.style.transition = 'none';
+      tile.el.style.transform = `translate3d(${tile.focusRowX}px, ${tile.focusRowY}px, 0)`;
+    }
     for (const tile of liveTiles) {
-      if (tile === clickedTile) continue;
+      if (used.has(tile)) continue;
       tile.exitDir = 'up';
       tile.el.style.opacity = '0';
     }
     return;
   }
+
   for (const tile of liveTiles) {
     if (tile === clickedTile) {
       tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
       tile.el.style.transform = `translate3d(${tile.x}px, ${targetY}px, 0)`;
       continue;
     }
+    if (used.has(tile)) {
+      tile.focused = true;                              // pour returnTiles
+      const idx = focusRow.indexOf(tile);
+      const delay = (idx + 1) * FOCUS_ROW_STAGGER_MS;   // 1re après cliquée à 150ms, etc.
+      tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE} ${delay}ms`;
+      tile.el.style.transform = `translate3d(${tile.focusRowX}px, ${tile.focusRowY}px, 0)`;
+      continue;
+    }
+    // Autres projets : sortie par haut/bas selon position vs vh/2.
     const rect = tile.el.getBoundingClientRect();
     const centerY = rect.top + tile.h / 2;
     const dir = centerY < middleY ? 'up' : 'down';
