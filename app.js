@@ -118,10 +118,12 @@ function focusTile(clickedTile) {
         continue;
       }
       if (sameProjectSources.has(tile)) {
-        // Source d'une maquette du projet → hide instantanée. Marqué pour returnTiles.
-        tile.exitDir = 'up';                     // flag pour returnTiles (clear + restore opacity)
+        // Source d'une maquette du projet → hide instantanée via inline opacity (le CSS hide
+        // data-focus-proj backup aussi). Pas de transition inline ici — ça créait un conflit
+        // avec returnTiles plus tard (200ms vs 700ms = saut visuel à l'exit). returnTiles
+        // setera sa propre transition pour le fade in.
+        tile.exitDir = 'up';
         tile.projectHidden = true;
-        tile.el.style.transition = 'opacity 200ms ease';
         tile.el.style.opacity = '0';
         continue;
       }
