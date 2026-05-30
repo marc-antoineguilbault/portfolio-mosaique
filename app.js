@@ -31,7 +31,7 @@ let FRAME_PADDING = REF_FRAME_PADDING;
 // Patterns déterministes — la grille est identique à chaque reload.
 const INITIAL_OFFSETS = [-50, -320, -180, -240];   // décalage Y de départ par colonne
 const GROUP_VELOCITIES = [1, 1];                   // vitesses uniformes : un parallax (vitesses divergentes) entrerait en collision avec les tuiles `fullwidth`
-const COL_STAGGER = [0, 80, 0, 80];                // décalage visuel par col alternée → mobiles côte-à-côte décalées. Voir placeNext (cas tablet) pour la compensation du tile.y qui garantit gap perçu ≥ GAP_Y dans toutes les cols (jamais réduit, parfois agrandi).
+const COL_STAGGER = [0, 80, 40, 120];              // staggers tous différents → toutes paires de cols adjacentes ou non-adjacentes (cols=3 : 0/2 visibles) décalées. Wave progressive. Compensation tile.y pour tablets dans placeNext garantit gap perçu ≥ GAP_Y dans toutes les cols.
 
 const viewport = document.getElementById('viewport');
 const scroller = document.getElementById('scroller');
