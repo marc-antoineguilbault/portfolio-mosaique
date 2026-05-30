@@ -177,11 +177,6 @@ function focusTile(clickedTile) {
     clone.style.zIndex = String(100 + zIdx);
     clone.style.transition = 'none';
     clone.style.transform = `translate3d(${startX}px, ${targetTopY}px, 0)`;
-    // Force eager loading sur les imgs du clone : cloneNode hérite loading="lazy" de la source,
-    // et browser delay fetch tant que le clone est positionné off-screen via transform → cadre
-    // noir au focus open. Eager garantit l'image chargée (cache HTTP via preload eager fait avant).
-    const cloneImgs = clone.querySelectorAll('img');
-    for (const img of cloneImgs) img.loading = 'eager';
     document.body.appendChild(clone);
     // Attache tilt 3D + glow lumineux + lumière au curseur sur le clone (cloneNode ne copie pas
     // les event listeners). Les mêmes interactions que la mosaïque sont donc disponibles en focus.
@@ -1142,10 +1137,10 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
     img.alt = describeImage(item);
     img.draggable = false;
     img.decoding = 'async';
-    // Perf #3 : loading="lazy" sauf si haute priorité (above-the-fold initial). Pour les
-    // tuiles spawnées au scroll (hors-viewport au moment du append), browser delay le fetch
-    // jusqu'à approche du viewport → réduit bandwidth + CPU initial.
-    if (fetchPriority !== 'high') img.loading = 'lazy';
+    // NB : pas de loading="lazy" — incompatible avec les clones du focus (cloneNode hérite
+    // l'attribut, browser delay fetch même avec loading='eager' set après cloneNode, donc
+    // clones apparaissent en cadres noirs). Le auto-scroll mosaïque rend toutes les tuiles
+    // visibles séquentiellement de toute façon, le gain lazy était limité au boot initial.
     // Skip glow extraction sur saveData/2G : extractGlowColors crée un canvas + lit les pixels
     // (coûteux GPU + CPU). Le glow CSS reste sur sa couleur seedée par défaut (colorFromSeed).
     const skipHeavyVisuals = shouldSkipPrefill();
