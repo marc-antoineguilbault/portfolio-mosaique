@@ -31,7 +31,7 @@ let FRAME_PADDING = REF_FRAME_PADDING;
 // Patterns déterministes — la grille est identique à chaque reload.
 const INITIAL_OFFSETS = [-50, -320, -180, -240];   // décalage Y de départ par colonne
 const GROUP_VELOCITIES = [1, 1];                   // vitesses uniformes : un parallax (vitesses divergentes) entrerait en collision avec les tuiles `fullwidth`
-const COL_STAGGER = [0, 0, 80, 80];                // décalage visuel par PAIRE de colonnes (pas par col individuelle) — les tablets occupent toujours des paires (0,1) ou (2,3) et utilisent le stagger de leur leftmost col. En groupant par paires, le stagger du tablet matche celui des mobiles dans ses 2 cols → gap perçu uniforme (GAP_Y constant) entre tuiles consécutives, quelque soit leur type.
+const COL_STAGGER = [0, 80, 0, 80];                // décalage visuel par col alternée → mobiles côte-à-côte décalées. Voir placeNext (cas tablet) pour la compensation du tile.y qui garantit gap perçu ≥ GAP_Y dans toutes les cols (jamais réduit, parfois agrandi).
 
 const viewport = document.getElementById('viewport');
 const scroller = document.getElementById('scroller');
@@ -849,11 +849,20 @@ function placeNext(item, gapBelow = GAP_Y) {
       }
     }
     const x = GAP + bestI * (colWidth + GAP);
-    const y = Math.max(colHeights[bestI], colHeights[bestI + 1]);
     const w = 2 * colWidth + GAP;
     const h = frameHeightForInner(w, RATIOS.tablet);
-    colHeights[bestI] = y + h + gapBelow;
-    colHeights[bestI + 1] = y + h + gapBelow;
+    // Compensation stagger : le tablet utilise COL_STAGGER[bestI] (leftmost col) au rendu.
+    // Pour que le gap perçu = GAP_Y dans col c, faut tile.y = colHeights[c] + COL_STAGGER[c] -
+    // tabletStagger. On prend max pour éviter overlap → garantit gap ≥ GAP_Y dans toutes les cols.
+    const tabletStagger = COL_STAGGER[bestI] ?? 0;
+    const stagger_R = COL_STAGGER[bestI + 1] ?? 0;
+    const yLeft = colHeights[bestI];                                          // + (tabletStagger - tabletStagger) = 0
+    const yRight = colHeights[bestI + 1] + (stagger_R - tabletStagger);
+    const y = Math.max(yLeft, yRight);
+    // Update colHeights : next mobile dans col c doit avoir gap GAP_Y avec bottom du tablet.
+    // colHeights[c] = tile.y_T + tabletStagger + h + GAP_Y - COL_STAGGER[c].
+    colHeights[bestI] = y + h + gapBelow;                                     // + (tabletStagger - tabletStagger)
+    colHeights[bestI + 1] = y + h + gapBelow + (tabletStagger - stagger_R);
     return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[bestI], colIdx: bestI };
   }
 }
