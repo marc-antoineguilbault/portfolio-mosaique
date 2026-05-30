@@ -227,8 +227,27 @@ function focusTile(clickedTile) {
 // ADVANCE : ruban glisse à gauche d'un cran. Cliquée sort à gauche, focus row shift left, nouveau
 // clone wrap (image de l'ancienne cliquée) arrive de droite à la dernière position. Click sur
 // cliquée OU clone déclenche un advance. Pendant l'anim (advancing=true), nouveau click bloqué.
+// Petit rebond visuel quand l'action est bloquée (1/4 + ⭠ ou 4/4 + ⭢). Tout le ribbon
+// (focusList + pastSlots) shift de ±30px puis revient — feedback "tape contre le mur".
+function triggerRebound(direction) {                          // direction: +1 = retreat blocked, -1 = advance blocked
+  if (!focusActive || REDUCED_MOTION) return;
+  const SHIFT = direction * 30;
+  const slots = [...focusList, ...pastSlots];
+  for (const slot of slots) {
+    slot.el.style.transition = 'transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1)';
+    slot.el.style.transform = `translate3d(${slot.x + SHIFT}px, ${slot.y}px, 0)`;
+  }
+  setTimeout(() => {
+    for (const slot of slots) {
+      slot.el.style.transition = 'transform 180ms cubic-bezier(0.4, 0, 0.6, 1)';
+      slot.el.style.transform = `translate3d(${slot.x}px, ${slot.y}px, 0)`;
+    }
+  }, 180);
+}
+
 function advance() {
-  if (!focusActive || focusList.length < 2 || advancing) return;
+  if (!focusActive || advancing) return;
+  if (focusList.length < 2) { triggerRebound(-1); return; }   // 4/4 : avance bloquée → rebond gauche
   advancing = true;
   const vh = window.innerHeight;
   const W = window.innerWidth;
@@ -285,7 +304,8 @@ function advance() {
 // RETREAT : inverse de advance — ramène la dernière past à l'avant. Shift uniforme à droite
 // de +(last.w + GAP) sur focusList + pastSlots restants. Utilisé par la flèche ⭠ du compteur TL.
 function retreat() {
-  if (!focusActive || pastSlots.length === 0 || advancing) return;
+  if (!focusActive || advancing) return;
+  if (pastSlots.length === 0) { triggerRebound(+1); return; } // 1/4 : retreat bloqué → rebond droit
   advancing = true;
   const last = pastSlots.pop();
   const delta = last.w + GAP;
