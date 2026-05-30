@@ -1642,9 +1642,9 @@ function topUpIfNeeded() {
 let offset = 0;
 // Warp : vélocité de scroll lissée → étirement des tuiles. Constantes douces (spec).
 const velocityTracker = createVelocityTracker({ lerp: 0.15, vMin: 200, vMax: 2500 });
-const WARP_KY = 0.05;   // étirement vertical max (+5 %)
-const WARP_KX = 0.022;  // pincement horizontal max (−2,2 %)
-const WARP_WAVE_FRAMES = 10;  // retard max (frames) entre le haut et le bas de l'écran → vague verticale
+const WARP_KY = 0.07;   // étirement vertical max (+7 %)
+const WARP_KX = 0.03;   // pincement horizontal max (−3 %)
+const WARP_WAVE_FRAMES = 28;  // retard max (frames) haut→bas de l'écran → vague verticale (~465 ms)
 let velocity = REDUCED_MOTION ? 0 : BASE_VELOCITY;
 let lastFrameTime = 0;
 let paused = false;

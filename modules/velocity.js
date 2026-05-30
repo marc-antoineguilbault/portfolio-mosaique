@@ -14,7 +14,7 @@ export function createVelocityTracker({
   let w = 0, wv = 0;   // facteur warp (ressort) + sa vélocité
   const CLAMP = vMax * 2;
   const REST_EPS = 0.0005;
-  const WAVE_HIST = 20;                       // frames d'historique du warp (vague verticale)
+  const WAVE_HIST = 40;                       // frames d'historique du warp (vague verticale)
   const hist = new Array(WAVE_HIST).fill(0);
   let head = 0;                               // index de la dernière valeur écrite
 
