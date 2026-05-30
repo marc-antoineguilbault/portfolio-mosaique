@@ -9,3 +9,4 @@ playwright-report/
 playwright/.cache/
 dist/
 .lighthouseci/
+.superpowers/
