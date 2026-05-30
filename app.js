@@ -206,11 +206,13 @@ function advance() {
   // Shift UNIFORME de -(cliquée.w + GAP) pour TOUS les slots, cliquée incluse + pastSlots
   // (anciennes cliquées déjà off cliquée slot). Le ruban entier ET les anciennes drift ensemble
   // → pas de pile-up à -127 après plusieurs advances.
-  // Cancel TOUTES les WAAPI résiduelles sur chaque élément AVANT de poser le nouveau transform.
-  // Bug observé : l'anim WAAPI initiale du clone restait en state="running" ct=0 (jamais kicked
-  // off ou bloquée par fill:'backwards') et overridait les CSS transitions du shift → inline
-  // mis à jour mais computed bloqué à startX.
-  const cancelAnims = (el) => el.getAnimations().forEach((a) => { try { a.cancel(); } catch (_) {} });
+  // Cancel SEULEMENT les WAAPI résiduelles (pas les CSS animations comme tile-appear qui
+  // contrôle opacity + translate des .tile — si on les cancel, la cliquée devient opacity:0).
+  // CSSAnimation extends Animation mais peut être filtré via instanceof.
+  const cancelAnims = (el) => el.getAnimations().forEach((a) => {
+    if (a instanceof CSSAnimation) return;
+    try { a.cancel(); } catch (_) {}
+  });
   const delta = -(oldCliquee.w + GAP);
   for (let i = 0; i < focusList.length; i++) {
     const slot = focusList[i];
