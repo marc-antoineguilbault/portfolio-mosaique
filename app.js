@@ -97,9 +97,9 @@ function focusTile(clickedTile) {
     liveTiles.push(tile);
     placedSrcs.add(item.src);
   }
-  // Sources du même projet : à HIDE instantanément (pas d'exit haut/bas) pour que l'utilisateur
-  // ne voie pas de mouvement parasite — seuls les clones arrivent (de droite).
-  const sameProjectSources = new Set(liveTiles.filter((t) => t !== clickedTile && t.item && t.item.project === projId));
+  // TOUTES les tuiles non-cliquée (incluant les sources du même projet) sortent par le haut/bas
+  // selon leur position vs vh/2 — uniformité visuelle voulue : pas de traitement spécial qui
+  // fasse les sources "disparaître en fondue" différemment des autres projets.
 
   if (REDUCED_MOTION) {
     clickedTile.el.style.transition = 'none';
@@ -107,7 +107,6 @@ function focusTile(clickedTile) {
     for (const tile of liveTiles) {
       if (tile === clickedTile) continue;
       tile.exitDir = 'up';
-      if (sameProjectSources.has(tile)) tile.projectHidden = true;
       tile.el.style.opacity = '0';
     }
   } else {
@@ -117,19 +116,8 @@ function focusTile(clickedTile) {
         tile.el.style.transform = `translate3d(${tile.x}px, ${targetY}px, 0)`;
         continue;
       }
-      if (sameProjectSources.has(tile)) {
-        // Source d'une maquette du projet → hide instantanée via inline opacity (le CSS hide
-        // data-focus-proj backup aussi). Pas de transition inline ici — ça créait un conflit
-        // avec returnTiles plus tard (200ms vs 700ms = saut visuel à l'exit). returnTiles
-        // setera sa propre transition pour le fade in.
-        tile.exitDir = 'up';
-        tile.projectHidden = true;
-        tile.el.style.opacity = '0';
-        continue;
-      }
-      // Autres projets : sortie par haut/bas selon position vs vh/2. Target ABSOLU garanti
-      // hors-écran (pas relatif au cur — la formule cur+dy était instable, certaines tuiles
-      // s'arrêtaient à -112 au lieu de -h-40 et restaient visibles).
+      // Sortie par haut/bas selon position vs vh/2 (tile mosaïque hors-écran). Target ABSOLU
+      // garanti hors-écran (formule cur+dy était instable, certaines tuiles s'arrêtaient à -112).
       const rect = tile.el.getBoundingClientRect();
       const centerY = rect.top + tile.h / 2;
       const dir = centerY < middleY ? 'up' : 'down';
@@ -324,25 +312,12 @@ function returnTiles(done) {
   for (const tile of liveTiles) {
     const wasExited = !!tile.exitDir;
     const wasFocused = !!tile.focused;
-    const wasHidden = !!tile.projectHidden;
     if (!wasExited && !wasFocused) continue;
     delete tile.exitDir;
     delete tile.focused;
-    delete tile.projectHidden;
     delete tile.el.dataset.exitDir;
     if (REDUCED_MOTION) { tile.el.style.opacity = ''; tile.el.style.transition = 'none'; tile.el.style.transform = ''; continue; }
     if (tile.detached) continue;
-    if (wasHidden) {
-      // Source d'un clone projet : transform inchangé, juste restaure opacity en fade.
-      // CRITIQUE : kill l'anim CSS tile-appear (qui peut être en state=running ct=0 sur sources
-      // récemment spawnées) — sinon elle override ma transition opacity et cause un saut visible
-      // (snap de 0 à la valeur courante de l'animation, ~0.7 si animation à mi-parcours).
-      tile.el.style.animation = 'none';
-      tile.el.style.transition = `opacity ${EXIT_MS}ms ease`;
-      tile.el.style.opacity = '1';
-      animated.push(tile);
-      continue;
-    }
     const ty = tile.y - offset * tile.velocityMultiplier + (COL_STAGGER[tile.colIdx] ?? 0);
     tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
     tile.el.style.transform = `translate3d(${tile.x}px, ${ty}px, 0)`;
