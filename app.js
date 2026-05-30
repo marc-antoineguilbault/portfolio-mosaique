@@ -223,39 +223,12 @@ function advance() {
     past.x = newX;
   }
 
-  // Nouveau clone wrap (image de l'ancienne cliquée) à la dernière position, arrive de droite.
-  // wrapX = juste après le nouveau dernier slot (lastSlot après shift), avec GAP uniforme.
-  const wrapItem = oldCliquee.item;
-  const wrapSource = liveTiles.find((t) => t.item && t.item.src === wrapItem.src);
-  const lastSlot = focusList[focusList.length - 1];
-  const wrapX = lastSlot.x + lastSlot.w + GAP;
+  // Pas de wrap clone : le ruban se vide après avoir parcouru toutes les maquettes du projet.
+  // Quand focusList.length atteint 1 (seule la dernière maquette comme cliquée), l'advance
+  // est bloqué (return early en haut de la fonction sur focusList.length < 2).
 
-  const wrapH = wrapSource?.h ?? oldCliquee.h;
-  const wrapW = wrapSource?.w ?? oldCliquee.w;
-  const wrapY = (vh - wrapH) / 2;
-  const wrapStartX = Math.max(W, wrapX) + 80;
-  const wrapClone = (wrapSource || oldCliquee).el.cloneNode(true);
-  wrapClone.dataset.focusClone = 'true';
-  wrapClone.classList.remove('is-focused-tile');
-  wrapClone.style.opacity = '1';
-  wrapClone.style.zIndex = String(100 + focusList.length + 10);
-  // Pré-position au start (off-screen droit) + CSS transition vers target. Pas de WAAPI.
-  wrapClone.style.transition = 'none';
-  wrapClone.style.transform = `translate3d(${wrapStartX}px, ${wrapY}px, 0)`;
-  document.body.appendChild(wrapClone);
-  if (!REDUCED_MOTION) {
-    wrapClone.getBoundingClientRect();
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      wrapClone.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
-      wrapClone.style.transform = `translate3d(${wrapX}px, ${wrapY}px, 0)`;
-    }));
-  } else {
-    wrapClone.style.transform = `translate3d(${wrapX}px, ${wrapY}px, 0)`;
-  }
-
-  // 4. State : retire l'ancienne cliquée du début, ajoute le nouveau clone à la fin.
+  // 4. State : retire l'ancienne cliquée du début. focusList shrink de 1 à chaque advance.
   const removed = focusList.shift();
-  focusList.push({ el: wrapClone, item: wrapItem, x: wrapX, y: wrapY, w: wrapW, h: wrapH, isClone: true });
 
   // 5. focusedTile pointe maintenant sur la nouvelle cliquée (focusList[0]) pour le click handler.
   focusedTile = { el: focusList[0].el, item: focusList[0].item };
