@@ -364,14 +364,10 @@ function exitFocus() {
   // Phase 3a : M0 (userClickedTile) retourne à sa position Y mosaïque.
   // Phase 3b (après) : autres projets reviennent + sources du même projet fadent in.
   const phase3b = () => {
-    // M0 déjà à sa position mosaïque. Clear focused flag pour que returnTiles ne la re-handle pas.
-    if (userClickedTile) {
-      const liveTile = liveTiles.find((t) => t.el === userClickedTile.el);
-      if (liveTile) delete liveTile.focused;
-    }
-    // Remove data-focus-proj AVANT is-focused-tile pour éviter flicker. CSS hide gone, inline
-    // opacity:0 (set par focusTile) tient toujours les sources hidées. returnTiles déclenche le
-    // fade in via transition opacity EXIT_MS.
+    // NB : on NE delete PAS userClickedTile.focused ici — returnTiles doit la traiter pour
+    // clear la transition inline (set par phase3a). Sans ce nettoyage, frame() trigger une
+    // nouvelle CSS transition à chaque rAF → tuile cliquée scrolle avec lag/saccade visible.
+    // Le re-set du transform par returnTiles avec la MÊME valeur ne déclenche pas de transition.
     delete document.body.dataset.focusProj;
     // focusList est vide ici (phase 2 l'a vidé) → on utilise les snapshots pris en début d'exit.
     for (const el of focusedEls) el.classList.remove('is-focused-tile');
