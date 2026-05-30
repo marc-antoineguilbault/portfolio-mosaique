@@ -72,13 +72,18 @@ function focusTile(clickedTile) {
   const targetY = (vh - clickedTile.h) / 2;
   clickedTile.focused = true;
 
-  // TOUTES les autres tuiles (y compris même projet) sortent par haut/bas.
+  const projId = clickedTile.item.project;
+  // Sources du même projet : à HIDE instantanément (pas d'exit haut/bas) pour que l'utilisateur
+  // ne voie pas de mouvement parasite — seuls les clones arrivent (de droite).
+  const sameProjectSources = new Set(liveTiles.filter((t) => t !== clickedTile && t.item && t.item.project === projId));
+
   if (REDUCED_MOTION) {
     clickedTile.el.style.transition = 'none';
     clickedTile.el.style.transform = `translate3d(${clickedTile.x}px, ${targetY}px, 0)`;
     for (const tile of liveTiles) {
       if (tile === clickedTile) continue;
       tile.exitDir = 'up';
+      if (sameProjectSources.has(tile)) tile.projectHidden = true;
       tile.el.style.opacity = '0';
     }
   } else {
@@ -88,6 +93,15 @@ function focusTile(clickedTile) {
         tile.el.style.transform = `translate3d(${tile.x}px, ${targetY}px, 0)`;
         continue;
       }
+      if (sameProjectSources.has(tile)) {
+        // Source d'une maquette du projet → hide instantanée. Marqué pour returnTiles.
+        tile.exitDir = 'up';                     // flag pour returnTiles (clear + restore opacity)
+        tile.projectHidden = true;
+        tile.el.style.transition = 'opacity 200ms ease';
+        tile.el.style.opacity = '0';
+        continue;
+      }
+      // Autres projets : sortie par haut/bas selon position vs vh/2.
       const rect = tile.el.getBoundingClientRect();
       const centerY = rect.top + tile.h / 2;
       const dir = centerY < middleY ? 'up' : 'down';
@@ -103,40 +117,51 @@ function focusTile(clickedTile) {
     }
   }
 
-  // Focus row : pour chaque autre maquette du projet, clone une source tile et glisse-la depuis
-  // la droite (hors écran) vers sa position cible. Stagger cumulatif.
-  const projId = clickedTile.item.project;
-  const projItems = pool.filter((it) => it.project === projId && it.src !== clickedTile.item.src);
+  // Focus row : ordre = depuis cliquée+1 dans la séquence projet (wrap circulaire). Pour chaque
+  // maquette du projet (sauf cliquée), clone une source et glisse-la depuis la droite vers sa
+  // position cible. startX cumulatif (chaque clone démarre PAST le précédent → pas de superposition
+  // visible pendant la phase off-screen → no double-startX au même endroit).
+  const allItems = pool.filter((it) => it.project === projId);
+  const cliqueeIdx = allItems.findIndex((it) => it.src === clickedTile.item.src);
+  const orderedItems = [];
+  for (let i = 1; i < allItems.length; i++) {
+    orderedItems.push(allItems[(cliqueeIdx + i) % allItems.length]);
+  }
   let edgeX = clickedTile.x + clickedTile.w;
+  let prevRightEdge = 0;                                  // pour stagger des startX
   let idx = 0;
-  for (const item of projItems) {
+  for (const item of orderedItems) {
     const source = liveTiles.find((t) => t.item && t.item.src === item.src);
     if (!source) continue;
     edgeX += GAP;
     const targetX = edgeX;
     const targetTopY = (vh - source.h) / 2;
     edgeX += source.w;
+    // startX : doit être > target (motion left), > W (off-screen droit), ET > prevRightEdge + GAP
+    // (pas de superposition avec le clone précédent au démarrage).
+    const startX = Math.max(W, targetX, prevRightEdge + GAP) + 80;
+    prevRightEdge = startX + source.w;
     const clone = source.el.cloneNode(true);
     clone.dataset.focusClone = 'true';
-    // Start = max(W, targetX) + 80 → garantit que start > target (donc mouvement vers la GAUCHE)
-    // ET que start > W (hors viewport droit). Critique pour les clones dont targetX > W (focus
-    // row plus large que le viewport sur tablettes).
-    const startX = Math.max(W, targetX) + 80;
-    clone.style.transition = 'none';
-    clone.style.transform = `translate3d(${startX}px, ${targetTopY}px, 0)`;
+    // RESET opacity : la source vient d'être hidée (opacity:0) → le deep clone copie cette inline
+    // style. Sans reset, le clone serait invisible.
+    clone.style.opacity = '1';
+    // Pose final inline d'emblée → après onfinish cancel, le clone reste à target sans flicker.
+    clone.style.transform = `translate3d(${targetX}px, ${targetTopY}px, 0)`;
     document.body.appendChild(clone);
     focusClones.push({ el: clone, targetX, targetY: targetTopY, startX });
     if (!REDUCED_MOTION) {
-      // Force commit du DOM attaché à l'état "off-screen droite" AVANT d'enchaîner avec final.
-      clone.getBoundingClientRect();
       const delay = (idx + 1) * FOCUS_ROW_STAGGER_MS;
-      // Double rAF pour garantir un paint au start avant final (sinon Chrome optimise).
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        clone.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE} ${delay}ms`;
-        clone.style.transform = `translate3d(${targetX}px, ${targetTopY}px, 0)`;
-      }));
-    } else {
-      clone.style.transform = `translate3d(${targetX}px, ${targetTopY}px, 0)`;
+      // WAAPI : keyframes explicites START→FINAL. fill:'backwards' applique START pendant le
+      // delay (sinon le clone serait visible à target pendant le delay puis "jump" au start).
+      const anim = clone.animate(
+        [
+          { transform: `translate3d(${startX}px, ${targetTopY}px, 0)` },
+          { transform: `translate3d(${targetX}px, ${targetTopY}px, 0)` }
+        ],
+        { duration: EXIT_MS, easing: EXIT_EASE, delay, fill: 'backwards' }
+      );
+      anim.onfinish = () => { try { anim.cancel(); } catch (_) {} };
     }
     idx++;
   }
@@ -161,12 +186,21 @@ function returnTiles(done) {
   for (const tile of liveTiles) {
     const wasExited = !!tile.exitDir;
     const wasFocused = !!tile.focused;
+    const wasHidden = !!tile.projectHidden;
     if (!wasExited && !wasFocused) continue;
     delete tile.exitDir;
     delete tile.focused;
+    delete tile.projectHidden;
     delete tile.el.dataset.exitDir;
     if (REDUCED_MOTION) { tile.el.style.opacity = ''; tile.el.style.transition = 'none'; tile.el.style.transform = ''; continue; }
     if (tile.detached) continue;
+    if (wasHidden) {
+      // Source d'un clone projet : transform inchangé, juste restaure opacity en fade.
+      tile.el.style.transition = 'opacity 350ms ease';
+      tile.el.style.opacity = '1';
+      animated.push(tile);
+      continue;
+    }
     const ty = tile.y - offset * tile.velocityMultiplier + (COL_STAGGER[tile.colIdx] ?? 0);
     tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
     tile.el.style.transform = `translate3d(${tile.x}px, ${ty}px, 0)`;
