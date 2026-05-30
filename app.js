@@ -482,8 +482,17 @@ document.addEventListener('keydown', (e) => {
 });
 document.addEventListener('click', (e) => {
   if (!focusActive) return;
-  // Click sur un clone (les clones n'ont pas de handler inner → seul ce handler global les voit).
-  if (e.target.closest('[data-focus-clone="true"]')) { advance(); return; }
+  // Click sur un clone : retreat si à gauche de la cliquée actuelle, advance si à droite.
+  const cloneEl = e.target.closest('[data-focus-clone="true"]');
+  if (cloneEl) {
+    const clickedSlot = focusList.find((s) => s.el === cloneEl)
+      || pastSlots.find((s) => s.el === cloneEl);
+    if (clickedSlot && focusList[0]) {
+      if (clickedSlot.x < focusList[0].x) retreat();
+      else advance();
+    }
+    return;
+  }
   // Click sur la cliquée actuelle (descendant de focusList[0].el). Le handler inner avec
   // stopPropagation gère le cas où la cliquée est la tuile mosaïque originale. Pour les advances
   // suivants où la cliquée est un clone, la branche ci-dessus l'attrape.
