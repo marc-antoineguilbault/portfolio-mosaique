@@ -347,17 +347,22 @@ function removeFocusClones() {
   // disparaissent doivent être EN DESSOUS des projets qui réapparaissent".
   for (const slot of allClones) slot.el.style.zIndex = '0';
 
-  // Fade très rapide : 50ms linear → disparition quasi instantanée. Le slide continue
-  // sur 700ms (inchangé) mais sur un clone invisible. Effet : la maquette s'efface vite.
-  const FADE_MS = 50;
+  // Stagger sortie identique à l'entrée : le clone le plus proche de la cliquée part en
+  // premier (delay 0), les autres suivent avec FOCUS_ROW_STAGGER_MS de décalage. Cohérent
+  // avec spawnClone (delay = (idx+1) * FOCUS_ROW_STAGGER_MS, idx croît avec l'éloignement).
+  let maxDelay = 0;
 
   if (rightClones.length && !REDUCED_MOTION) {
     const leftmostX = Math.min(...rightClones.map((s) => s.x));
     const delta = W + 80 - leftmostX;
-    for (const slot of rightClones) {
-      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}, opacity ${FADE_MS}ms linear`;
+    // Tri par x ascending : leftmost (= plus proche cliquée) part en premier.
+    const sorted = rightClones.slice().sort((a, b) => a.x - b.x);
+    for (let i = 0; i < sorted.length; i++) {
+      const slot = sorted[i];
+      const delay = i * FOCUS_ROW_STAGGER_MS;
+      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE} ${delay}ms`;
       slot.el.style.transform = `translate3d(${slot.x + delta}px, ${slot.y}px, 0)`;
-      slot.el.style.setProperty('opacity', '0', 'important');
+      if (delay > maxDelay) maxDelay = delay;
     }
   } else {
     for (const slot of rightClones) slot.el.remove();
@@ -366,10 +371,14 @@ function removeFocusClones() {
   if (leftClones.length && !REDUCED_MOTION) {
     const rightmostXEnd = Math.max(...leftClones.map((s) => s.x + s.w));
     const delta = -(rightmostXEnd + 80);
-    for (const slot of leftClones) {
-      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}, opacity ${FADE_MS}ms linear`;
+    // Tri par x descending : rightmost (= plus proche cliquée) part en premier.
+    const sorted = leftClones.slice().sort((a, b) => b.x - a.x);
+    for (let i = 0; i < sorted.length; i++) {
+      const slot = sorted[i];
+      const delay = i * FOCUS_ROW_STAGGER_MS;
+      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE} ${delay}ms`;
       slot.el.style.transform = `translate3d(${slot.x + delta}px, ${slot.y}px, 0)`;
-      slot.el.style.setProperty('opacity', '0', 'important');
+      if (delay > maxDelay) maxDelay = delay;
     }
   } else {
     for (const slot of leftClones) slot.el.remove();
@@ -378,7 +387,7 @@ function removeFocusClones() {
   setTimeout(() => {
     for (const slot of rightClones) slot.el.remove();
     for (const slot of leftClones) slot.el.remove();
-  }, EXIT_MS + 50);
+  }, EXIT_MS + maxDelay + 50);
   pastSlots = [];
   focusList = [];
 }
