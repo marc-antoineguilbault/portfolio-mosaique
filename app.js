@@ -227,22 +227,25 @@ function focusTile(clickedTile) {
 // ADVANCE : ruban glisse à gauche d'un cran. Cliquée sort à gauche, focus row shift left, nouveau
 // clone wrap (image de l'ancienne cliquée) arrive de droite à la dernière position. Click sur
 // cliquée OU clone déclenche un advance. Pendant l'anim (advancing=true), nouveau click bloqué.
-// Petit rebond visuel quand l'action est bloquée (1/4 + ⭠ ou 4/4 + ⭢). Tout le ribbon
-// (focusList + pastSlots) shift de ±30px puis revient — feedback "tape contre le mur".
+// Double rebond visuel quand l'action est bloquée (1/4 + ⭠ ou 4/4 + ⭢). Tout le ribbon
+// (focusList + pastSlots) shift ±30 → 0 → ±15 → 0 (amplitude décroissante).
 function triggerRebound(direction) {                          // direction: +1 = retreat blocked, -1 = advance blocked
   if (!focusActive || REDUCED_MOTION) return;
-  const SHIFT = direction * 30;
+  const SHIFT1 = direction * 30;
+  const SHIFT2 = direction * 15;
+  const TICK = 120;                                           // durée d'une phase
+  const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
   const slots = [...focusList, ...pastSlots];
-  for (const slot of slots) {
-    slot.el.style.transition = 'transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1)';
-    slot.el.style.transform = `translate3d(${slot.x + SHIFT}px, ${slot.y}px, 0)`;
-  }
-  setTimeout(() => {
+  const applyShift = (shift) => {
     for (const slot of slots) {
-      slot.el.style.transition = 'transform 180ms cubic-bezier(0.4, 0, 0.6, 1)';
-      slot.el.style.transform = `translate3d(${slot.x}px, ${slot.y}px, 0)`;
+      slot.el.style.transition = `transform ${TICK}ms ${EASE}`;
+      slot.el.style.transform = `translate3d(${slot.x + shift}px, ${slot.y}px, 0)`;
     }
-  }, 180);
+  };
+  applyShift(SHIFT1);                                         // T+0   : grand shift
+  setTimeout(() => applyShift(0),         TICK);              // T+120 : retour
+  setTimeout(() => applyShift(SHIFT2),    TICK * 2);          // T+240 : petit shift
+  setTimeout(() => applyShift(0),         TICK * 3);          // T+360 : retour final
 }
 
 function advance() {
