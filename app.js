@@ -286,7 +286,8 @@ function returnTiles(done) {
     if (tile.detached) continue;
     if (wasHidden) {
       // Source d'un clone projet : transform inchangé, juste restaure opacity en fade.
-      tile.el.style.transition = 'opacity 350ms ease';
+      // Même durée que les autres transitions exit (EXIT_MS) pour sync visuel avec autres projets.
+      tile.el.style.transition = `opacity ${EXIT_MS}ms ease`;
       tile.el.style.opacity = '1';
       animated.push(tile);
       continue;
@@ -337,28 +338,12 @@ function exitFocus() {
       const liveTile = liveTiles.find((t) => t.el === userClickedTile.el);
       if (liveTile) delete liveTile.focused;
     }
-    // Sources du projet hidées via CSS pendant focus → fade in en sync avec returnTiles.
-    const sources = projId
-      ? [...document.querySelectorAll(`.tile[data-project="${projId}"]:not([data-focus-clone]):not(.is-focused-tile)`)]
-      : [];
-    if (!REDUCED_MOTION) {
-      for (const el of sources) {
-        el.style.transition = `opacity ${EXIT_MS}ms ease`;
-        el.style.opacity = '0';
-      }
-    }
-    // Remove data-focus-proj AVANT is-focused-tile pour éviter flicker.
+    // Remove data-focus-proj AVANT is-focused-tile pour éviter flicker. CSS hide gone, inline
+    // opacity:0 (set par focusTile) tient toujours les sources hidées. returnTiles déclenche le
+    // fade in via transition opacity EXIT_MS.
     delete document.body.dataset.focusProj;
     for (const slot of focusList) {
       if (!slot.isClone) slot.el.classList.remove('is-focused-tile');
-    }
-    if (!REDUCED_MOTION) {
-      requestAnimationFrame(() => {
-        for (const el of sources) el.style.opacity = '1';
-      });
-      setTimeout(() => {
-        for (const el of sources) { el.style.opacity = ''; el.style.transition = ''; }
-      }, EXIT_MS + 100);
     }
     userClickedTile = null;
     returnTiles(() => { resumeMosaic(); setMode('mosaic'); });
