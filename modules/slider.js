@@ -100,10 +100,11 @@ function layout() {
     }
   }
   candidates.sort((a, b) => a.shift - b.shift || a.centerErr - b.centerErr);
-  // À l'OUVERTURE initiale : on force leftCount=0 → cliquée + (N-1) suivants à droite,
-  // donc 2 maquettes suivantes visibles au lieu d'1 prev + 1 next. Layout symétrique repris
-  // dès la 1re navigation (state.lefts existant).
-  const chosen = !state.lefts && candidates.find((c) => c.k === 0) || candidates[0];
+  // À l'OUVERTURE initiale : on force leftCount=0 (cliquée + N-1 successors à droite, donc 2
+  // next visibles) ET on garde anchorX BRUT (pas de clamp) → la cliquée reste pile sur sa tuile
+  // d'origine. Conséquence : pas de peek gauche, far successors potentiellement off-screen droit
+  // pour viewports étroits. Layout symétrique normal repris dès la 1re navigation.
+  const chosen = !state.lefts ? { k: 0, clamped: anchorX } : candidates[0];
   const leftCount = chosen.k;
   const rightCount = N - 1 - leftCount;
   // anchorX ajusté (≈ original si aucun shift nécessaire). Mis à jour dans state pour cohérence
@@ -306,9 +307,11 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
   });
 
   // ─── Animation d'ouverture (WAAPI explicite) ──────────────────────────────
-  // Web Animations API : keyframes explicites START → FINAL, browser ne peut PAS optimiser.
-  // CSS transitions échouaient car le browser zappait l'état pré-position START (compositeur
-  // optimise le séquence non-paint sync). WAAPI bypasse complètement la logique transition CSS.
+  // Web Animations API : keyframes explicites START → FINAL, browser ne peut PAS optimiser
+  // (CSS transitions échouaient car le browser zappait le pré-position START).
+  // - Inline transform posé à FINAL d'emblée → state final après cancel de l'anim.
+  // - fill:'backwards' → applique START pendant le delay (évite flicker de FINAL→START au début).
+  // - onfinish cancel → libère la propriété pour les transforms du drag/nav suivants.
   document.body.appendChild(root);
   if (originRect && !REDUCED_MOTION) {
     const W = window.innerWidth;
@@ -318,20 +321,19 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
       const sz = slideSize(state.slides[i].type);
       const finalLeft = state.lefts[i];
       const finalTop = centerY - sz.h / 2;
-      // Cliquée : départ depuis la tuile (originRect) — continuité avec le clic.
-      // Voisines : départ depuis le bord de leur côté.
       const startLeft = i === state.index ? originRect.left : (finalLeft < curLeft ? -(sz.w + 60) : W + 60);
       const startTop  = i === state.index ? originRect.top : finalTop;
       const dist = Math.abs(finalLeft - curLeft);
       const delay = i === state.index ? 0 : Math.min(dist / W, 1) * ENTRY_STAGGER_MAX_MS;
-      // WAAPI : keyframes explicites. fill:'forwards' garde l'état final après l'anim.
-      el.animate(
+      el.style.transform = `translate(${finalLeft}px, ${finalTop}px)`;
+      const anim = el.animate(
         [
           { transform: `translate(${startLeft}px, ${startTop}px)` },
           { transform: `translate(${finalLeft}px, ${finalTop}px)` }
         ],
-        { duration: ENTRY_MS, easing: ENTRY_EASE, delay, fill: 'forwards' }
+        { duration: ENTRY_MS, easing: ENTRY_EASE, delay, fill: 'backwards' }
       );
+      anim.onfinish = () => { try { anim.cancel(); } catch (_) {} };
     });
   }
 
