@@ -316,18 +316,28 @@ function retreat() {
   setTimeout(() => { advancing = false; }, EXIT_MS + 50);
 }
 
-// Retire tous les clones (focusList + pastSlots). Clones de focusList (droite) → anim off-screen
-// droite (cohérent avec leur entrée depuis la droite). Clones de pastSlots (gauche, pré-remplis
-// OU drifted) → remove INSTANT (pas d'anim leftward) : après phase 1 reverse, ces clones peuvent
-// être positionnés n'importe où (les anciens cliquées drifted apparaissent à DROITE de M0 après
-// reverse). Une anim "leftClones slide left" traverse alors l'écran de droite à gauche en passant
-// devant M0 → visuel parasite. Instant remove évite ce flash. pastSlots non-clones
-// (= userClickedTile shiftée par advance) → géré par returnTiles en phase 3.
+// Retire tous les clones (focusList + pastSlots). Classification par POSITION COURANTE vs M0
+// (peu importe focusList ou pastSlots) :
+//   - clone à gauche de M0 → anim off-screen gauche (cohérent : open 4/4 pré-rempli, retreat).
+//   - clone à droite de M0 → anim off-screen droit (cohérent : open 1/4 + clones droit, advance
+//     scenario où anciens cliquées drifted apparaissent à droite de M0 après reverse phase 1).
+// Évite l'anim parasite "leftClones traversent l'écran" du scénario advance.
+// pastSlots non-clones (= userClickedTile shiftée) → géré par returnTiles en phase 3.
 function removeFocusClones() {
   const W = window.innerWidth;
 
-  // Clones à DROITE (focusList) : anim vers off-screen droit, même delta uniforme.
-  const rightClones = focusList.filter((s) => s.isClone);
+  // Centre de M0 (cliquée originale, dans focusList OU pastSlots selon advances/retreats).
+  const m0Slot = userClickedTile
+    ? (focusList.find((s) => s.el === userClickedTile.el)
+       || pastSlots.find((s) => s.el === userClickedTile.el))
+    : null;
+  const m0CenterX = m0Slot ? m0Slot.x + (m0Slot.w || 0) / 2 : W / 2;
+
+  // Classifier TOUS les clones (focusList + pastSlots) par position courante.
+  const allClones = [...focusList, ...pastSlots].filter((s) => s.isClone);
+  const rightClones = allClones.filter((s) => s.x + s.w / 2 >= m0CenterX);
+  const leftClones = allClones.filter((s) => s.x + s.w / 2 < m0CenterX);
+
   if (rightClones.length && !REDUCED_MOTION) {
     const leftmostX = Math.min(...rightClones.map((s) => s.x));
     const delta = W + 80 - leftmostX;
@@ -339,13 +349,20 @@ function removeFocusClones() {
     for (const slot of rightClones) slot.el.remove();
   }
 
-  // Clones à GAUCHE (pastSlots) : remove instant — pas d'anim visible.
-  for (const past of pastSlots) {
-    if (past.isClone) past.el.remove();
+  if (leftClones.length && !REDUCED_MOTION) {
+    const rightmostXEnd = Math.max(...leftClones.map((s) => s.x + s.w));
+    const delta = -(rightmostXEnd + 80);
+    for (const slot of leftClones) {
+      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+      slot.el.style.transform = `translate3d(${slot.x + delta}px, ${slot.y}px, 0)`;
+    }
+  } else {
+    for (const slot of leftClones) slot.el.remove();
   }
 
   setTimeout(() => {
     for (const slot of rightClones) slot.el.remove();
+    for (const slot of leftClones) slot.el.remove();
   }, EXIT_MS + 50);
   pastSlots = [];
   focusList = [];
