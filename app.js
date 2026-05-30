@@ -178,17 +178,21 @@ function advance() {
   const vh = window.innerHeight;
   const W = window.innerWidth;
   const oldCliquee = focusList[0];
-  const delta = -(oldCliquee.w + GAP);
 
   // 1. Ancienne cliquée → hors-écran gauche.
   const exitX = -(oldCliquee.w + 100);
   oldCliquee.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
   oldCliquee.el.style.transform = `translate3d(${exitX}px, ${oldCliquee.y}px, 0)`;
 
-  // 2. Autres slots (index 1..N-1) shiftent à gauche de delta uniforme.
+  // 2. Chaque slot shift de -(largeur du slot DEVANT lui + GAP). Shifts NON uniformes : le slot
+  // i shift de -(focusList[i-1].w + GAP). M+1 prend la position de la cliquée (shift -cliquée.w),
+  // M+2 prend la position de M+1 (shift -M+1.w), etc. Si M+1 est plus étroit que cliquée,
+  // M+2 shift moins et reste visible plus longtemps.
   for (let i = 1; i < focusList.length; i++) {
     const slot = focusList[i];
-    const newX = slot.x + delta;
+    const leftNeighbor = focusList[i - 1];
+    const shift = -(leftNeighbor.w + GAP);
+    const newX = slot.x + shift;
     slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
     slot.el.style.transform = `translate3d(${newX}px, ${slot.y}px, 0)`;
     slot.x = newX;
