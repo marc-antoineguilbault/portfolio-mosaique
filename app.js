@@ -295,9 +295,41 @@ function triggerRebound(direction) {                          // direction: +1 =
   setTimeout(() => applyShift(0, TICK2),            TICK1 * 3);              // T+360 : retour final lent
 }
 
+// Loop : pop TOUS les pastSlots clones d'un coup, unshift dans focusList, shift le ruban
+// par +cumDelta en une transition. Utilisé quand advance bute sur 4/4 → après le rebond,
+// le ruban glisse vers la droite jusqu'à ce que M01 (le tout 1er) reprenne la place cliquée.
+function loopToStart() {
+  if (!focusActive || pastSlots.length === 0) return;
+  let cumDelta = 0;
+  while (pastSlots.length > 0) {
+    const last = pastSlots.pop();
+    cumDelta += last.w + GAP;
+    focusList.unshift(last);
+  }
+  for (const slot of focusList) {
+    const newX = slot.x + cumDelta;
+    slot.el.style.transition = `transform 500ms ${EXIT_EASE}`;
+    slot.el.style.transform = `translate3d(${newX}px, ${slot.y}px, 0)`;
+    slot.x = newX;
+  }
+  focusedTile = { el: focusList[0].el, item: focusList[0].item };
+  const projId = focusList[0].item.project;
+  const projName = projectNameById.get(projId) ?? projId;
+  const allInProj = pool.filter((it) => it.project === projId);
+  const idx = allInProj.findIndex((it) => it.src === focusList[0].item.src);
+  showProjectLabel(projName, idx, allInProj.length);
+  setTimeout(() => { advancing = false; }, 550);
+}
+
 function advance() {
   if (!focusActive || advancing) return;
-  if (focusList.length < 2) { triggerRebound(-1); return; }   // 4/4 : avance bloquée → rebond gauche
+  if (focusList.length < 2) {                                 // 4/4 : avance bloquée
+    if (pastSlots.length === 0) { triggerRebound(-1); return; } // 1 seule maquette, juste rebond
+    advancing = true;
+    triggerRebound(-1);
+    setTimeout(loopToStart, 500);                             // après le rebond → loop vers 1/4
+    return;
+  }
   advancing = true;
   const vh = window.innerHeight;
   const W = window.innerWidth;
