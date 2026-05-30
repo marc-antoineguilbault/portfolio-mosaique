@@ -631,7 +631,9 @@ document.addEventListener('click', (e) => {
   // stopPropagation gère le cas où la cliquée est la tuile mosaïque originale. Pour les advances
   // suivants où la cliquée est un clone, la branche ci-dessus l'attrape.
   if (focusList[0] && focusList[0].el.contains(e.target)) { advance(); return; }
-  // Click ailleurs → exit.
+  // Click ailleurs → exit, sauf si une transition est en cours (verrou anti-exit-accidentel).
+  // Les clics sur maquette restent autorisés (advance/retreat ci-dessus) — seul l'exit est lock.
+  if (advancing) return;
   exitFocus();
 });
 
