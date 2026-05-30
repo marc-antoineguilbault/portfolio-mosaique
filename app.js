@@ -249,16 +249,22 @@ function advance() {
 function removeFocusClones() {
   const W = window.innerWidth;
   const cloneSlots = focusList.filter((s) => s.isClone);
-  for (const slot of cloneSlots) {
-    if (REDUCED_MOTION) { slot.el.remove(); continue; }
-    const startX = Math.max(W, slot.x) + 80;
-    slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
-    slot.el.style.transform = `translate3d(${startX}px, ${slot.y}px, 0)`;
+  if (cloneSlots.length && !REDUCED_MOTION) {
+    // Tous les clones shiftent du MÊME delta vers la droite → même vitesse, pas d'overlap.
+    // Sinon (target individuel), le clone le plus à gauche a une distance plus courte vers
+    // l'edge → va plus vite → empile sur les suivants pendant la disparition.
+    const leftmostX = Math.min(...cloneSlots.map((s) => s.x));
+    const delta = W + 80 - leftmostX;
+    for (const slot of cloneSlots) {
+      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+      slot.el.style.transform = `translate3d(${slot.x + delta}px, ${slot.y}px, 0)`;
+    }
+  } else {
+    for (const slot of cloneSlots) slot.el.remove();
   }
   setTimeout(() => { for (const slot of cloneSlots) slot.el.remove(); }, EXIT_MS + 50);
   for (const past of pastSlots) {
     if (past.isClone) past.el.remove();
-    // non-clones (userClickedTile) : leave inline transform, returnTiles le restaurera via focused flag.
   }
   pastSlots = [];
   focusList = [];
