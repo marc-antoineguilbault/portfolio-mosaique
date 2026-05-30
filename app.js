@@ -235,6 +235,13 @@ function advance() {
   // 5. focusedTile pointe maintenant sur la nouvelle cliquée (focusList[0]) pour le click handler.
   focusedTile = { el: focusList[0].el, item: focusList[0].item };
 
+  // 5a. Update du compteur TL ("pour <Projet> (⭠N/Total⭢)") avec la nouvelle cliquée.
+  const advProjId = focusList[0].item.project;
+  const advProjName = projectNameById.get(advProjId) ?? advProjId;
+  const advAllInProj = pool.filter((it) => it.project === advProjId);
+  const advIdx = advAllInProj.findIndex((it) => it.src === focusList[0].item.src);
+  showProjectLabel(advProjName, advIdx, advAllInProj.length);
+
   // 5b. Ancienne cliquée → pastSlots (continuera à drift à gauche à chaque advance).
   pastSlots.push({ el: removed.el, x: removed.x, y: removed.y, isClone: removed.isClone });
 
@@ -410,9 +417,10 @@ document.addEventListener('click', (e) => {
 });
 
 // ─── Label projet dans le coin TL ────────────────────────────────────────────
-// Affiche "pour <Nom>" dans le suffix du coin TL pendant le focus. Pas de nav
-// arrows (un focus = une maquette, pas de navigation).
-function showProjectLabel(name) {
+// Affiche "pour <Nom> (⭠N/Total⭢)" dans le suffix du coin TL pendant le focus.
+// Le compteur indique la position de la maquette courante dans la séquence du projet.
+// Flèches décoratives pour l'instant (le ribbon avance déjà au click).
+function showProjectLabel(name, idx, total) {
   const suffix = document.querySelector('.ui-corner__suffix');
   const nav = document.querySelector('.ui-corner__project-nav');
   if (suffix) {
@@ -422,6 +430,12 @@ function showProjectLabel(name) {
     nameSpan.className = 'ui-corner__suffix-name';
     nameSpan.textContent = name;
     suffix.appendChild(nameSpan);
+    if (idx != null && total != null && total > 1) {
+      const counter = document.createElement('span');
+      counter.className = 'ui-corner__project-counter';
+      counter.textContent = ` (⭠${idx + 1}/${total}⭢)`;
+      suffix.appendChild(counter);
+    }
   }
   if (nav) nav.replaceChildren();
 }
@@ -1063,7 +1077,9 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
     document.body.dataset.focusProj = proj;
     tileObj.el.classList.add('is-focused-tile');
     const projName = projectNameById.get(proj) ?? proj;
-    showProjectLabel(projName);
+    const allInProj = pool.filter((it) => it.project === proj);
+    const projIdx = allInProj.findIndex((it) => it.src === tileObj.item.src);
+    showProjectLabel(projName, projIdx, allInProj.length);
     focusTile(tileObj);
   });
 
