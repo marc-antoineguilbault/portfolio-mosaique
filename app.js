@@ -105,6 +105,83 @@ let pendingAdvanceCleanup = null;                              // setTimeout han
 let pendingLoopTimeout = null;                                 // setTimeout handle pour loopToStart à 4/4 + advance
 let pendingRetreatCleanup = null;                              // setTimeout handle pour cleanup post-anim retreat
 
+// ─── Voile coloré du fond au focus ───────────────────────────────────────────
+// Au focus d'un projet, le fond noir prend un très léger voile MONOCHROME issu de SES maquettes.
+// La teinte (H) = moyenne circulaire des couleurs glow déjà extraites de toutes les maquettes du
+// projet, pondérée par leur saturation (les zones neutres ne tirent pas la teinte) → une seule
+// couleur, IDENTIQUE pour toutes les maquettes du projet (ne suit pas la navigation ⭠⭢).
+// Saturation + luminosité fixes et très basses → "presque noir" constant. Mémorisée par projet
+// (une fois toutes ses maquettes extraites). Le fondu / retour au noir = transition CSS (styles.css).
+const BACKDROP_SAT = 32;    // saturation du voile (%) — garde la teinte juste perceptible
+const BACKDROP_LIGHT = 5;   // luminosité du voile (%) — « encore plus léger », quasi noir
+const _backdropByProject = new Map();   // projet → couleur figée (calculée une fois)
+
+function parseHsl(str) {
+  const m = str.match(/hsl\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%/);
+  return m ? { h: +m[1], s: +m[2], l: +m[3] } : null;
+}
+
+// Couleurs glow d'une maquette : cache → extraction à la volée depuis l'<img> chargée → null
+// (pas encore extractible). PAS de fallback seed ici : il fausserait la moyenne du projet.
+function glowColorsFor(item) {
+  let colors = window.__glowCache?.get(item.src);
+  if (!colors) {
+    const tile = liveTiles.find((t) => t.item && t.item.src === item.src);
+    const img = tile?.el.querySelector('img');
+    if (img && img.naturalWidth) {
+      colors = extractGlowColors(img);
+      if (colors) (window.__glowCache ||= new Map()).set(item.src, colors);
+    }
+  }
+  return colors || null;
+}
+
+// Teinte monochrome d'un projet : moyenne circulaire (pondérée par la saturation) des teintes de
+// toutes ses maquettes. Mémorisée uniquement quand TOUTES sont extraites → valeur stable ensuite.
+function resolveProjectBackdrop(projId) {
+  if (_backdropByProject.has(projId)) return _backdropByProject.get(projId);
+  let x = 0, y = 0, wsum = 0, total = 0, got = 0;
+  for (const item of pool) {
+    if (item.project !== projId) continue;
+    total++;
+    const colors = glowColorsFor(item);
+    if (!colors) continue;
+    got++;
+    for (const c of colors) {
+      const p = parseHsl(c);
+      if (!p) continue;
+      const a = (p.h * Math.PI) / 180;
+      x += Math.cos(a) * p.s;
+      y += Math.sin(a) * p.s;
+      wsum += p.s;
+    }
+  }
+  let h;
+  if (wsum > 0) {
+    h = (Math.atan2(y, x) * 180) / Math.PI;
+    if (h < 0) h += 360;
+  } else {
+    // rien d'extractible encore → teinte déterministe depuis le seed de la 1re maquette
+    const first = pool.find((it) => it.project === projId);
+    const p = first ? parseHsl(colorFromSeed(first.seed)) : null;
+    if (!p) return null;
+    h = p.h;
+  }
+  const color = `hsl(${Math.round(h)}, ${BACKDROP_SAT}%, ${BACKDROP_LIGHT}%)`;
+  if (total > 0 && got === total) _backdropByProject.set(projId, color);
+  return color;
+}
+
+function applyBackdrop(item) {
+  if (!item) return;
+  const color = resolveProjectBackdrop(item.project);
+  if (color) document.documentElement.style.setProperty('--backdrop-tint', color);
+}
+
+function resetBackdrop() {
+  document.documentElement.style.removeProperty('--backdrop-tint');
+}
+
 function focusTile(clickedTile, forceX) {
   const vh = window.innerHeight;
   const W = window.innerWidth;
@@ -271,6 +348,7 @@ function focusTile(clickedTile, forceX) {
     leftIdx++;
   }
   pastSlots = leftSlots.slice().reverse();
+  applyBackdrop(focusList[0].item);                          // voile monochrome → teinte du projet
 }
 
 // ADVANCE : ruban glisse à gauche d'un cran. Cliquée sort à gauche, focus row shift left, nouveau
@@ -531,6 +609,7 @@ function exitFocus() {
   focusActive = false;
   focusedTile = null;
   clearProjectLabel();
+  resetBackdrop();                                           // fond → noir pur (fondu CSS)
 
   // Track projId AVANT de null userClickedTile (utile en phase 3 pour fader les sources).
   const projId = userClickedTile?.item?.project;
