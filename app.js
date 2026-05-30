@@ -938,7 +938,12 @@ function placeNext(item, gapBelow = GAP_Y) {
   } else {
     let bestI = 0;
     let bestScore = Infinity;
-    for (let i = 0; i + 1 < cols; i += 2) {
+    // step 1 (vs step 2 avant) : autorise tablette sur TOUTES les paires de cols adjacentes
+    // (cols 0+1, 1+2, 2+3) → alternance gauche/droite quand colHeights divergent. Avant, les
+    // tablettes étaient toujours en cols 0+1 pour cols=3 → effet visuel "tablette toujours à
+    // gauche, mobiles toujours à droite". La col partagée entre 2 tablettes consécutives a son
+    // colHeights mis à jour → 2e tablette se cale en dessous, pas d'overlap visuel.
+    for (let i = 0; i + 1 < cols; i += 1) {
       const score = Math.max(colHeights[i], colHeights[i + 1]);
       if (score < bestScore) {
         bestScore = score;
