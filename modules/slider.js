@@ -305,58 +305,34 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
     if (!e.target.closest('.slider__slide')) exitSlider();
   });
 
-  // ─── Animation d'ouverture (pré-position START AVANT appendChild) ──────────
-  // CRUCIAL : on pose les transforms de DÉPART AVANT d'attacher la racine au DOM. Comme ça, quand
-  // les diapos deviennent visibles via appendChild, elles APPARAISSENT au start (hors écran pour
-  // les voisines, sur la tuile pour la cliquée). Puis une frame plus tard (rAF), on transitionne
-  // vers final via CSS transition → le browser peint forcément le start avant la cible.
-  // Sans cette pré-position, layout() posait final, appendChild rendait final, et Chrome
-  // optimisait en zappant l'état start → cut visible.
-  let entranceTargets = null;
+  // ─── Animation d'ouverture (WAAPI explicite) ──────────────────────────────
+  // Web Animations API : keyframes explicites START → FINAL, browser ne peut PAS optimiser.
+  // CSS transitions échouaient car le browser zappait l'état pré-position START (compositeur
+  // optimise le séquence non-paint sync). WAAPI bypasse complètement la logique transition CSS.
+  document.body.appendChild(root);
   if (originRect && !REDUCED_MOTION) {
-    const { slides, index } = state;
     const W = window.innerWidth;
     const centerY = window.innerHeight / 2;
-    const curLeft = state.lefts[index];
-    entranceTargets = state.slideEls.map((el, i) => {
-      const sz = slideSize(slides[i].type);
+    const curLeft = state.lefts[state.index];
+    state.slideEls.forEach((el, i) => {
+      const sz = slideSize(state.slides[i].type);
       const finalLeft = state.lefts[i];
       const finalTop = centerY - sz.h / 2;
       // Cliquée : départ depuis la tuile (originRect) — continuité avec le clic.
-      // Voisines : départ depuis le bord de leur côté (gauche depuis la gauche, droite depuis la droite).
-      const startLeft = i === index ? originRect.left : (finalLeft < curLeft ? -(sz.w + 60) : W + 60);
-      const startTop  = i === index ? originRect.top : finalTop;
-      el.style.transition = 'none';
-      el.style.transform = `translate(${startLeft}px, ${startTop}px)`;
-      return { finalLeft, finalTop, dist: Math.abs(finalLeft - curLeft) };
+      // Voisines : départ depuis le bord de leur côté.
+      const startLeft = i === state.index ? originRect.left : (finalLeft < curLeft ? -(sz.w + 60) : W + 60);
+      const startTop  = i === state.index ? originRect.top : finalTop;
+      const dist = Math.abs(finalLeft - curLeft);
+      const delay = i === state.index ? 0 : Math.min(dist / W, 1) * ENTRY_STAGGER_MAX_MS;
+      // WAAPI : keyframes explicites. fill:'forwards' garde l'état final après l'anim.
+      el.animate(
+        [
+          { transform: `translate(${startLeft}px, ${startTop}px)` },
+          { transform: `translate(${finalLeft}px, ${finalTop}px)` }
+        ],
+        { duration: ENTRY_MS, easing: ENTRY_EASE, delay, fill: 'forwards' }
+      );
     });
-  }
-
-  document.body.appendChild(root);
-
-  if (entranceTargets) {
-    root.getBoundingClientRect();                          // commit du DOM attaché à l'état start
-    let triggered = false;
-    const playFinal = () => {                              // pose final + transition (idempotent)
-      if (triggered || !state) return;
-      triggered = true;
-      const W2 = window.innerWidth;
-      state.slideEls.forEach((el, i) => {
-        const t = entranceTargets[i];
-        const delay = i === state.index ? 0 : Math.min(t.dist / W2, 1) * ENTRY_STAGGER_MAX_MS;
-        el.style.transition = `transform ${ENTRY_MS}ms ${ENTRY_EASE} ${delay}ms`;
-        el.style.transform = `translate(${t.finalLeft}px, ${t.finalTop}px)`;
-      });
-    };
-    // DOUBLE rAF : rAF fire AVANT la prochaine peinture, donc 1 seul rAF set le final
-    // avant que le browser ait peint le start → Chrome peint direct à final = CUT.
-    // Double rAF garantit qu'une frame est PEINTE au start avant de poser le final.
-    requestAnimationFrame(() => requestAnimationFrame(playFinal));
-    setTimeout(playFinal, 80);                             // fallback : si rAF throttled
-    setTimeout(() => {                                     // cleanup → rend la main à CSS/layout()
-      if (!state) return;
-      state.slideEls.forEach((el) => { el.style.transition = ''; });
-    }, ENTRY_MS + ENTRY_STAGGER_MAX_MS + 100);
   }
 
   attachDrag();
