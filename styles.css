@@ -720,7 +720,7 @@ body[data-mode="focus"] .tile-meta { opacity: 0 !important; }
    en plus de la translation WAAPI horizontale → "jump" + apparition bas→haut à l'arrivée. */
 .tile[data-focus-clone="true"] {
   animation: none !important;
-  opacity: 1 !important;
+  opacity: 1;                       /* PAS !important : permet inline opacity:0 au fade out */
   translate: 0 0 !important;
 }
 /* Au hover sur clone focus : permet glow-breathe (override l'animation: none ci-dessus).
