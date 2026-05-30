@@ -325,6 +325,10 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
       const startTop  = i === index ? originRect.top : finalTop;
       el.style.transition = 'none';
       el.style.transform = `translate(${startLeft}px, ${startTop}px)`;
+      // Opacity fade-in : garantit une anim VISIBLE même si le slide reste hors-zone-visible
+      // (viewport étroit, peeks fortement coupés → translation horizontale invisible). Le slide
+      // apparaît au moins par opacity, pas en cut.
+      if (i !== index) el.style.opacity = '0';                // cliquée garde son opacity (FLIP suffit)
       return { finalLeft, finalTop, dist: Math.abs(finalLeft - curLeft) };
     });
   }
@@ -341,8 +345,9 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
       state.slideEls.forEach((el, i) => {
         const t = entranceTargets[i];
         const delay = i === state.index ? 0 : Math.min(t.dist / W2, 1) * ENTRY_STAGGER_MAX_MS;
-        el.style.transition = `transform ${ENTRY_MS}ms ${ENTRY_EASE} ${delay}ms`;
+        el.style.transition = `transform ${ENTRY_MS}ms ${ENTRY_EASE} ${delay}ms, opacity ${ENTRY_MS}ms ${ENTRY_EASE} ${delay}ms`;
         el.style.transform = `translate(${t.finalLeft}px, ${t.finalTop}px)`;
+        if (i !== state.index) el.style.opacity = '1';     // fade-in voisines (cliquée pas touchée)
       });
     };
     // DOUBLE rAF : rAF fire AVANT la prochaine peinture, donc 1 seul rAF set le final
@@ -352,7 +357,7 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
     setTimeout(playFinal, 80);                             // fallback : si rAF throttled
     setTimeout(() => {                                     // cleanup → rend la main à CSS/layout()
       if (!state) return;
-      state.slideEls.forEach((el) => { el.style.transition = ''; });
+      state.slideEls.forEach((el) => { el.style.transition = ''; el.style.opacity = ''; });
     }, ENTRY_MS + ENTRY_STAGGER_MAX_MS + 100);
   }
 
