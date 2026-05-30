@@ -232,7 +232,7 @@ function focusTile(clickedTile) {
 function triggerRebound(direction) {                          // direction: +1 = retreat blocked, -1 = advance blocked
   if (!focusActive || REDUCED_MOTION) return;
   const SHIFT1 = direction * 30;
-  const SHIFT2 = direction * 15;
+  const SHIFT2 = direction * 8;                               // ~27% de SHIFT1 → 2e rebond bien plus léger
   const TICK = 120;                                           // durée d'une phase
   const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
   const slots = [...focusList, ...pastSlots];
