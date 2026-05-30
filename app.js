@@ -164,7 +164,7 @@ function focusTile(clickedTile) {
         ],
         { duration: EXIT_MS, easing: EXIT_EASE, delay, fill: 'backwards' }
       );
-      anim.onfinish = () => { try { anim.cancel(); } catch (_) {} };
+      anim.onfinish = () => { try { anim.commitStyles(); } catch (_) {} try { anim.cancel(); } catch (_) {} };
     }
     idx++;
   }
