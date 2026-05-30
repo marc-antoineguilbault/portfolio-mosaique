@@ -340,8 +340,11 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
         el.style.transform = `translate(${t.finalLeft}px, ${t.finalTop}px)`;
       });
     };
-    requestAnimationFrame(playFinal);                      // foreground : 1 frame ≈ 16ms
-    setTimeout(playFinal, 80);                             // fallback : si rAF throttled (hidden/etc.)
+    // DOUBLE rAF : rAF fire AVANT la prochaine peinture, donc 1 seul rAF set le final
+    // avant que le browser ait peint le start → Chrome peint direct à final = CUT.
+    // Double rAF garantit qu'une frame est PEINTE au start avant de poser le final.
+    requestAnimationFrame(() => requestAnimationFrame(playFinal));
+    setTimeout(playFinal, 80);                             // fallback : si rAF throttled
     setTimeout(() => {                                     // cleanup → rend la main à CSS/layout()
       if (!state) return;
       state.slideEls.forEach((el) => { el.style.transition = ''; });
