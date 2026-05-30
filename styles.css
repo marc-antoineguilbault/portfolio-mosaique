@@ -285,7 +285,10 @@ body {
   position: fixed;
   inset: 0;
   overflow: hidden;
-  background: #000;
+  /* background transparent (vs #000 avant) : permet de voir les clones focus (dans body,
+     z-index 0 en sortie) à travers les espaces vides entre tiles. body+html ont déjà
+     background: #000 → aspect visuel identique quand pas de clone. */
+  background: transparent;
   /* Tactile : on prend le contrôle des swipes via touchmove → empêche le browser de
      les interpréter comme un pan natif sur les enfants scrollables (.tile-scroll). */
   touch-action: none;
