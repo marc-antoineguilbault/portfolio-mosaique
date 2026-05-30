@@ -3,6 +3,35 @@ import { extractGlowColors } from './modules/glow.js';
 import { splitIntoLines, splitMetaIntoLines } from './modules/split-lines.js';
 import { attachLock } from './modules/lock.js';
 
+// Préchargement hybride sans loader UI :
+// 1. Au boot : fetch HAUTE PRIORITÉ de la M01 de chaque projet (~9 images, <1 MB).
+//    → click "Lead Designer UI" → projet = M01 prête instantanément (pas de cadre noir).
+// 2. requestIdleCallback : fetch BASSE PRIORITÉ de toutes les autres images en arrière-plan.
+//    → quand l'utilisateur scroll/focus, le cache HTTP est déjà alimenté.
+(() => {
+  const m01s = projects
+    .map((p) => p.images.find((it) => /m01/i.test(it.src)))
+    .filter(Boolean);
+  for (const item of m01s) {
+    const img = new Image();
+    img.fetchPriority = 'high';
+    img.src = item.src;
+  }
+  const others = pool.filter((it) => !m01s.includes(it));
+  const preloadOthers = () => {
+    for (const item of others) {
+      const img = new Image();
+      img.fetchPriority = 'low';
+      img.src = item.src;
+    }
+  };
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(preloadOthers, { timeout: 5000 });
+  } else {
+    setTimeout(preloadOthers, 1000);
+  }
+})();
+
 // Préférence d'accessibilité : neutralise les animations parasitaires (auto-scroll continu,
 // auto-scroll au hover, tilt 3D, trail du curseur). Le glow + le focus projet restent OK.
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
