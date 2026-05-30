@@ -306,10 +306,9 @@ function loopToStart() {
     cumDelta += last.w + GAP;
     focusList.unshift(last);
   }
-  // Ease-out expo : démarrage RAPIDE, ralentissement TRÈS marqué en fin de mouvement.
-  // Duration 1200ms pour bien sentir le long plateau de décélération finale.
-  const LOOP_MS = 1200;
-  const LOOP_EASE = 'cubic-bezier(0.19, 1, 0.22, 1)';         // ease-out expo (slow-down marqué)
+  // Ease-out EXTRÊME : départ très rapide, long plateau de décélération à la fin.
+  const LOOP_MS = 1600;
+  const LOOP_EASE = 'cubic-bezier(0.05, 1, 0, 1)';            // ease-out quasi-step + plateau
   for (const slot of focusList) {
     const newX = slot.x + cumDelta;
     slot.el.style.transition = `transform ${LOOP_MS}ms ${LOOP_EASE}`;
