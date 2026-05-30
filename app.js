@@ -457,7 +457,10 @@ function exitFocus() {
 
   const phase2 = () => {
     removeFocusClones();
-    setTimeout(phase3a, EXIT_MS / 2);
+    // Parallélise phase 3a (M0 Y return) avec phase 2 (clones out) au lieu d'attendre 350ms.
+    // Les deux animations durent EXIT_MS (700ms) et finissent ensemble. Phase 3b démarre 50ms
+    // plus tard via le setTimeout interne de phase3a → délai total fin-clones → début-autres = 50ms.
+    phase3a();
   };
 
   if (Math.abs(reverseShift) > 1 && !REDUCED_MOTION) {
