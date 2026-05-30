@@ -12,6 +12,11 @@ const FLIP_MS = 700;
 const FLIP_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
 const LAYOUT_MS = 500;   // = durée de transition de .slider__slide (styles.css)
 const ENTRY_STAGGER_MAX_MS = 100;   // décalage max entre voisines à l'ouverture (les + proches d'abord)
+// Durée + easing de l'entrée : plus long et plus linéaire que FLIP_EASE (qui est très front-loaded
+// → 88% du mouvement dans les 50% premiers ms → les peeks paraissent instantanés). Material
+// standard easing pour un slide-in perceptible jusqu'au bout, même sur les bords.
+const ENTRY_MS = 1100;
+const ENTRY_EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
 
 const SWIPE_THRESHOLD = 80;
 
@@ -336,7 +341,7 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
       state.slideEls.forEach((el, i) => {
         const t = entranceTargets[i];
         const delay = i === state.index ? 0 : Math.min(t.dist / W2, 1) * ENTRY_STAGGER_MAX_MS;
-        el.style.transition = `transform ${FLIP_MS}ms ${FLIP_EASE} ${delay}ms`;
+        el.style.transition = `transform ${ENTRY_MS}ms ${ENTRY_EASE} ${delay}ms`;
         el.style.transform = `translate(${t.finalLeft}px, ${t.finalTop}px)`;
       });
     };
@@ -348,7 +353,7 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
     setTimeout(() => {                                     // cleanup → rend la main à CSS/layout()
       if (!state) return;
       state.slideEls.forEach((el) => { el.style.transition = ''; });
-    }, FLIP_MS + ENTRY_STAGGER_MAX_MS + 100);
+    }, ENTRY_MS + ENTRY_STAGGER_MAX_MS + 100);
   }
 
   attachDrag();
