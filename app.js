@@ -59,81 +59,96 @@ const EXIT_STAGGER_MAX_MS = 60;
 const EXIT_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
 
 // FOCUS : la cliquée se centre verticalement (X préservé). Les autres maquettes DU MÊME projet
-// s'alignent à droite de la cliquée (séparées par GAP, identique à la mosaïque), apparaissent les
-// unes après les autres (stagger cumulatif). Les autres tuiles d'AUTRES projets sortent par le haut
-// si centrées au-dessus de vh/2 ou par le bas sinon. mémorise exitDir / focused pour le retour.
+// arrivent depuis la DROITE (off-screen → focus row) sous forme de CLONES. Les tuiles sources
+// (dans la mosaïque) sortent par le haut/bas comme toutes les autres. Apparaissent les unes après
+// les autres (stagger cumulatif).
 const FOCUS_ROW_STAGGER_MS = 150;
+let focusClones = [];   // élements clonés positionnés dans la focus row, nettoyés à exitFocus
+
 function focusTile(clickedTile) {
   const vh = window.innerHeight;
+  const W = window.innerWidth;
   const middleY = vh / 2;
   const targetY = (vh - clickedTile.h) / 2;
   clickedTile.focused = true;
 
-  // Focus row : 1 tuile par autre maquette du projet (préfère les non-detached). Ordre = ordre
-  // du pool (m01, m02, t01, t02 alphabétique).
-  const projId = clickedTile.item.project;
-  const projItems = pool.filter((it) => it.project === projId && it.src !== clickedTile.item.src);
-  const used = new Set([clickedTile]);
-  const focusRow = [];
-  for (const item of projItems) {
-    const tile = liveTiles.find((t) => t.item && t.item.src === item.src && !t.detached && !used.has(t));
-    if (!tile) continue;
-    used.add(tile);
-    focusRow.push(tile);
-  }
-  // Positions cumulatives à droite de la cliquée, séparées par GAP.
-  let edgeX = clickedTile.x + clickedTile.w;
-  for (const tile of focusRow) {
-    edgeX += GAP;
-    tile.focusRowX = edgeX;
-    tile.focusRowY = (vh - tile.h) / 2;
-    edgeX += tile.w;
-  }
-
+  // TOUTES les autres tuiles (y compris même projet) sortent par haut/bas.
   if (REDUCED_MOTION) {
     clickedTile.el.style.transition = 'none';
     clickedTile.el.style.transform = `translate3d(${clickedTile.x}px, ${targetY}px, 0)`;
-    for (const tile of focusRow) {
-      tile.focused = true;
-      tile.el.style.transition = 'none';
-      tile.el.style.transform = `translate3d(${tile.focusRowX}px, ${tile.focusRowY}px, 0)`;
-    }
     for (const tile of liveTiles) {
-      if (used.has(tile)) continue;
+      if (tile === clickedTile) continue;
       tile.exitDir = 'up';
       tile.el.style.opacity = '0';
     }
-    return;
+  } else {
+    for (const tile of liveTiles) {
+      if (tile === clickedTile) {
+        tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+        tile.el.style.transform = `translate3d(${tile.x}px, ${targetY}px, 0)`;
+        continue;
+      }
+      const rect = tile.el.getBoundingClientRect();
+      const centerY = rect.top + tile.h / 2;
+      const dir = centerY < middleY ? 'up' : 'down';
+      tile.exitDir = dir;
+      tile.el.dataset.exitDir = dir;
+      if (tile.detached) continue;
+      const dist = Math.abs(centerY - middleY);
+      const delay = Math.min(dist / vh, 1) * EXIT_STAGGER_MAX_MS;
+      const dy = dir === 'up' ? -(rect.bottom + 40) : (vh - rect.top + 40);
+      tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE} ${delay}ms`;
+      const cur = tile.y - offset * tile.velocityMultiplier + (COL_STAGGER[tile.colIdx] ?? 0);
+      tile.el.style.transform = `translate3d(${tile.x}px, ${cur + dy}px, 0)`;
+    }
   }
 
-  for (const tile of liveTiles) {
-    if (tile === clickedTile) {
-      tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
-      tile.el.style.transform = `translate3d(${tile.x}px, ${targetY}px, 0)`;
-      continue;
+  // Focus row : pour chaque autre maquette du projet, clone une source tile et glisse-la depuis
+  // la droite (hors écran) vers sa position cible. Stagger cumulatif.
+  const projId = clickedTile.item.project;
+  const projItems = pool.filter((it) => it.project === projId && it.src !== clickedTile.item.src);
+  let edgeX = clickedTile.x + clickedTile.w;
+  let idx = 0;
+  for (const item of projItems) {
+    const source = liveTiles.find((t) => t.item && t.item.src === item.src);
+    if (!source) continue;
+    edgeX += GAP;
+    const targetX = edgeX;
+    const targetTopY = (vh - source.h) / 2;
+    edgeX += source.w;
+    const clone = source.el.cloneNode(true);
+    clone.dataset.focusClone = 'true';
+    clone.style.transition = 'none';
+    clone.style.transform = `translate3d(${W + 80}px, ${targetTopY}px, 0)`;
+    document.body.appendChild(clone);
+    focusClones.push({ el: clone, targetX, targetY: targetTopY });
+    if (!REDUCED_MOTION) {
+      // Force commit du DOM attaché à l'état "off-screen droite" AVANT d'enchaîner avec final.
+      clone.getBoundingClientRect();
+      const delay = (idx + 1) * FOCUS_ROW_STAGGER_MS;
+      // Double rAF pour garantir un paint au start avant final (sinon Chrome optimise).
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        clone.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE} ${delay}ms`;
+        clone.style.transform = `translate3d(${targetX}px, ${targetTopY}px, 0)`;
+      }));
+    } else {
+      clone.style.transform = `translate3d(${targetX}px, ${targetTopY}px, 0)`;
     }
-    if (used.has(tile)) {
-      tile.focused = true;                              // pour returnTiles
-      const idx = focusRow.indexOf(tile);
-      const delay = (idx + 1) * FOCUS_ROW_STAGGER_MS;   // 1re après cliquée à 150ms, etc.
-      tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE} ${delay}ms`;
-      tile.el.style.transform = `translate3d(${tile.focusRowX}px, ${tile.focusRowY}px, 0)`;
-      continue;
-    }
-    // Autres projets : sortie par haut/bas selon position vs vh/2.
-    const rect = tile.el.getBoundingClientRect();
-    const centerY = rect.top + tile.h / 2;
-    const dir = centerY < middleY ? 'up' : 'down';
-    tile.exitDir = dir;
-    tile.el.dataset.exitDir = dir;
-    if (tile.detached) continue; // hors DOM → pas d'anim, exitDir suffit
-    const dist = Math.abs(centerY - middleY);
-    const delay = Math.min(dist / vh, 1) * EXIT_STAGGER_MAX_MS;
-    const dy = dir === 'up' ? -(rect.bottom + 40) : (vh - rect.top + 40);
-    tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE} ${delay}ms`;
-    const cur = tile.y - offset * tile.velocityMultiplier + (COL_STAGGER[tile.colIdx] ?? 0);
-    tile.el.style.transform = `translate3d(${tile.x}px, ${cur + dy}px, 0)`;
+    idx++;
   }
+}
+
+// Retire les clones de la focus row : anime hors écran droit puis remove du DOM.
+function removeFocusClones() {
+  const W = window.innerWidth;
+  for (const c of focusClones) {
+    if (REDUCED_MOTION) { c.el.remove(); continue; }
+    c.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+    c.el.style.transform = `translate3d(${W + 80}px, ${c.targetY}px, 0)`;
+  }
+  const clones = focusClones;
+  focusClones = [];
+  setTimeout(() => { for (const c of clones) c.el.remove(); }, EXIT_MS + 50);
 }
 
 // Retour focus : cliquée revient à sa position mosaïque, autres reviennent depuis leur sortie.
@@ -171,6 +186,7 @@ function exitFocus() {
   focusActive = false;
   focusedTile = null;
   clearProjectLabel();
+  removeFocusClones();
   returnTiles(() => { resumeMosaic(); setMode('mosaic'); });
 }
 // Escape OU click hors de la maquette focus → sortie.
