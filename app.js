@@ -243,13 +243,52 @@ function advance() {
   showProjectLabel(advProjName, advIdx, advAllInProj.length);
 
   // 5b. Ancienne cliquée → pastSlots (continuera à drift à gauche à chaque advance).
-  pastSlots.push({ el: removed.el, x: removed.x, y: removed.y, isClone: removed.isClone });
+  // On stocke w/h/item aussi pour pouvoir reconstruire le slot lors d'un retreat().
+  pastSlots.push({ el: removed.el, item: removed.item, x: removed.x, y: removed.y, w: removed.w, h: removed.h, isClone: removed.isClone });
 
   // 6. Cleanup post-anim. Marqueurs is-focused-tile pour CSS hide (tuile mosaïque originale).
   setTimeout(() => {
     if (!focusList[0].isClone) focusList[0].el.classList.add('is-focused-tile');
     advancing = false;
   }, EXIT_MS + 50);
+}
+
+// RETREAT : inverse de advance — ramène la dernière past à l'avant. Shift uniforme à droite
+// de +(last.w + GAP) sur focusList + pastSlots restants. Utilisé par la flèche ⭠ du compteur TL.
+function retreat() {
+  if (!focusActive || pastSlots.length === 0 || advancing) return;
+  advancing = true;
+  const last = pastSlots.pop();
+  const delta = last.w + GAP;
+
+  // Insert last à index 0 — sa position visuelle actuelle est déjà à gauche de focusList[0].
+  // Après shift +delta, last se retrouvera à l'ancienne position de focusList[0].
+  focusList.unshift(last);
+
+  // Shift +delta UNIFORME sur tout focusList (including last) + pastSlots restants.
+  for (let i = 0; i < focusList.length; i++) {
+    const slot = focusList[i];
+    const newX = slot.x + delta;
+    slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+    slot.el.style.transform = `translate3d(${newX}px, ${slot.y}px, 0)`;
+    slot.x = newX;
+  }
+  for (const past of pastSlots) {
+    const newX = past.x + delta;
+    past.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+    past.el.style.transform = `translate3d(${newX}px, ${past.y}px, 0)`;
+    past.x = newX;
+  }
+
+  // Update focusedTile + compteur TL avec la nouvelle (= ancienne) cliquée.
+  focusedTile = { el: focusList[0].el, item: focusList[0].item };
+  const projId = focusList[0].item.project;
+  const projName = projectNameById.get(projId) ?? projId;
+  const allInProj = pool.filter((it) => it.project === projId);
+  const idx = allInProj.findIndex((it) => it.src === focusList[0].item.src);
+  showProjectLabel(projName, idx, allInProj.length);
+
+  setTimeout(() => { advancing = false; }, EXIT_MS + 50);
 }
 
 // Retire tous les clones (focusList + pastSlots). Clones in focusList → anim vers off-screen
@@ -419,7 +458,8 @@ document.addEventListener('click', (e) => {
 // ─── Label projet dans le coin TL ────────────────────────────────────────────
 // Affiche "pour <Nom> (⭠N/Total⭢)" dans le suffix du coin TL pendant le focus.
 // Le compteur indique la position de la maquette courante dans la séquence du projet.
-// Flèches décoratives pour l'instant (le ribbon avance déjà au click).
+// Flèches cliquables : ⭠ retreat (recule dans le ribbon), ⭢ advance. Désactivées
+// aux extrémités (idx=0 → ⭠ off, idx=total-1 → ⭢ off).
 function showProjectLabel(name, idx, total) {
   const suffix = document.querySelector('.ui-corner__suffix');
   const nav = document.querySelector('.ui-corner__project-nav');
@@ -433,7 +473,35 @@ function showProjectLabel(name, idx, total) {
     if (idx != null && total != null && total > 1) {
       const counter = document.createElement('span');
       counter.className = 'ui-corner__project-counter';
-      counter.textContent = ` (⭠${idx + 1}/${total}⭢)`;
+
+      const prev = document.createElement('button');
+      prev.type = 'button';
+      prev.className = 'ui-corner__project-arrow ui-corner__project-arrow--prev';
+      prev.textContent = '⭠';
+      prev.setAttribute('aria-label', 'Maquette précédente');
+      prev.disabled = (idx === 0);
+      prev.addEventListener('click', (e) => {
+        e.stopPropagation();      // évite que le TL ouvre la liste clients OU que doc ferme le focus
+        if (!prev.disabled) retreat();
+      });
+
+      const next = document.createElement('button');
+      next.type = 'button';
+      next.className = 'ui-corner__project-arrow ui-corner__project-arrow--next';
+      next.textContent = '⭢';
+      next.setAttribute('aria-label', 'Maquette suivante');
+      next.disabled = (idx === total - 1);
+      next.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!next.disabled) advance();
+      });
+
+      counter.appendChild(document.createTextNode(' ('));
+      counter.appendChild(prev);
+      counter.appendChild(document.createTextNode(`${idx + 1}/${total}`));
+      counter.appendChild(next);
+      counter.appendChild(document.createTextNode(')'));
+
       suffix.appendChild(counter);
     }
   }
@@ -563,7 +631,7 @@ function closeClientList() {
 const tlLabel = document.querySelector('.ui-corner--tl');
 if (HAS_HOVER && tlLabel) {
   tlLabel.addEventListener('click', (e) => {
-    if (e.target.closest('a, .ui-corner__suffix-item')) return;
+    if (e.target.closest('a, .ui-corner__suffix-item, .ui-corner__project-arrow')) return;
     if (clientListOpen) closeClientList();
     else { openClientList(); }
   });

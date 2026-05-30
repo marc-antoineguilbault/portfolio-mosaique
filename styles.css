@@ -160,6 +160,31 @@
   vertical-align: baseline;
 }
 
+/* Compteur (⭠ N/Total ⭢) à côté du nom de projet en focus. Flèches cliquables :
+   blanc par défaut, rouge au hover, opacité .3 + cursor not-allowed si extrémité. */
+.ui-corner__project-counter {
+  color: #fff;
+}
+.ui-corner__project-arrow {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+  vertical-align: baseline;
+  cursor: pointer;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+.ui-corner__project-arrow:hover:not(:disabled) {
+  color: #ff3030;
+}
+.ui-corner__project-arrow:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 /* Liste verticale des projets, injectée dans le suffix au clic sur le label TL.
    Astuce d'alignement : line-height: 1 sur les <li> = même hauteur de ligne que le label
    parent → vertical-align: top fait coïncider le top et le baseline du 1er <li> avec "pour".
