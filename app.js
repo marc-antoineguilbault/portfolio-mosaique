@@ -101,7 +101,9 @@ function focusTile(clickedTile) {
         tile.el.style.opacity = '0';
         continue;
       }
-      // Autres projets : sortie par haut/bas selon position vs vh/2.
+      // Autres projets : sortie par haut/bas selon position vs vh/2. Target ABSOLU garanti
+      // hors-écran (pas relatif au cur — la formule cur+dy était instable, certaines tuiles
+      // s'arrêtaient à -112 au lieu de -h-40 et restaient visibles).
       const rect = tile.el.getBoundingClientRect();
       const centerY = rect.top + tile.h / 2;
       const dir = centerY < middleY ? 'up' : 'down';
@@ -110,10 +112,9 @@ function focusTile(clickedTile) {
       if (tile.detached) continue;
       const dist = Math.abs(centerY - middleY);
       const delay = Math.min(dist / vh, 1) * EXIT_STAGGER_MAX_MS;
-      const dy = dir === 'up' ? -(rect.bottom + 40) : (vh - rect.top + 40);
+      const exitY = dir === 'up' ? -(tile.h + 100) : vh + 100;
       tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE} ${delay}ms`;
-      const cur = tile.y - offset * tile.velocityMultiplier + (COL_STAGGER[tile.colIdx] ?? 0);
-      tile.el.style.transform = `translate3d(${tile.x}px, ${cur + dy}px, 0)`;
+      tile.el.style.transform = `translate3d(${tile.x}px, ${exitY}px, 0)`;
     }
   }
 
