@@ -300,6 +300,7 @@ body {
 .tile {
   position: absolute;
   will-change: transform;
+  transform-origin: center;   /* warp : le scale s'étire depuis le centre de la tuile */
   user-select: none;
   border-radius: var(--tile-radius-outer, 32px);
   z-index: 1;

@@ -2,6 +2,7 @@ import { pool, projects, colorFromSeed, RATIOS } from './data.js';
 import { extractGlowColors } from './modules/glow.js';
 import { splitIntoLines, splitMetaIntoLines } from './modules/split-lines.js';
 import { attachLock } from './modules/lock.js';
+import { createVelocityTracker } from './modules/velocity.js';
 
 // Préchargement hybride sans loader UI :
 // 1. Au boot : fetch HAUTE PRIORITÉ de la M01 de chaque projet (~9 images, <1 MB).
@@ -85,6 +86,7 @@ function resumeMosaic() {
   // et l'auto-scroll mosaïque resterait figé. On le réarme ici, point de reprise unique.
   hoverPaused = false;
   lastFrameTime = performance.now();
+  velocityTracker.reset(offset);   // reprise mosaïque après focus : pas de faux pic
 }
 
 const EXIT_MS = 700;
@@ -584,11 +586,12 @@ function returnTiles(done) {
     delete tile.exitDir;
     delete tile.focused;
     delete tile.el.dataset.exitDir;
-    if (REDUCED_MOTION) { tile.el.style.opacity = ''; tile.el.style.transition = 'none'; tile.el.style.transform = ''; continue; }
+    if (REDUCED_MOTION) { tile.el.style.opacity = ''; tile.el.style.transition = 'none'; tile.el.style.transform = ''; tile._lastWarp = null; continue; }
     if (tile.detached) continue;
     const ty = tile.y - offset * tile.velocityMultiplier + (COL_STAGGER[tile.colIdx] ?? 0);
     tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
     tile.el.style.transform = `translate3d(${tile.x}px, ${ty}px, 0)`;
+    tile._lastWarp = null;   // invalide le cache warp : frame() réécrira le scale correct au retour
     animated.push(tile);
   }
   if (animated.length === 0) { done(); return; }
@@ -1623,6 +1626,10 @@ function topUpIfNeeded() {
 }
 
 let offset = 0;
+// Warp : vélocité de scroll lissée → étirement des tuiles. Constantes douces (spec).
+const velocityTracker = createVelocityTracker({ lerp: 0.15, vMin: 200, vMax: 2500 });
+const WARP_KY = 0.05;   // étirement vertical max (+5 %)
+const WARP_KX = 0.022;  // pincement horizontal max (−2,2 %)
 let velocity = REDUCED_MOTION ? 0 : BASE_VELOCITY;
 let lastFrameTime = 0;
 let paused = false;
@@ -1731,6 +1738,11 @@ function frame(t) {
   // Filet de sécurité : snap au floor (= première tile à ty = SCROLL_TOP_Y).
   const floor = minLiveTileY - SCROLL_TOP_Y;
   if (offset < floor) offset = floor;
+  // Warp : vélocité lissée → facteur d'étirement n∈[0,1] (REDUCED_MOTION → pas de warp).
+  velocityTracker.sample(offset, dt);
+  const warpN = REDUCED_MOTION ? 0 : velocityTracker.normalized();
+  const warpSY = 1 + warpN * WARP_KY;
+  const warpSX = 1 - warpN * WARP_KX;
   // Cycling à 3 niveaux pour permettre le scroll up (récupération depuis le cache) :
   // - VISIBLE_MARGIN : tile dans la zone d'affichage active → DOM attaché + transforms écrits
   // - DETACH_MARGIN  : tile hors viewport mais en mémoire (DOM détaché) → recouvrable au scroll up
@@ -1775,9 +1787,11 @@ function frame(t) {
     }
     // Perf #6 : skip transform write si ty inchangé (cas pause / idle / hoverPaused).
     // Évite des centaines de style writes inutiles par seconde quand le scroll ne bouge pas.
-    if (tile._lastTy !== ty) {
-      tile.el.style.transform = `translate3d(${tile.x}px, ${ty}px, 0)`;
+    if (tile._lastTy !== ty || tile._lastWarp !== warpN) {
+      tile.el.style.transform =
+        `translate3d(${tile.x}px, ${ty}px, 0) scale(${warpSX}, ${warpSY})`;
       tile._lastTy = ty;
+      tile._lastWarp = warpN;
     }
     if (cursorDirty) {
       // Perf #19 : skip --cursor-x/y write si valeurs inchangées (cas mouse idle entre frames).
@@ -1838,6 +1852,7 @@ function rebuildLayout() {
   // hors VISIBLE_MARGIN (mais dans DETACH_MARGIN) gardent leur ancien transform et se
   // superposent visuellement quand on retourne à la taille initiale après resize.
   offset = 0;
+  velocityTracker.reset(0);   // le saut offset→0 du resize ne doit pas produire de pic de warp
   for (const tile of liveTiles) {
     const pos = placeNext(tile.item);
     tile.x = pos.x;
@@ -1853,6 +1868,7 @@ function rebuildLayout() {
     // leur ancienne position après resize → superposition au retour à la taille initiale.
     const stagger = COL_STAGGER[tile.colIdx] ?? 0;
     tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y + stagger}px, 0)`;
+    tile._lastWarp = null;   // invalide le cache warp : frame() réécrira le scale correct après resize
     const meta = tile.el.querySelector('.tile-meta');
     if (meta) {
       meta.style.width = `${colWidth}px`;
