@@ -2,7 +2,6 @@ import { pool, projects, colorFromSeed, RATIOS } from './data.js';
 import { extractGlowColors } from './modules/glow.js';
 import { splitIntoLines, splitMetaIntoLines } from './modules/split-lines.js';
 import { attachLock } from './modules/lock.js';
-import { openSlider, closeSlider, isSliderOpen, sliderGo } from './modules/slider.js';
 
 // Préférence d'accessibilité : neutralise les animations parasitaires (auto-scroll continu,
 // auto-scroll au hover, tilt 3D, trail du curseur). Le glow + le focus projet restent OK.
@@ -59,20 +58,36 @@ const EXIT_MS = 700;
 const EXIT_STAGGER_MAX_MS = 60;
 const EXIT_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
 
-// Projette chaque tuile vivante hors écran ; mémorise exitDir pour le retour.
-function explodeTiles(clickedTile) {
-  if (REDUCED_MOTION) return;   // pas de rideau animé en reduced-motion
+// FOCUS : la cliquée se centre verticalement (X préservé), les autres sortent par le haut
+// si centrées au-dessus de vh/2 ou par le bas sinon. mémorise exitDir / focused pour le retour.
+function focusTile(clickedTile) {
   const vh = window.innerHeight;
-  const clickedCenterY = clickedTile.el.getBoundingClientRect().top + clickedTile.h / 2;
+  const middleY = vh / 2;
+  const targetY = (vh - clickedTile.h) / 2;
+  clickedTile.focused = true;
+  if (REDUCED_MOTION) {
+    clickedTile.el.style.transition = 'none';
+    clickedTile.el.style.transform = `translate3d(${clickedTile.x}px, ${targetY}px, 0)`;
+    for (const tile of liveTiles) {
+      if (tile === clickedTile) continue;
+      tile.exitDir = 'up';
+      tile.el.style.opacity = '0';
+    }
+    return;
+  }
   for (const tile of liveTiles) {
-    if (tile === clickedTile) continue;
+    if (tile === clickedTile) {
+      tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+      tile.el.style.transform = `translate3d(${tile.x}px, ${targetY}px, 0)`;
+      continue;
+    }
     const rect = tile.el.getBoundingClientRect();
     const centerY = rect.top + tile.h / 2;
-    const dir = centerY < clickedCenterY ? 'up' : 'down';
+    const dir = centerY < middleY ? 'up' : 'down';
     tile.exitDir = dir;
     tile.el.dataset.exitDir = dir;
     if (tile.detached) continue; // hors DOM → pas d'anim, exitDir suffit
-    const dist = Math.abs(centerY - clickedCenterY);
+    const dist = Math.abs(centerY - middleY);
     const delay = Math.min(dist / vh, 1) * EXIT_STAGGER_MAX_MS;
     const dy = dir === 'up' ? -(rect.bottom + 40) : (vh - rect.top + 40);
     tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE} ${delay}ms`;
@@ -81,41 +96,57 @@ function explodeTiles(clickedTile) {
   }
 }
 
-// Animation inverse : retour à la position gelée, puis nettoyage + reprise via done().
+// Retour focus : cliquée revient à sa position mosaïque, autres reviennent depuis leur sortie.
 function returnTiles(done) {
-  // Pendant le retour, la mosaïque passe AU-DESSUS de l'overlay slider (cf. body.is-returning
-  // dans styles.css : z 20001 > 20000, fond transparent) → les tuiles des autres projets arrivent
-  // « par dessus » les diapos qui disparaissent, au lieu de glisser dessous.
-  document.body.classList.add('is-returning');
-  const clearReturning = () => document.body.classList.remove('is-returning');
   const animated = [];
   for (const tile of liveTiles) {
-    if (!tile.exitDir) continue;
+    const wasExited = !!tile.exitDir;
+    const wasFocused = !!tile.focused;
+    if (!wasExited && !wasFocused) continue;
     delete tile.exitDir;
+    delete tile.focused;
     delete tile.el.dataset.exitDir;
+    if (REDUCED_MOTION) { tile.el.style.opacity = ''; tile.el.style.transition = 'none'; tile.el.style.transform = ''; continue; }
     if (tile.detached) continue;
     const ty = tile.y - offset * tile.velocityMultiplier + (COL_STAGGER[tile.colIdx] ?? 0);
     tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
     tile.el.style.transform = `translate3d(${tile.x}px, ${ty}px, 0)`;
     animated.push(tile);
   }
-  if (animated.length === 0) { clearReturning(); done(); return; }
+  if (animated.length === 0) { done(); return; }
   // Nettoyage déterministe par timeout plutôt que par transitionend : si le transform ne
-  // change pas (retour déclenché pendant le délai de stagger de l'explosion), l'event
-  // transitionend ne part jamais → done() jamais appelé → mosaïque gelée à vie. Le timeout
-  // garantit la reprise quoi qu'il arrive.
+  // change pas (retour déclenché pendant le délai de stagger de la sortie), l'event
+  // transitionend ne part jamais → done() jamais appelé → mosaïque gelée à vie.
   setTimeout(() => {
     for (const tile of animated) tile.el.style.transition = '';  // sinon frame() lag l'auto-scroll
-    clearReturning();
     done();
   }, EXIT_MS + 50);
 }
 
-// ─── Nav slider dans le coin TL ───────────────────────────────────────────
-// Affiche "pour <Nom> (← N/M →)" dans le suffix + project-nav du coin TL.
-// ← = maquette précédente (go(-1)), → = suivante (go(+1)). Appelé à chaque navigation
-// (reconstruit les boutons → pas d'accumulation de listeners).
-function showSliderTLNav(name, index, total) {
+// ─── Focus mode : état global + sortie ────────────────────────────────────────
+let focusActive = false;
+let focusedTile = null;
+function exitFocus() {
+  if (!focusActive) return;
+  focusActive = false;
+  focusedTile = null;
+  clearProjectLabel();
+  returnTiles(() => { resumeMosaic(); setMode('mosaic'); });
+}
+// Escape OU click hors de la maquette focus → sortie.
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && focusActive) exitFocus();
+});
+document.addEventListener('click', (e) => {
+  if (!focusActive || !focusedTile) return;
+  if (focusedTile.el.contains(e.target)) return;   // click sur la cliquée → ne ferme pas
+  exitFocus();
+});
+
+// ─── Label projet dans le coin TL ────────────────────────────────────────────
+// Affiche "pour <Nom>" dans le suffix du coin TL pendant le focus. Pas de nav
+// arrows (un focus = une maquette, pas de navigation).
+function showProjectLabel(name) {
   const suffix = document.querySelector('.ui-corner__suffix');
   const nav = document.querySelector('.ui-corner__project-nav');
   if (suffix) {
@@ -126,32 +157,10 @@ function showSliderTLNav(name, index, total) {
     nameSpan.textContent = name;
     suffix.appendChild(nameSpan);
   }
-  if (nav) {
-    nav.replaceChildren();
-    if (total > 1) {
-      nav.appendChild(document.createTextNode(' ('));
-      const prev = document.createElement('button');
-      prev.className = 'ui-corner__nav-btn';
-      prev.setAttribute('aria-label', 'Maquette précédente');
-      prev.textContent = '←';
-      prev.addEventListener('click', (e) => { e.stopPropagation(); sliderGo(-1); });
-      const count = document.createElement('span');
-      count.className = 'ui-corner__nav-count';
-      count.textContent = ` ${index + 1}/${total} `;
-      const next = document.createElement('button');
-      next.className = 'ui-corner__nav-btn';
-      next.setAttribute('aria-label', 'Maquette suivante');
-      next.textContent = '→';
-      next.addEventListener('click', (e) => { e.stopPropagation(); sliderGo(1); });
-      nav.append(prev, count, next);
-      nav.appendChild(document.createTextNode(')'));
-    } else {
-      nav.textContent = ` (${index + 1}/${total})`;
-    }
-  }
+  if (nav) nav.replaceChildren();
 }
 
-function clearSliderTLNav() {
+function clearProjectLabel() {
   const suffix = document.querySelector('.ui-corner__suffix');
   const nav = document.querySelector('.ui-corner__project-nav');
   if (suffix) suffix.replaceChildren();
@@ -215,17 +224,17 @@ function openClientList() {
     const activate = () => {
       closeClientList();
       if (mode !== 'mosaic') return;
-      const first = pool.find((it) => it.project === p.id);
-      if (!first) return;
-      setMode('slider');
+      // Cherche dans liveTiles la 1re tuile du projet présente à l'écran. Si trouvée → focus.
+      // Sinon : on ferme juste la liste (l'utilisateur scrollera la mosaïque pour trouver).
+      const tile = liveTiles.find((t) => t.item && t.item.project === p.id);
+      if (!tile) return;
+      setMode('focus');
       freezeMosaic();
+      focusActive = true;
+      focusedTile = tile;
       const projName = projectNameById.get(p.id) ?? p.name;
-      openSlider({ projId: p.id, startSrc: first.src, originRect: null,
-        tileSize: sliderTileSize,
-        attachTilt,            // tilt 3D + lumière-qui-suit-le-curseur sur les diapos (iso mosaïque)
-        attachScroll,          // auto-scroll vertical au survol des diapos (iso mosaïque)
-        onNav: (idx, total) => showSliderTLNav(projName, idx, total),
-        onClosed: () => { clearSliderTLNav(); returnTiles(() => { resumeMosaic(); setMode('mosaic'); }); } });
+      showProjectLabel(projName);
+      focusTile(tile);
     };
     li.addEventListener('click', (ev) => { ev.stopPropagation(); activate(); });
     li.addEventListener('keydown', (ev) => {
@@ -418,15 +427,6 @@ function computeLayout() {
 function frameHeightForInner(w, ratio) {
   const pad = FRAME_PADDING * 2;
   return (w - pad) / ratio + pad;
-}
-
-// Taille qu'aurait une tuile dans la mosaïque selon son type, lue au moment de l'appel
-// (colWidth/FRAME_PADDING sont recalculés au resize par computeLayout → reste correct).
-// Passée au slider pour qu'une diapo ait exactement la taille de sa tuile (plus d'agrandissement).
-function sliderTileSize(type) {
-  return type === 'tablet'
-    ? { w: 2 * colWidth + GAP, h: frameHeightForInner(2 * colWidth + GAP, RATIOS.tablet) }
-    : { w: colWidth,           h: frameHeightForInner(colWidth, RATIOS.mobile) };
 }
 
 function placeNext(item, gapBelow = GAP_Y) {
@@ -763,41 +763,29 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
 
   // Objet tuile construit avant le handler pour que le handler puisse le référencer.
   // C'est cet objet qui sera poussé dans liveTiles : tile === clickedTile fonctionne
-  // dans explodeTiles car c'est la même référence.
+  // dans focusTile car c'est la même référence.
   const tileObj = { el, inner, item, x: pos.x, y: pos.y, w: pos.w, h: pos.h,
                     velocityMultiplier: pos.velocityMultiplier, colIdx: pos.colIdx };
 
-  // Au clic : ouvre le slider du projet.
-  // Si la tuile est verrouillée → délègue au handler du cadenas (= ouvre le champ mot de passe).
-  inner.addEventListener('click', () => {
+  // Au clic : focus la maquette (centre Y, X préservé) + autres tuiles sortent par le haut
+  // ou le bas selon leur position vs vh/2. Si la tuile est verrouillée → cadenas (mdp).
+  inner.addEventListener('click', (e) => {
     const lockSvg = inner.querySelector('.tile-lock');
     if (lockSvg && lockSvg.style.display !== 'none') {
       lockSvg.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      return; // projet verrouillé → champ mot de passe, pas de slider
+      return; // projet verrouillé → champ mot de passe, pas de focus
     }
     if (mode !== 'mosaic') return;          // verrou anti-double-déclenchement
     const proj = el.dataset.project;
     if (!proj) return;
-    const originRect = el.getBoundingClientRect();
-    setMode('slider');
+    e.stopPropagation();                    // évite que le listener global ferme aussitôt
+    setMode('focus');
     freezeMosaic();
-    explodeTiles(tileObj);
+    focusActive = true;
+    focusedTile = tileObj;
     const projName = projectNameById.get(proj) ?? proj;
-    openSlider({
-      projId: proj,
-      startSrc: item.src,
-      originRect,
-      tileSize: sliderTileSize,
-      attachTilt,            // tilt 3D + lumière-qui-suit-le-curseur sur les diapos (iso mosaïque)
-      attachScroll,          // auto-scroll vertical au survol des diapos (iso mosaïque)
-      onNav: (idx, total) => showSliderTLNav(projName, idx, total),
-      // À la fermeture : on masque la tuile cliquée (gelée à sa place) pendant le FLIP retour de la
-      // diapo. Sans ça, comme la mosaïque repasse AU-DESSUS du slider (is-returning), la tuile
-      // doublerait visuellement sa propre diapo. visibility (non transitionnée) → pas de fondu.
-      onClosed: () => { clearSliderTLNav(); el.style.visibility = 'hidden'; returnTiles(() => { resumeMosaic(); setMode('mosaic'); }); },
-      // Diapo retirée → on révèle la tuile, qui prend le relais exactement à la même place.
-      onFinished: () => { el.style.visibility = ''; },
-    });
+    showProjectLabel(projName);
+    focusTile(tileObj);
   });
 
   // Méta sous la tuile : largeur fixe = 1 colonne. Pour les tablets (2 cols),
