@@ -347,14 +347,16 @@ function removeFocusClones() {
   // disparaissent doivent être EN DESSOUS des projets qui réapparaissent".
   for (const slot of allClones) slot.el.style.zIndex = '0';
 
+  // Fade opacity plus rapide que le slide → trail visible mais clone fade out net
+  // (300ms vs 700ms slide). Easing linear pour percevoir clairement la disparition.
+  const FADE_MS = 300;
+
   if (rightClones.length && !REDUCED_MOTION) {
     const leftmostX = Math.min(...rightClones.map((s) => s.x));
     const delta = W + 80 - leftmostX;
     for (const slot of rightClones) {
-      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}, opacity ${EXIT_MS}ms ease-out`;
+      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}, opacity ${FADE_MS}ms linear`;
       slot.el.style.transform = `translate3d(${slot.x + delta}px, ${slot.y}px, 0)`;
-      // setProperty avec !important : inline normal ne battait pas une cascade implicite
-      // (tile-appear forwards laissait opacity:1 comme valeur calculée non-animée).
       slot.el.style.setProperty('opacity', '0', 'important');
     }
   } else {
@@ -365,7 +367,7 @@ function removeFocusClones() {
     const rightmostXEnd = Math.max(...leftClones.map((s) => s.x + s.w));
     const delta = -(rightmostXEnd + 80);
     for (const slot of leftClones) {
-      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}, opacity ${EXIT_MS}ms ease-out`;
+      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}, opacity ${FADE_MS}ms linear`;
       slot.el.style.transform = `translate3d(${slot.x + delta}px, ${slot.y}px, 0)`;
       slot.el.style.setProperty('opacity', '0', 'important');
     }
