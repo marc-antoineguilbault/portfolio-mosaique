@@ -170,7 +170,7 @@
   border: 0;
   padding: 0;
   margin: 0;
-  color: inherit;
+  color: #ff3030;                  /* rouge si cliquable (état par défaut) */
   font: inherit;
   line-height: 1;
   vertical-align: baseline;
@@ -178,9 +178,10 @@
   transition: opacity 0.2s ease, color 0.2s ease;
 }
 .ui-corner__project-arrow:hover:not(:disabled) {
-  color: #ff3030;
+  color: #fff;                     /* blanc au hover (cohérent avec .ui-corner__nav-btn) */
 }
 .ui-corner__project-arrow:disabled {
+  color: #fff;                     /* blanc (= reste du compteur) + opacity → gris pâle */
   opacity: 0.3;
   cursor: not-allowed;
 }
