@@ -172,22 +172,22 @@ function focusTile(clickedTile) {
     const clone = source.el.cloneNode(true);
     clone.dataset.focusClone = 'true';
     clone.style.opacity = '1';
-    clone.style.transform = `translate3d(${targetX}px, ${targetTopY}px, 0)`;
-    // z-index croissant : M+1 < M+2 < M+3 → pendant l'anim d'arrivée, le clone qui arrive plus
-    // tard passe par-dessus celui devant lui (cas tablet+mobile : mobile au-dessus pendant slide).
     clone.style.zIndex = String(100 + idx);
+    // Pré-position au start (off-screen droit) sans transition. Force commit via getBoundingClientRect.
+    // Puis double rAF kick off la CSS transition vers target. Pas de WAAPI = pas de résiduel.
+    clone.style.transition = 'none';
+    clone.style.transform = `translate3d(${startX}px, ${targetTopY}px, 0)`;
     document.body.appendChild(clone);
     focusList.push({ el: clone, item, x: targetX, y: targetTopY, w: source.w, h: source.h, isClone: true });
     if (!REDUCED_MOTION) {
+      clone.getBoundingClientRect();
       const delay = (idx + 1) * FOCUS_ROW_STAGGER_MS;
-      const anim = clone.animate(
-        [
-          { transform: `translate3d(${startX}px, ${targetTopY}px, 0)` },
-          { transform: `translate3d(${targetX}px, ${targetTopY}px, 0)` }
-        ],
-        { duration: EXIT_MS, easing: EXIT_EASE, delay, fill: 'backwards' }
-      );
-      anim.onfinish = () => { try { anim.commitStyles(); } catch (_) {} try { anim.cancel(); } catch (_) {} };
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        clone.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE} ${delay}ms`;
+        clone.style.transform = `translate3d(${targetX}px, ${targetTopY}px, 0)`;
+      }));
+    } else {
+      clone.style.transform = `translate3d(${targetX}px, ${targetTopY}px, 0)`;
     }
     idx++;
   }
