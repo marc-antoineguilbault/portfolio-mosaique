@@ -348,13 +348,15 @@ function removeFocusClones() {
   for (const slot of allClones) slot.el.style.zIndex = '0';
 
   // Pas de stagger : tous les clones démarrent T+0, finissent T+EXIT_MS, MÊME delta uniforme.
-  // Conséquence : tous bougent à la même vitesse pixel/ms et disparaissent simultanément.
+  // Opacity utilise la MÊME easing que transform → fade proportionnel à la position du clone
+  // (plus il avance vers le bord, plus il devient transparent, en synchronisation parfaite).
   if (rightClones.length && !REDUCED_MOTION) {
     const leftmostX = Math.min(...rightClones.map((s) => s.x));
     const delta = W + 80 - leftmostX;
     for (const slot of rightClones) {
-      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}, opacity ${EXIT_MS}ms ${EXIT_EASE}`;
       slot.el.style.transform = `translate3d(${slot.x + delta}px, ${slot.y}px, 0)`;
+      slot.el.style.setProperty('opacity', '0', 'important');
     }
   } else {
     for (const slot of rightClones) slot.el.remove();
@@ -364,8 +366,9 @@ function removeFocusClones() {
     const rightmostXEnd = Math.max(...leftClones.map((s) => s.x + s.w));
     const delta = -(rightmostXEnd + 80);
     for (const slot of leftClones) {
-      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}, opacity ${EXIT_MS}ms ${EXIT_EASE}`;
       slot.el.style.transform = `translate3d(${slot.x + delta}px, ${slot.y}px, 0)`;
+      slot.el.style.setProperty('opacity', '0', 'important');
     }
   } else {
     for (const slot of leftClones) slot.el.remove();
