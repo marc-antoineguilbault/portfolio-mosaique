@@ -686,3 +686,23 @@ body[data-mode="focus"] .tile-meta { opacity: 0 !important; }
   opacity: 1 !important;
   translate: 0 0 !important;
 }
+/* Sources mosaïque du projet focusé (sauf cliquée et clones) : hide via CSS attribut-matching →
+   robuste aux tuiles spawnées après focusTile (iteration JS ratait les nouvelles). Le CSS
+   :not([data-focus-clone]) est essentiel : sans ça les clones du focus row seraient hidden aussi.
+   Le sélecteur d'attribut [data-project] est construit dynamiquement par JS via body[data-focus-proj]. */
+body[data-focus-proj] .tile:not(.is-focused-tile):not([data-focus-clone]) {
+  /* Par défaut, pas d'effet — ciblé par règle JS spécifique (cf. focus-source-hide-style). */
+}
+body[data-focus-proj="liquides-paris"] .tile[data-project="liquides-paris"]:not(.is-focused-tile):not([data-focus-clone]),
+body[data-focus-proj="gobelins-paris"] .tile[data-project="gobelins-paris"]:not(.is-focused-tile):not([data-focus-clone]),
+body[data-focus-proj="loreal-groupe"] .tile[data-project="loreal-groupe"]:not(.is-focused-tile):not([data-focus-clone]),
+body[data-focus-proj="centre-pompidou"] .tile[data-project="centre-pompidou"]:not(.is-focused-tile):not([data-focus-clone]),
+body[data-focus-proj="pozzo-di-borgo"] .tile[data-project="pozzo-di-borgo"]:not(.is-focused-tile):not([data-focus-clone]),
+body[data-focus-proj="quintessence-paris"] .tile[data-project="quintessence-paris"]:not(.is-focused-tile):not([data-focus-clone]),
+body[data-focus-proj="courvoisier"] .tile[data-project="courvoisier"]:not(.is-focused-tile):not([data-focus-clone]),
+body[data-focus-proj="royal-canin"] .tile[data-project="royal-canin"]:not(.is-focused-tile):not([data-focus-clone]),
+body[data-focus-proj="porsche-macan"] .tile[data-project="porsche-macan"]:not(.is-focused-tile):not([data-focus-clone]) {
+  animation: none !important;
+  opacity: 0 !important;
+  pointer-events: none;
+}

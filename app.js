@@ -223,6 +223,10 @@ let focusedTile = null;
 function exitFocus() {
   if (!focusActive) return;
   focusActive = false;
+  // Cleanup marqueurs CSS focus-mode AVANT returnTiles (sinon les sources LP restent hidden pendant
+  // l'anim de retour et apparaissent en pop à la fin).
+  if (focusedTile && focusedTile.el) focusedTile.el.classList.remove('is-focused-tile');
+  delete document.body.dataset.focusProj;
   focusedTile = null;
   clearProjectLabel();
   removeFocusClones();
@@ -878,6 +882,11 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
     freezeMosaic();
     focusActive = true;
     focusedTile = tileObj;
+    // Marqueurs pour le CSS focus-mode : data-focus-proj sur body + classe is-focused-tile sur
+    // la cliquée. Le CSS hide TOUS les .tile[data-project=proj] sauf la cliquée et les clones —
+    // robuste aux tuiles spawnées après le focusTile (sinon iteration JS ratait les nouvelles).
+    document.body.dataset.focusProj = proj;
+    tileObj.el.classList.add('is-focused-tile');
     const projName = projectNameById.get(proj) ?? proj;
     showProjectLabel(projName);
     focusTile(tileObj);
