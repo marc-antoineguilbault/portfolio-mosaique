@@ -353,7 +353,9 @@ function removeFocusClones() {
     for (const slot of rightClones) {
       slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}, opacity ${EXIT_MS}ms ease-out`;
       slot.el.style.transform = `translate3d(${slot.x + delta}px, ${slot.y}px, 0)`;
-      slot.el.style.opacity = '0';                                            // fade out pendant slide
+      // setProperty avec !important : inline normal ne battait pas une cascade implicite
+      // (tile-appear forwards laissait opacity:1 comme valeur calculée non-animée).
+      slot.el.style.setProperty('opacity', '0', 'important');
     }
   } else {
     for (const slot of rightClones) slot.el.remove();
@@ -365,7 +367,7 @@ function removeFocusClones() {
     for (const slot of leftClones) {
       slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}, opacity ${EXIT_MS}ms ease-out`;
       slot.el.style.transform = `translate3d(${slot.x + delta}px, ${slot.y}px, 0)`;
-      slot.el.style.opacity = '0';                                            // fade out pendant slide
+      slot.el.style.setProperty('opacity', '0', 'important');
     }
   } else {
     for (const slot of leftClones) slot.el.remove();
