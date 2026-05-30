@@ -738,3 +738,18 @@ body[data-focus-proj="royal-canin"] .tile[data-project="royal-canin"]:not(.is-fo
 body[data-focus-proj="porsche-macan"] .tile[data-project="porsche-macan"]:not(.is-focused-tile):not([data-focus-clone]) {
   pointer-events: none;
 }
+
+/* Warp focus : étirement horizontal transitoire du contenu pendant un advance/retreat.
+   Sur .tile-inner (transform libre — le tilt est sur .tile-frame, le translate du ruban sur .tile). */
+@keyframes warp-focus-h {
+  0%   { transform: scaleX(1) scaleY(1); }
+  45%  { transform: scaleX(1.03) scaleY(0.992); }
+  100% { transform: scaleX(1) scaleY(1); }
+}
+body[data-mode="focus"] .tile-inner.is-warping {
+  animation: warp-focus-h 700ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-mode="focus"] .tile-inner.is-warping { animation: none; }
+}

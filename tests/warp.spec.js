@@ -47,6 +47,18 @@ test.describe('warp mosaïque', () => {
     }, null, { timeout: 3000 });
   });
 
+  test('focus : un advance applique le warp horizontal (.tile-inner.is-warping)', async ({ page }) => {
+    await page.goto('/');
+    // Ouvre la liste clients puis le 1er projet (Liquides Paris — multi-maquettes).
+    await page.locator('.ui-corner--tl').click({ force: true });
+    await page.locator('.ui-corner__suffix-item').first().click({ force: true });
+    await expect(page.locator('body')).toHaveAttribute('data-mode', 'focus');
+    // Avance dans le ruban (projet multi-maquettes → vrai advance).
+    await page.keyboard.press('ArrowRight');
+    // Le warp horizontal pose la classe is-warping sur au moins un .tile-inner.
+    await expect(page.locator('.tile-inner.is-warping').first()).toBeAttached({ timeout: 2000 });
+  });
+
   test('reduced-motion : aucun étirement même au wheel rapide', async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: 'reduce' });
     const page = await ctx.newPage();

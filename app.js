@@ -407,6 +407,18 @@ function loopToStart() {
   setTimeout(() => { advancing = false; }, LOOP_MS + 50);
 }
 
+// Warp focus : (re)lance l'anim d'étirement horizontal sur les .tile-inner des slots du ruban.
+function pulseFocusWarp() {
+  if (REDUCED_MOTION) return;
+  for (const slot of [...focusList, ...pastSlots]) {
+    const el = slot.el.querySelector('.tile-inner');
+    if (!el) continue;
+    el.classList.remove('is-warping');
+    void el.offsetWidth;              // reflow → permet de rejouer l'animation
+    el.classList.add('is-warping');
+  }
+}
+
 function advance() {
   if (!focusActive) return;
   // Cancel les setTimeouts en flight (cleanup advance/retreat, loop pending) → permet clic
@@ -422,6 +434,7 @@ function advance() {
     return;
   }
   advancing = true;
+  pulseFocusWarp();
   const vh = window.innerHeight;
   const W = window.innerWidth;
   const oldCliquee = focusList[0];
@@ -485,6 +498,7 @@ function retreat() {
   if (pendingLoopTimeout) { clearTimeout(pendingLoopTimeout); pendingLoopTimeout = null; }
   if (pastSlots.length === 0) { triggerRebound(+1); return; } // 1/4 : retreat bloqué → rebond droit
   advancing = true;
+  pulseFocusWarp();
   const last = pastSlots.pop();
   const delta = last.w + GAP;
 
