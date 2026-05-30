@@ -3,6 +3,7 @@ import { extractGlowColors } from './modules/glow.js';
 import { splitIntoLines, splitMetaIntoLines } from './modules/split-lines.js';
 import { attachLock } from './modules/lock.js';
 import { createVelocityTracker } from './modules/velocity.js';
+import { initCursor } from './modules/cursor.js';
 
 // Préchargement hybride sans loader UI :
 // 1. Au boot : fetch HAUTE PRIORITÉ de la M01 de chaque projet (~9 images, <1 MB).
@@ -1186,8 +1187,6 @@ window.addEventListener('mousemove', (e) => {
   mouseX = e.clientX;
   mouseY = e.clientY;
   cursorDirty = true;
-  // Transform = compositing GPU pur (pas de layout). translate(-50%, -50%) centre le rond.
-  cursorEl.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
 });
 
 // Smoothing du trail : par frame (≈60fps), current += (target - current) * SMOOTH.
@@ -1843,6 +1842,7 @@ function init() {
 }
 
 init();
+initCursor({ hasHover: HAS_HOVER, reducedMotion: REDUCED_MOTION });
 
 function rebuildLayout() {
   const { h } = getViewportSize();
