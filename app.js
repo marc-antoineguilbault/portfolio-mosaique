@@ -306,17 +306,50 @@ let focusedTile = null;
 function exitFocus() {
   if (!focusActive) return;
   focusActive = false;
-  // Cleanup marqueurs CSS focus-mode AVANT returnTiles (sinon les sources LP restent hidden pendant
-  // l'anim de retour et apparaissent en pop à la fin).
   for (const slot of focusList) {
     if (!slot.isClone) slot.el.classList.remove('is-focused-tile');
   }
   delete document.body.dataset.focusProj;
   focusedTile = null;
-  userClickedTile = null;
   clearProjectLabel();
-  removeFocusClones();
-  returnTiles(() => { resumeMosaic(); setMode('mosaic'); });
+
+  // Exit en 3 phases :
+  //   1. Reverse shift : si advances faits, ramener M-0 (userClickedTile) à sa position originale
+  //      → toutes les focus tiles glissent vers la droite ensemble.
+  //   2. Clones disparaissent vers la droite.
+  //   3. Tuiles des autres projets reviennent (returnTiles).
+  // Si aucun advance fait, skip phase 1 (rien à reverse) et enchaîner directement.
+
+  const userTileX = userClickedTile ? userClickedTile.x : 0;
+  // pastSlots[0] = userClickedTile (1ère "past cliquée"). Si présent, c'est qu'au moins 1 advance fait.
+  const reverseShift = (userClickedTile && pastSlots.length > 0)
+    ? userTileX - pastSlots[0].x
+    : 0;
+
+  const phase2 = () => {
+    removeFocusClones();
+    setTimeout(() => {
+      userClickedTile = null;
+      returnTiles(() => { resumeMosaic(); setMode('mosaic'); });
+    }, EXIT_MS / 2);
+  };
+
+  if (Math.abs(reverseShift) > 1 && !REDUCED_MOTION) {
+    // Phase 1 : tout shift à droite de reverseShift.
+    for (const slot of focusList) {
+      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+      slot.el.style.transform = `translate3d(${slot.x + reverseShift}px, ${slot.y}px, 0)`;
+      slot.x += reverseShift;
+    }
+    for (const past of pastSlots) {
+      past.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+      past.el.style.transform = `translate3d(${past.x + reverseShift}px, ${past.y}px, 0)`;
+      past.x += reverseShift;
+    }
+    setTimeout(phase2, EXIT_MS + 50);
+  } else {
+    phase2();
+  }
 }
 // Escape OU click hors d'une maquette focus → sortie. Click SUR cliquée OU clone → advance.
 document.addEventListener('keydown', (e) => {
