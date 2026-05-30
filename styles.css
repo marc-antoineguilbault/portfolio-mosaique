@@ -678,3 +678,11 @@ body[data-mode="focus"] .ui-corner--tl { pointer-events: none; }
 /* Pas de descriptions sous les tuiles en mode focus (cliquée ET autres) : override du
    reveal au hover. !important pour battre @media (hover: hover) .tile:hover .tile-meta. */
 body[data-mode="focus"] .tile-meta { opacity: 0 !important; }
+/* Clones de la focus row : skip l'anim tile-appear (qui fait translate(0, 60px) → translate(0, 0)
+   automatiquement sur INSERTION DOM). Sans ce skip, le clone subit une remontée parasite de 60px
+   en plus de la translation WAAPI horizontale → "jump" + apparition bas→haut à l'arrivée. */
+.tile[data-focus-clone="true"] {
+  animation: none !important;
+  opacity: 1 !important;
+  translate: 0 0 !important;
+}
