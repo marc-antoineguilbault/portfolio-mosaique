@@ -312,36 +312,60 @@ let focusedTile = null;
 function exitFocus() {
   if (!focusActive) return;
   focusActive = false;
-  for (const slot of focusList) {
-    if (!slot.isClone) slot.el.classList.remove('is-focused-tile');
-  }
-  delete document.body.dataset.focusProj;
   focusedTile = null;
   clearProjectLabel();
 
-  // Exit en 3 phases :
-  //   1. Reverse shift : si advances faits, ramener M-0 (userClickedTile) à sa position originale
-  //      → toutes les focus tiles glissent vers la droite ensemble.
-  //   2. Clones disparaissent vers la droite.
-  //   3. Tuiles des autres projets reviennent (returnTiles).
-  // Si aucun advance fait, skip phase 1 (rien à reverse) et enchaîner directement.
+  // Track projId AVANT de null userClickedTile (utile en phase 3 pour fader les sources).
+  const projId = userClickedTile?.item?.project;
 
+  // Exit en 3 phases :
+  //   1. Reverse shift : ramener M-0 (userClickedTile) à sa position originale → toutes les
+  //      focus tiles glissent vers la droite ensemble.
+  //   2. Clones disparaissent vers la droite.
+  //   3. Tuiles des autres projets reviennent (returnTiles) + sources du même projet fadent in
+  //      à la même vitesse (sinon snap visible quand on remove data-focus-proj).
   const userTileX = userClickedTile ? userClickedTile.x : 0;
-  // pastSlots[0] = userClickedTile (1ère "past cliquée"). Si présent, c'est qu'au moins 1 advance fait.
   const reverseShift = (userClickedTile && pastSlots.length > 0)
     ? userTileX - pastSlots[0].x
     : 0;
 
+  const phase3 = () => {
+    // Sources du projet (hidées via CSS pendant focus, sauf is-focused-tile = userClickedTile).
+    // On les fade in EN MÊME TEMPS que returnTiles ramène les autres projets.
+    const sources = projId
+      ? [...document.querySelectorAll(`.tile[data-project="${projId}"]:not([data-focus-clone]):not(.is-focused-tile)`)]
+      : [];
+    if (!REDUCED_MOTION) {
+      for (const el of sources) {
+        el.style.transition = `opacity ${EXIT_MS}ms ease`;
+        el.style.opacity = '0';
+      }
+    }
+    // Remove data-focus-proj AVANT is-focused-tile : sinon le CSS hide kick in sur userClickedTile
+    // (flicker opacity:0 instant puis revert). Avec data-focus-proj parti d'abord, la règle ne
+    // matche plus rien, removing is-focused-tile devient no-op.
+    delete document.body.dataset.focusProj;
+    for (const slot of focusList) {
+      if (!slot.isClone) slot.el.classList.remove('is-focused-tile');
+    }
+    if (!REDUCED_MOTION) {
+      requestAnimationFrame(() => {
+        for (const el of sources) el.style.opacity = '1';
+      });
+      setTimeout(() => {
+        for (const el of sources) { el.style.opacity = ''; el.style.transition = ''; }
+      }, EXIT_MS + 100);
+    }
+    userClickedTile = null;
+    returnTiles(() => { resumeMosaic(); setMode('mosaic'); });
+  };
+
   const phase2 = () => {
     removeFocusClones();
-    setTimeout(() => {
-      userClickedTile = null;
-      returnTiles(() => { resumeMosaic(); setMode('mosaic'); });
-    }, EXIT_MS / 2);
+    setTimeout(phase3, EXIT_MS / 2);
   };
 
   if (Math.abs(reverseShift) > 1 && !REDUCED_MOTION) {
-    // Phase 1 : tout shift à droite de reverseShift.
     for (const slot of focusList) {
       slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
       slot.el.style.transform = `translate3d(${slot.x + reverseShift}px, ${slot.y}px, 0)`;
