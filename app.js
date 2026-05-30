@@ -101,9 +101,8 @@ function focusTile(clickedTile) {
   // selon leur position vs vh/2 — uniformité visuelle voulue : pas de traitement spécial qui
   // fasse les sources "disparaître en fondue" différemment des autres projets.
 
+  // TOUTES les tuiles non-cliquée sortent par haut/bas (gérées plus bas avec autres projets).
   if (REDUCED_MOTION) {
-    clickedTile.el.style.transition = 'none';
-    clickedTile.el.style.transform = `translate3d(${clickedTile.x}px, ${targetY}px, 0)`;
     for (const tile of liveTiles) {
       if (tile === clickedTile) continue;
       tile.exitDir = 'up';
@@ -111,13 +110,7 @@ function focusTile(clickedTile) {
     }
   } else {
     for (const tile of liveTiles) {
-      if (tile === clickedTile) {
-        tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
-        tile.el.style.transform = `translate3d(${tile.x}px, ${targetY}px, 0)`;
-        continue;
-      }
-      // Sortie par haut/bas selon position vs vh/2 (tile mosaïque hors-écran). Target ABSOLU
-      // garanti hors-écran (formule cur+dy était instable, certaines tuiles s'arrêtaient à -112).
+      if (tile === clickedTile) continue;
       const rect = tile.el.getBoundingClientRect();
       const centerY = rect.top + tile.h / 2;
       const dir = centerY < middleY ? 'up' : 'down';
@@ -132,46 +125,62 @@ function focusTile(clickedTile) {
     }
   }
 
-  // Focus row : ordre = depuis cliquée+1 dans la séquence projet (wrap circulaire). Pour chaque
-  // maquette du projet (sauf cliquée), clone une source et glisse-la depuis la droite vers sa
-  // position cible. startX cumulatif (chaque clone démarre PAST le précédent → pas de superposition
-  // visible pendant la phase off-screen → no double-startX au même endroit).
+  // Focus row : items APRÈS cliquée (clones à droite, focusList) + items AVANT cliquée
+  // (clones à gauche, pastSlots). On calcule d'abord toutes les positions cibles SANS DOM,
+  // puis on shift toute la rangée si nécessaire pour garder le leftmost dans le viewport.
   userClickedTile = clickedTile;
+  const allItems = pool.filter((it) => it.project === projId);
+  const cliqueeIdx = allItems.findIndex((it) => it.src === clickedTile.item.src);
+  const itemsAfter = allItems.slice(cliqueeIdx + 1);
+  const itemsBefore = allItems.slice(0, cliqueeIdx);
+
+  // 1. Positions cibles RAW (cliquée à clickedTile.x, sans ribbonShift).
+  const rightPositions = [];
+  let edgeRight = clickedTile.x + clickedTile.w;
+  for (const item of itemsAfter) {
+    const source = liveTiles.find((t) => t.item && t.item.src === item.src);
+    if (!source) continue;
+    edgeRight += GAP;
+    rightPositions.push({ item, source, targetX: edgeRight });
+    edgeRight += source.w;
+  }
+  const leftPositions = [];                                // ordre : M-1 (proche), M-2, … (loin)
+  let edgeLeft = clickedTile.x;
+  for (let i = itemsBefore.length - 1; i >= 0; i--) {
+    const item = itemsBefore[i];
+    const source = liveTiles.find((t) => t.item && t.item.src === item.src);
+    if (!source) continue;
+    edgeLeft -= GAP + source.w;
+    leftPositions.push({ item, source, targetX: edgeLeft });
+  }
+
+  // 2. Cliquée : RESTE à sa position horizontale originale (clickedTile.x), centrée verticalement.
+  // Les items à gauche peuvent déborder hors-écran si la cliquée est près du bord gauche —
+  // contrainte explicite : la cliquée ne bouge JAMAIS horizontalement.
+  if (REDUCED_MOTION) {
+    clickedTile.el.style.transition = 'none';
+    clickedTile.el.style.transform = `translate3d(${clickedTile.x}px, ${targetY}px, 0)`;
+  } else {
+    clickedTile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+    clickedTile.el.style.transform = `translate3d(${clickedTile.x}px, ${targetY}px, 0)`;
+  }
   focusList = [{
     el: clickedTile.el, item: clickedTile.item, x: clickedTile.x, y: targetY,
     w: clickedTile.w, h: clickedTile.h, isClone: false,
   }];
-  const allItems = pool.filter((it) => it.project === projId);
-  const cliqueeIdx = allItems.findIndex((it) => it.src === clickedTile.item.src);
-  const orderedItems = [];
-  for (let i = 1; i < allItems.length; i++) {
-    orderedItems.push(allItems[(cliqueeIdx + i) % allItems.length]);
-  }
-  let edgeX = clickedTile.x + clickedTile.w;
-  let prevRightEdge = 0;                                  // pour stagger des startX
-  let idx = 0;
-  for (const item of orderedItems) {
-    const source = liveTiles.find((t) => t.item && t.item.src === item.src);
-    if (!source) continue;
-    edgeX += GAP;
-    const targetX = edgeX;
-    const targetTopY = (vh - source.h) / 2;
-    edgeX += source.w;
-    const startX = Math.max(W, targetX, prevRightEdge + GAP) + 80;
-    prevRightEdge = startX + source.w;
+
+  // 4. Helper : crée un clone d'une source et anime depuis startX vers targetX.
+  const spawnClone = (item, source, targetX, targetTopY, startX, zIdx, delayIdx) => {
     const clone = source.el.cloneNode(true);
     clone.dataset.focusClone = 'true';
     clone.style.opacity = '1';
-    clone.style.zIndex = String(100 + idx);
-    // Pré-position au start (off-screen droit) sans transition. Force commit via getBoundingClientRect.
-    // Puis double rAF kick off la CSS transition vers target. Pas de WAAPI = pas de résiduel.
+    clone.style.zIndex = String(100 + zIdx);
     clone.style.transition = 'none';
     clone.style.transform = `translate3d(${startX}px, ${targetTopY}px, 0)`;
     document.body.appendChild(clone);
-    focusList.push({ el: clone, item, x: targetX, y: targetTopY, w: source.w, h: source.h, isClone: true });
     if (!REDUCED_MOTION) {
       clone.getBoundingClientRect();
-      const delay = (idx + 1) * FOCUS_ROW_STAGGER_MS;
+      const delay = (delayIdx + 1) * FOCUS_ROW_STAGGER_MS;
       requestAnimationFrame(() => requestAnimationFrame(() => {
         clone.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE} ${delay}ms`;
         clone.style.transform = `translate3d(${targetX}px, ${targetTopY}px, 0)`;
@@ -179,8 +188,36 @@ function focusTile(clickedTile) {
     } else {
       clone.style.transform = `translate3d(${targetX}px, ${targetTopY}px, 0)`;
     }
-    idx++;
+    return { el: clone, item, x: targetX, y: targetTopY, w: source.w, h: source.h, isClone: true };
+  };
+
+  // 4. Clones à DROITE — anim depuis off-screen droit, startX cumulé.
+  let prevRightEdge = 0;
+  let rightIdx = 0;
+  for (const data of rightPositions) {
+    const targetX = data.targetX;
+    const targetTopY = (vh - data.source.h) / 2;
+    const startX = Math.max(W, targetX, prevRightEdge + GAP) + 80;
+    prevRightEdge = startX + data.source.w;
+    focusList.push(spawnClone(data.item, data.source, targetX, targetTopY, startX, rightIdx, rightIdx));
+    rightIdx++;
   }
+
+  // 5. Clones à GAUCHE — anim depuis off-screen gauche, startX cumulé. leftSlots dans l'ordre
+  // [M-1, M-2, …]. pastSlots = reverse → [M-N, …, M-1]. Convention : pop pastSlots = M-1 (le plus
+  // proche cliquée) → ramené en premier par retreat().
+  let prevLeftEdge = 0;
+  let leftIdx = 0;
+  const leftSlots = [];
+  for (const data of leftPositions) {
+    const targetX = data.targetX;
+    const targetTopY = (vh - data.source.h) / 2;
+    const startX = Math.min(-data.source.w - 80, targetX, prevLeftEdge - data.source.w - GAP);
+    prevLeftEdge = startX;
+    leftSlots.push(spawnClone(data.item, data.source, targetX, targetTopY, startX, leftIdx, leftIdx));
+    leftIdx++;
+  }
+  pastSlots = leftSlots.slice().reverse();
 }
 
 // ADVANCE : ruban glisse à gauche d'un cran. Cliquée sort à gauche, focus row shift left, nouveau
@@ -279,29 +316,44 @@ function retreat() {
   setTimeout(() => { advancing = false; }, EXIT_MS + 50);
 }
 
-// Retire tous les clones (focusList + pastSlots). Clones in focusList → anim vers off-screen
-// droite puis remove. pastSlots clones (déjà drifted gauche) → remove direct du DOM. pastSlots
-// non-clones (= userClickedTile shiftée) → reset transform à mosaïque (returnTiles s'en chargera).
+// Retire tous les clones (focusList + pastSlots). Clones de focusList (droite) → anim off-screen
+// droite. Clones de pastSlots (gauche, pré-remplis OU drifted par advances) → anim off-screen
+// gauche, même delta uniforme pour éviter overlap. pastSlots non-clones (= userClickedTile
+// shiftée par advance) → géré par returnTiles en phase 3.
 function removeFocusClones() {
   const W = window.innerWidth;
-  const cloneSlots = focusList.filter((s) => s.isClone);
-  if (cloneSlots.length && !REDUCED_MOTION) {
-    // Tous les clones shiftent du MÊME delta vers la droite → même vitesse, pas d'overlap.
-    // Sinon (target individuel), le clone le plus à gauche a une distance plus courte vers
-    // l'edge → va plus vite → empile sur les suivants pendant la disparition.
-    const leftmostX = Math.min(...cloneSlots.map((s) => s.x));
+
+  // Clones à DROITE (focusList).
+  const rightClones = focusList.filter((s) => s.isClone);
+  if (rightClones.length && !REDUCED_MOTION) {
+    const leftmostX = Math.min(...rightClones.map((s) => s.x));
     const delta = W + 80 - leftmostX;
-    for (const slot of cloneSlots) {
+    for (const slot of rightClones) {
       slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
       slot.el.style.transform = `translate3d(${slot.x + delta}px, ${slot.y}px, 0)`;
     }
   } else {
-    for (const slot of cloneSlots) slot.el.remove();
+    for (const slot of rightClones) slot.el.remove();
   }
-  setTimeout(() => { for (const slot of cloneSlots) slot.el.remove(); }, EXIT_MS + 50);
-  for (const past of pastSlots) {
-    if (past.isClone) past.el.remove();
+
+  // Clones à GAUCHE (pastSlots) : pré-remplis OU drifted par advances. Même delta uniforme
+  // (le rightmost atteint -80 pour sortir entièrement, les autres suivent à la même vitesse).
+  const leftClones = pastSlots.filter((s) => s.isClone);
+  if (leftClones.length && !REDUCED_MOTION) {
+    const rightmostXEnd = Math.max(...leftClones.map((s) => s.x + s.w));
+    const delta = -(rightmostXEnd + 80);
+    for (const slot of leftClones) {
+      slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+      slot.el.style.transform = `translate3d(${slot.x + delta}px, ${slot.y}px, 0)`;
+    }
+  } else {
+    for (const slot of leftClones) slot.el.remove();
   }
+
+  setTimeout(() => {
+    for (const slot of rightClones) slot.el.remove();
+    for (const slot of leftClones) slot.el.remove();
+  }, EXIT_MS + 50);
   pastSlots = [];
   focusList = [];
 }
@@ -356,10 +408,14 @@ function exitFocus() {
   //   2. Clones disparaissent vers la droite.
   //   3. Tuiles des autres projets reviennent (returnTiles) + sources du même projet fadent in
   //      à la même vitesse (sinon snap visible quand on remove data-focus-proj).
-  const userTileX = userClickedTile ? userClickedTile.x : 0;
-  const reverseShift = (userClickedTile && pastSlots.length > 0)
-    ? userTileX - pastSlots[0].x
-    : 0;
+  // reverseShift : ramène M0 à sa position originale. Le slot CONTENANT M0 peut être dans
+  // focusList (open + retreats) OU dans pastSlots (open + advances). Search dans les deux.
+  // À l'open initial, M0 = focusList[0] avec x = userClickedTile.x → reverseShift = 0.
+  const m0CurrentSlot = userClickedTile
+    ? (focusList.find((s) => s.el === userClickedTile.el)
+       || pastSlots.find((s) => s.el === userClickedTile.el))
+    : null;
+  const reverseShift = m0CurrentSlot ? (userClickedTile.x - m0CurrentSlot.x) : 0;
 
   // Phase 3a : M0 (userClickedTile) retourne à sa position Y mosaïque.
   // Phase 3b (après) : autres projets reviennent + sources du même projet fadent in.
