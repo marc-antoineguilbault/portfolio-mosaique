@@ -31,7 +31,7 @@ let FRAME_PADDING = REF_FRAME_PADDING;
 // Patterns déterministes — la grille est identique à chaque reload.
 const INITIAL_OFFSETS = [-50, -320, -180, -240];   // décalage Y de départ par colonne
 const GROUP_VELOCITIES = [1, 1];                   // vitesses uniformes : un parallax (vitesses divergentes) entrerait en collision avec les tuiles `fullwidth`
-const COL_STAGGER = [0, 80, 0, 80];                // décalage visuel permanent par colonne (briser l'alignement vertical entre cols) — offset constant, n'introduit pas de divergence dans le temps
+const COL_STAGGER = [0, 0, 80, 80];                // décalage visuel par PAIRE de colonnes (pas par col individuelle) — les tablets occupent toujours des paires (0,1) ou (2,3) et utilisent le stagger de leur leftmost col. En groupant par paires, le stagger du tablet matche celui des mobiles dans ses 2 cols → gap perçu uniforme (GAP_Y constant) entre tuiles consécutives, quelque soit leur type.
 
 const viewport = document.getElementById('viewport');
 const scroller = document.getElementById('scroller');
