@@ -77,6 +77,18 @@ function focusTile(clickedTile) {
   clickedTile.focused = true;
 
   const projId = clickedTile.item.project;
+  // Garantit que TOUTES les maquettes du projet sont dans liveTiles avant de construire la focus
+  // row. Sinon, items non-spawnés en mosaïque seraient skip → clones manquants (cas Pozzo Di Borgo,
+  // 3 maquettes : si seulement la cliquée est spawnée, M+1/M+2 absents).
+  const allInPool = pool.filter((it) => it.project === projId);
+  const inLive = new Set(liveTiles.filter((t) => t.item).map((t) => t.item.src));
+  for (const item of allInPool) {
+    if (inLive.has(item.src)) continue;
+    const pos = placeNext(item);
+    const tile = createTile(item, pos, String(liveTiles.length + 1), 'high');
+    liveTiles.push(tile);
+    placedSrcs.add(item.src);
+  }
   // Sources du même projet : à HIDE instantanément (pas d'exit haut/bas) pour que l'utilisateur
   // ne voie pas de mouvement parasite — seuls les clones arrivent (de droite).
   const sameProjectSources = new Set(liveTiles.filter((t) => t !== clickedTile && t.item && t.item.project === projId));
