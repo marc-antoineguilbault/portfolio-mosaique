@@ -737,6 +737,13 @@ if (HAS_HOVER && tlLabel) {
       tlLabel.focus();
     }
   });
+  // Click hors TL pendant que la liste est ouverte → ferme et revient à la mosaïque.
+  // Skip si click dans le TL (toggle géré par le handler ci-dessus).
+  document.addEventListener('click', (e) => {
+    if (!clientListOpen) return;
+    if (e.target.closest('.ui-corner--tl')) return;
+    closeClientList();
+  });
 }
 // ──────────────────────────────────────────────────────────────────────────
 let typewriterRAF = null;
