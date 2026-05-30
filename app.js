@@ -306,10 +306,10 @@ function loopToStart() {
     cumDelta += last.w + GAP;
     focusList.unshift(last);
   }
-  // Easing ease-out doux : démarrage normal, ralentissement progressif en fin de mouvement.
-  // Duration allongée à 900ms pour bien sentir le lissage.
-  const LOOP_MS = 900;
-  const LOOP_EASE = 'cubic-bezier(0.25, 0.1, 0.25, 1)';       // ease classique douce
+  // Ease-out expo : démarrage RAPIDE, ralentissement TRÈS marqué en fin de mouvement.
+  // Duration 1200ms pour bien sentir le long plateau de décélération finale.
+  const LOOP_MS = 1200;
+  const LOOP_EASE = 'cubic-bezier(0.19, 1, 0.22, 1)';         // ease-out expo (slow-down marqué)
   for (const slot of focusList) {
     const newX = slot.x + cumDelta;
     slot.el.style.transition = `transform ${LOOP_MS}ms ${LOOP_EASE}`;
