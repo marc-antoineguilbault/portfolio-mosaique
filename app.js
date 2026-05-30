@@ -101,6 +101,9 @@ let focusList = [];     // [{el, item, x, y, w, h, isClone}, ...] — index 0 = 
 let pastSlots = [];     // [{el, x, y, isClone}, ...] — anciennes cliquées qui drift à gauche à chaque advance
 let userClickedTile = null;   // la tuile mosaïque que l'user a cliquée à l'origine (pour restauration)
 let advancing = false;
+let pendingAdvanceCleanup = null;                              // setTimeout handle pour cleanup post-anim advance/retreat
+let pendingLoopTimeout = null;                                 // setTimeout handle pour loopToStart à 4/4 + advance
+let pendingRetreatCleanup = null;                              // setTimeout handle pour cleanup post-anim retreat
 
 function focusTile(clickedTile, forceX) {
   const vh = window.innerHeight;
@@ -325,12 +328,17 @@ function loopToStart() {
 }
 
 function advance() {
-  if (!focusActive || advancing) return;
+  if (!focusActive) return;
+  // Cancel les setTimeouts en flight (cleanup advance/retreat, loop pending) → permet clic
+  // pendant qu'une transition tourne. CSS transitions sont auto-remplacées par browser.
+  if (pendingAdvanceCleanup) { clearTimeout(pendingAdvanceCleanup); pendingAdvanceCleanup = null; }
+  if (pendingRetreatCleanup) { clearTimeout(pendingRetreatCleanup); pendingRetreatCleanup = null; }
+  if (pendingLoopTimeout) { clearTimeout(pendingLoopTimeout); pendingLoopTimeout = null; }
   if (focusList.length < 2) {                                 // 4/4 : avance bloquée
     if (pastSlots.length === 0) { triggerRebound(-1); return; } // 1 seule maquette, juste rebond
     advancing = true;
     triggerRebound(-1);
-    setTimeout(loopToStart, 500);                             // après le rebond → loop vers 1/4
+    pendingLoopTimeout = setTimeout(() => { loopToStart(); pendingLoopTimeout = null; }, 500);
     return;
   }
   advancing = true;
@@ -380,16 +388,21 @@ function advance() {
   pastSlots.push({ el: removed.el, item: removed.item, x: removed.x, y: removed.y, w: removed.w, h: removed.h, isClone: removed.isClone });
 
   // 6. Cleanup post-anim. Marqueurs is-focused-tile pour CSS hide (tuile mosaïque originale).
-  setTimeout(() => {
+  pendingAdvanceCleanup = setTimeout(() => {
     if (!focusList[0].isClone) focusList[0].el.classList.add('is-focused-tile');
     advancing = false;
+    pendingAdvanceCleanup = null;
   }, EXIT_MS + 50);
 }
 
 // RETREAT : inverse de advance — ramène la dernière past à l'avant. Shift uniforme à droite
 // de +(last.w + GAP) sur focusList + pastSlots restants. Utilisé par la flèche ⭠ du compteur TL.
 function retreat() {
-  if (!focusActive || advancing) return;
+  if (!focusActive) return;
+  // Cancel les setTimeouts en flight pour permettre clic pendant transition.
+  if (pendingAdvanceCleanup) { clearTimeout(pendingAdvanceCleanup); pendingAdvanceCleanup = null; }
+  if (pendingRetreatCleanup) { clearTimeout(pendingRetreatCleanup); pendingRetreatCleanup = null; }
+  if (pendingLoopTimeout) { clearTimeout(pendingLoopTimeout); pendingLoopTimeout = null; }
   if (pastSlots.length === 0) { triggerRebound(+1); return; } // 1/4 : retreat bloqué → rebond droit
   advancing = true;
   const last = pastSlots.pop();
@@ -422,7 +435,7 @@ function retreat() {
   const idx = allInProj.findIndex((it) => it.src === focusList[0].item.src);
   showProjectLabel(projName, idx, allInProj.length);
 
-  setTimeout(() => { advancing = false; }, EXIT_MS + 50);
+  pendingRetreatCleanup = setTimeout(() => { advancing = false; pendingRetreatCleanup = null; }, EXIT_MS + 50);
 }
 
 // Retire tous les clones (focusList + pastSlots). Classification par POSITION COURANTE vs M0
