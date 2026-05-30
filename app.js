@@ -165,6 +165,9 @@ function focusTile(clickedTile) {
     clone.dataset.focusClone = 'true';
     clone.style.opacity = '1';
     clone.style.transform = `translate3d(${targetX}px, ${targetTopY}px, 0)`;
+    // z-index croissant : M+1 < M+2 < M+3 → pendant l'anim d'arrivée, le clone qui arrive plus
+    // tard passe par-dessus celui devant lui (cas tablet+mobile : mobile au-dessus pendant slide).
+    clone.style.zIndex = String(100 + idx);
     document.body.appendChild(clone);
     focusList.push({ el: clone, item, x: targetX, y: targetTopY, w: source.w, h: source.h, isClone: true });
     if (!REDUCED_MOTION) {
@@ -226,6 +229,8 @@ function advance() {
   wrapClone.classList.remove('is-focused-tile');   // ne pas hériter de la classe via cloneNode
   wrapClone.style.opacity = '1';
   wrapClone.style.transform = `translate3d(${wrapX}px, ${wrapY}px, 0)`;
+  // z-index élevé : le wrap clone arrive en dernier, doit passer au-dessus de tous.
+  wrapClone.style.zIndex = String(100 + focusList.length + 10);
   document.body.appendChild(wrapClone);
   if (!REDUCED_MOTION) {
     const wrapAnim = wrapClone.animate(
