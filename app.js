@@ -245,8 +245,8 @@ function triggerRebound(direction) {                          // direction: +1 =
   };
   applyShift(SHIFT1, TICK1);                                  // T+0   : grand shift rapide
   setTimeout(() => applyShift(0, TICK1),            TICK1);                  // T+120 : retour rapide
-  setTimeout(() => applyShift(SHIFT2, TICK2),       TICK1 * 2);              // T+240 : petit shift lent
-  setTimeout(() => applyShift(0, TICK2),            TICK1 * 2 + TICK2);      // T+460 : retour final lent
+  setTimeout(() => applyShift(SHIFT2, TICK1),       TICK1 * 2);              // T+240 : petit shift rapide
+  setTimeout(() => applyShift(0, TICK2),            TICK1 * 3);              // T+360 : retour final lent
 }
 
 function advance() {
