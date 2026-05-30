@@ -100,7 +100,10 @@ function layout() {
     }
   }
   candidates.sort((a, b) => a.shift - b.shift || a.centerErr - b.centerErr);
-  const chosen = candidates[0];
+  // À l'OUVERTURE initiale : on force leftCount=0 → cliquée + (N-1) suivants à droite,
+  // donc 2 maquettes suivantes visibles au lieu d'1 prev + 1 next. Layout symétrique repris
+  // dès la 1re navigation (state.lefts existant).
+  const chosen = !state.lefts && candidates.find((c) => c.k === 0) || candidates[0];
   const leftCount = chosen.k;
   const rightCount = N - 1 - leftCount;
   // anchorX ajusté (≈ original si aucun shift nécessaire). Mis à jour dans state pour cohérence
@@ -322,18 +325,9 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
       // Cliquée : départ depuis la tuile (originRect) — continuité avec le clic.
       // Voisines : départ depuis le bord de leur côté (gauche depuis la gauche, droite depuis la droite).
       const startLeft = i === index ? originRect.left : (finalLeft < curLeft ? -(sz.w + 60) : W + 60);
-      // VOISINES : décalées DE 40px VERS LE BAS au start + scale 0.92 → mouvement vertical
-      // visible même si peek coupé horizontalement, + grossissement perceptible. Couplé au fade,
-      // c'est impossible à manquer.
-      const startTop  = i === index ? originRect.top : finalTop + 40;
-      const startScale = i === index ? 1 : 0.92;
+      const startTop  = i === index ? originRect.top : finalTop;
       el.style.transition = 'none';
-      el.style.transform = `translate(${startLeft}px, ${startTop}px) scale(${startScale})`;
-      el.style.transformOrigin = 'center center';
-      // Opacity fade-in : garantit une anim VISIBLE même si le slide reste hors-zone-visible
-      // (viewport étroit, peeks fortement coupés → translation horizontale invisible). Le slide
-      // apparaît au moins par opacity, pas en cut.
-      if (i !== index) el.style.opacity = '0';                // cliquée garde son opacity (FLIP suffit)
+      el.style.transform = `translate(${startLeft}px, ${startTop}px)`;
       return { finalLeft, finalTop, dist: Math.abs(finalLeft - curLeft) };
     });
   }
@@ -350,9 +344,8 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
       state.slideEls.forEach((el, i) => {
         const t = entranceTargets[i];
         const delay = i === state.index ? 0 : Math.min(t.dist / W2, 1) * ENTRY_STAGGER_MAX_MS;
-        el.style.transition = `transform ${ENTRY_MS}ms ${ENTRY_EASE} ${delay}ms, opacity ${ENTRY_MS}ms ${ENTRY_EASE} ${delay}ms`;
-        el.style.transform = `translate(${t.finalLeft}px, ${t.finalTop}px) scale(1)`;
-        if (i !== state.index) el.style.opacity = '1';     // fade-in voisines (cliquée pas touchée)
+        el.style.transition = `transform ${ENTRY_MS}ms ${ENTRY_EASE} ${delay}ms`;
+        el.style.transform = `translate(${t.finalLeft}px, ${t.finalTop}px)`;
       });
     };
     // DOUBLE rAF : rAF fire AVANT la prochaine peinture, donc 1 seul rAF set le final
@@ -362,7 +355,7 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
     setTimeout(playFinal, 80);                             // fallback : si rAF throttled
     setTimeout(() => {                                     // cleanup → rend la main à CSS/layout()
       if (!state) return;
-      state.slideEls.forEach((el) => { el.style.transition = ''; el.style.opacity = ''; el.style.transformOrigin = ''; });
+      state.slideEls.forEach((el) => { el.style.transition = ''; });
     }, ENTRY_MS + ENTRY_STAGGER_MAX_MS + 100);
   }
 
