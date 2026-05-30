@@ -852,6 +852,7 @@ let cols = 4;
 let colWidth = 0;
 let colHeights = [];
 let colVelocityMultipliers = [];
+let lastTabletPair = -1;                                       // track dernière paire de cols utilisée par tablette → alternance ping-pong
 let liveTiles = [];
 const placedSrcs = new Set();
 let prefillHandle = null;
@@ -903,6 +904,7 @@ function computeLayout() {
   GAP_Y = cols <= 2 ? GAP_Y_MOBILE : GAP_Y_DESKTOP;
   colWidth = (vw - (cols + 1) * GAP) / cols;
   colHeights = new Array(cols).fill(0).map((_, i) => GAP + (INITIAL_OFFSETS[i] ?? -100));
+  lastTabletPair = -1;                                      // reset alternance tablette au resize
   colVelocityMultipliers = new Array(cols).fill(0).map((_, i) => GROUP_VELOCITIES[Math.floor(i / 2) % GROUP_VELOCITIES.length]);
 
   // Padding homothétique : à 1440-1470px viewport on a 12px, sur écrans plus petits ça réduit.
@@ -936,20 +938,16 @@ function placeNext(item, gapBelow = GAP_Y) {
     colHeights[i] = y + h + gapBelow;
     return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[i], colIdx: i };
   } else {
-    let bestI = 0;
-    let bestScore = Infinity;
-    // step 1 (vs step 2 avant) : autorise tablette sur TOUTES les paires de cols adjacentes
-    // (cols 0+1, 1+2, 2+3) → alternance gauche/droite quand colHeights divergent. Avant, les
-    // tablettes étaient toujours en cols 0+1 pour cols=3 → effet visuel "tablette toujours à
-    // gauche, mobiles toujours à droite". La col partagée entre 2 tablettes consécutives a son
-    // colHeights mis à jour → 2e tablette se cale en dessous, pas d'overlap visuel.
-    for (let i = 0; i + 1 < cols; i += 1) {
-      const score = Math.max(colHeights[i], colHeights[i + 1]);
-      if (score < bestScore) {
-        bestScore = score;
-        bestI = i;
-      }
-    }
+    // Alternance EXPLICITE des paires (vs best-fit colHeights) : les mobiles montent plus vite
+    // que les tablettes (h_mobile > h_tablet) → si on faisait best-fit, la paire 0+1 resterait
+    // toujours la plus basse → tablettes systématiquement à gauche. On force le ping-pong entre
+    // la paire LEFT (0+1) et la paire RIGHT (cols-2, cols-1).
+    const pairLeft = 0;
+    const pairRight = cols >= 3 ? cols - 2 : 0;
+    let bestI;
+    if (pairLeft === pairRight) bestI = 0;                    // cols=2 : une seule paire possible
+    else bestI = (lastTabletPair === pairLeft) ? pairRight : pairLeft;
+    lastTabletPair = bestI;
     const x = GAP + bestI * (colWidth + GAP);
     const w = 2 * colWidth + GAP;
     const h = frameHeightForInner(w, RATIOS.tablet);
