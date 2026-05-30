@@ -289,6 +289,10 @@ body {
   /* Tactile : on prend le contrôle des swipes via touchmove → empêche le browser de
      les interpréter comme un pan natif sur les enfants scrollables (.tile-scroll). */
   touch-action: none;
+  /* z-index explicite : crée un stacking context au-dessus des clones focus (dans body,
+     z-index 0 en sortie). Ainsi les tuiles mosaïque qui réapparaissent passent DEVANT
+     les clones qui glissent off-screen. */
+  z-index: 1;
 }
 
 .scroller {
