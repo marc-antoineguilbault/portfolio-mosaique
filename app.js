@@ -3,7 +3,6 @@ import { extractGlowColors } from './modules/glow.js';
 import { splitIntoLines, splitMetaIntoLines } from './modules/split-lines.js';
 import { attachLock } from './modules/lock.js';
 import { createVelocityTracker } from './modules/velocity.js';
-import { initCursor } from './modules/cursor.js';
 
 // Préchargement hybride sans loader UI :
 // 1. Au boot : fetch HAUTE PRIORITÉ de la M01 de chaque projet (~9 images, <1 MB).
@@ -185,17 +184,6 @@ function resetBackdrop() {
   document.documentElement.style.removeProperty('--backdrop-tint');
 }
 
-// Glyphe curseur en focus : pastSlots (à gauche, clic = recule) → ⭠ ; focusList (cliquée + droite,
-// clic = avance) → ⭢. Posé sur le .tile-inner de chaque slot (écrase le "+" hérité des clones).
-function updateFocusGlyphs() {
-  for (const slot of pastSlots) {
-    slot.el.querySelector('.tile-inner')?.setAttribute('data-cursor', '⭠');
-  }
-  for (const slot of focusList) {
-    slot.el.querySelector('.tile-inner')?.setAttribute('data-cursor', '⭢');
-  }
-}
-
 function focusTile(clickedTile, forceX) {
   const vh = window.innerHeight;
   const W = window.innerWidth;
@@ -362,7 +350,6 @@ function focusTile(clickedTile, forceX) {
     leftIdx++;
   }
   pastSlots = leftSlots.slice().reverse();
-  updateFocusGlyphs();
   applyBackdrop(focusList[0].item);                          // voile monochrome → teinte du projet
 }
 
@@ -417,7 +404,6 @@ function loopToStart() {
   const allInProj = pool.filter((it) => it.project === projId);
   const idx = allInProj.findIndex((it) => it.src === focusList[0].item.src);
   showProjectLabel(projName, idx, allInProj.length);
-  updateFocusGlyphs();
   setTimeout(() => { advancing = false; }, LOOP_MS + 50);
 }
 
@@ -487,7 +473,6 @@ function advance() {
     advancing = false;
     pendingAdvanceCleanup = null;
   }, EXIT_MS + 50);
-  updateFocusGlyphs();
 }
 
 // RETREAT : inverse de advance — ramène la dernière past à l'avant. Shift uniforme à droite
@@ -529,7 +514,6 @@ function retreat() {
   const allInProj = pool.filter((it) => it.project === projId);
   const idx = allInProj.findIndex((it) => it.src === focusList[0].item.src);
   showProjectLabel(projName, idx, allInProj.length);
-  updateFocusGlyphs();
 
   pendingRetreatCleanup = setTimeout(() => { advancing = false; pendingRetreatCleanup = null; }, EXIT_MS + 50);
 }
@@ -664,8 +648,6 @@ function exitFocus() {
     // focusList est vide ici (phase 2 l'a vidé) → on utilise les snapshots pris en début d'exit.
     for (const el of focusedEls) el.classList.remove('is-focused-tile');
     for (const el of pastFocusedEls) el.classList.remove('is-focused-tile');
-    for (const el of focusedEls) el.querySelector?.('.tile-inner')?.setAttribute('data-cursor', '+');
-    for (const el of pastFocusedEls) el.querySelector?.('.tile-inner')?.setAttribute('data-cursor', '+');
     userClickedTile = null;
     returnTiles(() => { resumeMosaic(); setMode('mosaic'); });
   };
@@ -1190,6 +1172,8 @@ function attachScroll(scroller, host) {
   });
 }
 
+const cursorEl = document.getElementById('cursor');
+
 // Position globale du curseur (en coords viewport). Utilisée pour le radial-gradient du
 // contour de chaque tile, projeté dans son repère local par frame() à chaque rAF.
 let mouseX = 0, mouseY = 0;
@@ -1202,6 +1186,8 @@ window.addEventListener('mousemove', (e) => {
   mouseX = e.clientX;
   mouseY = e.clientY;
   cursorDirty = true;
+  // Transform = compositing GPU pur (pas de layout). translate(-50%, -50%) centre le rond.
+  cursorEl.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
 });
 
 // Smoothing du trail : par frame (≈60fps), current += (target - current) * SMOOTH.
@@ -1214,9 +1200,11 @@ function attachTilt(inner) {
   // Tactile : pas de mousemove à attendre, pas de curseur custom → skip total.
   if (!HAS_HOVER) return;
 
-  // A11y : en reduced-motion, pas de tilt 3D, pas de trail.
-  // Le glyphe curseur est géré par cursor.js (délégation [data-cursor]), fonctionne aussi en reduced-motion.
+  // A11y : en reduced-motion, on conserve uniquement le lock du curseur (signal d'état,
+  // pas une animation parasitaire). Pas de tilt 3D, pas de trail.
   if (REDUCED_MOTION) {
+    inner.addEventListener('mouseenter', () => cursorEl.classList.add('locked'));
+    inner.addEventListener('mouseleave', () => cursorEl.classList.remove('locked'));
     return;
   }
 
@@ -1248,6 +1236,7 @@ function attachTilt(inner) {
   let cachedRect = null;
 
   inner.addEventListener('mouseenter', (e) => {
+    cursorEl.classList.add('locked');
     // Arrête le défilement auto de la mosaïque le temps qu'on examine le projet.
     hoverPaused = true;
     // Perf : lire le layout AVANT d'écrire transform (évite un reflow synchrone).
@@ -1298,6 +1287,7 @@ function attachTilt(inner) {
 
   inner.addEventListener('mouseleave', () => {
     frame.style.transform = '';
+    cursorEl.classList.remove('locked');
     hoverPaused = false;
     active = false;
     cachedRect = null;                                    // invalide cache au mouseleave
@@ -1338,7 +1328,6 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
 
   const inner = document.createElement('div');
   inner.className = 'tile-inner';
-  inner.dataset.cursor = '+';   // glyphe curseur en mosaïque (ouvrir)
 
   const tileScroll = document.createElement('div');
   tileScroll.className = 'tile-scroll';
@@ -1854,7 +1843,6 @@ function init() {
 }
 
 init();
-initCursor({ hasHover: HAS_HOVER, reducedMotion: REDUCED_MOTION });
 
 function rebuildLayout() {
   const { h } = getViewportSize();
