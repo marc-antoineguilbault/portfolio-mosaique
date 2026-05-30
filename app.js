@@ -342,6 +342,11 @@ function removeFocusClones() {
   const rightClones = allClones.filter((s) => s.x + s.w / 2 >= m0CenterX);
   const leftClones = allClones.filter((s) => s.x + s.w / 2 < m0CenterX);
 
+  // Abaisse le z-index des clones EN SORTIE → autres projets qui réapparaissent (z-index 1)
+  // passent DEVANT les clones pendant la transition. User feedback : "les projets qui
+  // disparaissent doivent être EN DESSOUS des projets qui réapparaissent".
+  for (const slot of allClones) slot.el.style.zIndex = '0';
+
   if (rightClones.length && !REDUCED_MOTION) {
     const leftmostX = Math.min(...rightClones.map((s) => s.x));
     const delta = W + 80 - leftmostX;
