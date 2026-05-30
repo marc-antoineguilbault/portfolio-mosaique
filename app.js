@@ -77,10 +77,18 @@ function focusTile(clickedTile) {
   clickedTile.focused = true;
 
   const projId = clickedTile.item.project;
+  // PRÉLOAD EAGER de toutes les images du projet — garantit que les clones de la focus row ET
+  // les wrap clones d'advance utilisent du cache HTTP plutôt que d'attendre un fetch (blanc
+  // visible pendant la transition → user perçoit "rien"). fetchPriority high pour précédence.
+  const allInPool = pool.filter((it) => it.project === projId);
+  for (const item of allInPool) {
+    const pre = new Image();
+    pre.fetchPriority = 'high';
+    pre.src = item.src;
+  }
   // Garantit que TOUTES les maquettes du projet sont dans liveTiles avant de construire la focus
   // row. Sinon, items non-spawnés en mosaïque seraient skip → clones manquants (cas Pozzo Di Borgo,
   // 3 maquettes : si seulement la cliquée est spawnée, M+1/M+2 absents).
-  const allInPool = pool.filter((it) => it.project === projId);
   const inLive = new Set(liveTiles.filter((t) => t.item).map((t) => t.item.src));
   for (const item of allInPool) {
     if (inLive.has(item.src)) continue;
