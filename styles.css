@@ -264,11 +264,17 @@ body {
     height 0.4s cubic-bezier(0.4, 0, 0.4, 1),
     background 0.4s ease;
   will-change: transform, width, height, background;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 15px/1 -apple-system, system-ui, sans-serif;
+  color: #000;
 }
 
-#cursor.locked {
-  width: 8px;
-  height: 8px;
+/* Survol d'une zone à glyphe (data-cursor) : disque blanc plein, glyphe noir. */
+#cursor.has-glyph {
+  width: 26px;
+  height: 26px;
   background: #fff;
 }
 

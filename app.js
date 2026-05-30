@@ -1173,8 +1173,6 @@ function attachScroll(scroller, host) {
   });
 }
 
-const cursorEl = document.getElementById('cursor');
-
 // Position globale du curseur (en coords viewport). Utilisée pour le radial-gradient du
 // contour de chaque tile, projeté dans son repère local par frame() à chaque rAF.
 let mouseX = 0, mouseY = 0;
@@ -1199,11 +1197,9 @@ function attachTilt(inner) {
   // Tactile : pas de mousemove à attendre, pas de curseur custom → skip total.
   if (!HAS_HOVER) return;
 
-  // A11y : en reduced-motion, on conserve uniquement le lock du curseur (signal d'état,
-  // pas une animation parasitaire). Pas de tilt 3D, pas de trail.
+  // A11y : en reduced-motion, pas de tilt 3D, pas de trail.
+  // Le glyphe curseur est géré par cursor.js (délégation [data-cursor]), fonctionne aussi en reduced-motion.
   if (REDUCED_MOTION) {
-    inner.addEventListener('mouseenter', () => cursorEl.classList.add('locked'));
-    inner.addEventListener('mouseleave', () => cursorEl.classList.remove('locked'));
     return;
   }
 
@@ -1235,7 +1231,6 @@ function attachTilt(inner) {
   let cachedRect = null;
 
   inner.addEventListener('mouseenter', (e) => {
-    cursorEl.classList.add('locked');
     // Arrête le défilement auto de la mosaïque le temps qu'on examine le projet.
     hoverPaused = true;
     // Perf : lire le layout AVANT d'écrire transform (évite un reflow synchrone).
@@ -1286,7 +1281,6 @@ function attachTilt(inner) {
 
   inner.addEventListener('mouseleave', () => {
     frame.style.transform = '';
-    cursorEl.classList.remove('locked');
     hoverPaused = false;
     active = false;
     cachedRect = null;                                    // invalide cache au mouseleave
@@ -1327,6 +1321,7 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
 
   const inner = document.createElement('div');
   inner.className = 'tile-inner';
+  inner.dataset.cursor = '+';   // glyphe curseur en mosaïque (ouvrir)
 
   const tileScroll = document.createElement('div');
   tileScroll.className = 'tile-scroll';

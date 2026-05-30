@@ -17,4 +17,16 @@ test.describe('curseur élastique', () => {
     expect(lag).not.toBeNull();
     expect(lag).toBeLessThan(880);                  // pas encore à x≈900 → il traîne
   });
+
+  test('survol d\'une maquette : data-cursor="+" et le rond porte le glyphe', async ({ page }) => {
+    await page.goto('/');
+    const inner = page.locator('.tile .tile-inner').first();
+    await inner.waitFor();
+    await expect(inner).toHaveAttribute('data-cursor', '+');
+    // force:true car la tile est animée par rAF (translate3d change chaque frame) →
+    // Playwright ne peut pas attendre la "stabilité" d'un élément en mouvement continu.
+    await inner.hover({ force: true });
+    await expect(page.locator('#cursor')).toHaveClass(/has-glyph/);
+    await expect(page.locator('#cursor')).toHaveText('+');
+  });
 });
