@@ -602,12 +602,12 @@ function returnTiles(done) {
     delete tile.exitDir;
     delete tile.focused;
     delete tile.el.dataset.exitDir;
-    if (REDUCED_MOTION) { tile.el.style.opacity = ''; tile.el.style.transition = 'none'; tile.el.style.transform = ''; tile._lastWarp = null; continue; }
+    if (REDUCED_MOTION) { tile.el.style.opacity = ''; tile.el.style.transition = 'none'; tile.el.style.transform = ''; tile._lastTy = null; tile._lastWarp = null; continue; }
     if (tile.detached) continue;
     const ty = tile.y - offset * tile.velocityMultiplier + (COL_STAGGER[tile.colIdx] ?? 0);
     tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
     tile.el.style.transform = `translate3d(${tile.x}px, ${ty}px, 0)`;
-    tile._lastWarp = null;   // invalide le cache warp : frame() réécrira le scale correct au retour
+    tile._lastTy = null; tile._lastWarp = null;   // invalide le cache (ty + warp) : frame() réécrit translate+scale au retour
     animated.push(tile);
   }
   if (animated.length === 0) { done(); return; }
@@ -1880,7 +1880,7 @@ function rebuildLayout() {
     // leur ancienne position après resize → superposition au retour à la taille initiale.
     const stagger = COL_STAGGER[tile.colIdx] ?? 0;
     tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y + stagger}px, 0)`;
-    tile._lastWarp = null;   // invalide le cache warp : frame() réécrira le scale correct après resize
+    tile._lastTy = null; tile._lastWarp = null;   // invalide le cache (ty + warp) : frame() réécrit translate+scale après resize
     const meta = tile.el.querySelector('.tile-meta');
     if (meta) {
       meta.style.width = `${colWidth}px`;
