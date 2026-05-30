@@ -849,15 +849,24 @@ function placeNext(item, gapBelow = GAP_Y) {
       }
     }
     const x = GAP + bestI * (colWidth + GAP);
-    const y = Math.max(colHeights[bestI], colHeights[bestI + 1]);
     const w = 2 * colWidth + GAP;
     const h = frameHeightForInner(w, RATIOS.tablet);
-    // Pas de compensation tile.y : ça annulait le décalage visuel (le mobile suivant en col i+1
-    // se retrouvait avec tile.y plus bas, et le stagger +80 le ramenait aligné avec col i).
-    // Trade-off accepté : mobiles décalées (priorité user) au prix d'un gap variable mobile→tablet
-    // dans la col i+1.
+    // Compensation ENTRÉE (tile.y) : tablet utilise tabletStagger = COL_STAGGER[bestI]. Pour
+    // que gap perçu ≥ GAP_Y dans col bestI+1 (où mobile a stagger plus grand), on adjoute le
+    // delta de stagger à colHeights[bestI+1] avant max. Garantit que le bottom du mobile col i+1
+    // + GAP_Y ≤ top du tablet perçu.
+    //
+    // PAS de compensation SORTIE (colHeights post-tablet) : ça mettait colHeights[bestI+1] plus
+    // bas, et le mobile suivant en col i+1 + stagger +80 se retrouvait aligné avec col i.
+    // Sans compensation sortie : le mobile suivant en col i+1 a gap_perçu = GAP_Y + 80 (trou
+    // acceptable) mais reste DÉCALÉ visuellement de col i.
+    const tabletStagger = COL_STAGGER[bestI] ?? 0;
+    const stagger_R = COL_STAGGER[bestI + 1] ?? 0;
+    const yLeft = colHeights[bestI];
+    const yRight = colHeights[bestI + 1] + (stagger_R - tabletStagger);
+    const y = Math.max(yLeft, yRight);
     colHeights[bestI] = y + h + gapBelow;
-    colHeights[bestI + 1] = y + h + gapBelow;
+    colHeights[bestI + 1] = y + h + gapBelow;                                 // pas de compensation
     return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[bestI], colIdx: bestI };
   }
 }
