@@ -306,9 +306,13 @@ function loopToStart() {
     cumDelta += last.w + GAP;
     focusList.unshift(last);
   }
+  // Easing ease-out doux : démarrage normal, ralentissement progressif en fin de mouvement.
+  // Duration allongée à 900ms pour bien sentir le lissage.
+  const LOOP_MS = 900;
+  const LOOP_EASE = 'cubic-bezier(0.25, 0.1, 0.25, 1)';       // ease classique douce
   for (const slot of focusList) {
     const newX = slot.x + cumDelta;
-    slot.el.style.transition = `transform 500ms ${EXIT_EASE}`;
+    slot.el.style.transition = `transform ${LOOP_MS}ms ${LOOP_EASE}`;
     slot.el.style.transform = `translate3d(${newX}px, ${slot.y}px, 0)`;
     slot.x = newX;
   }
@@ -318,7 +322,7 @@ function loopToStart() {
   const allInProj = pool.filter((it) => it.project === projId);
   const idx = allInProj.findIndex((it) => it.src === focusList[0].item.src);
   showProjectLabel(projName, idx, allInProj.length);
-  setTimeout(() => { advancing = false; }, 550);
+  setTimeout(() => { advancing = false; }, LOOP_MS + 50);
 }
 
 function advance() {
