@@ -157,12 +157,22 @@ function focusTile(clickedTile, forceX) {
     leftPositions.push({ item, source, targetX: edgeLeft });
   }
 
-  // 2. Cliquée : transform vers cliqueeFinalX (= clickedTile.x par défaut, ou forceX pour
-  // entry via liste clients). userClickedTile.x conserve la vraie position mosaïque (utilisé
-  // par exitFocus.reverseShift pour retourner à la mosaïque).
+  // 2. Cliquée : transform vers cliqueeFinalX. Si forceX fourni (entrée via liste clients),
+  // pré-positionne off-screen droite puis anime → arrive comme un clone. Sinon, transition
+  // directe depuis position mosaïque actuelle. userClickedTile.x conserve la vraie position
+  // mosaïque (utilisé par exitFocus.reverseShift pour retourner à la mosaïque).
   if (REDUCED_MOTION) {
     clickedTile.el.style.transition = 'none';
     clickedTile.el.style.transform = `translate3d(${cliqueeFinalX}px, ${targetY}px, 0)`;
+  } else if (forceX != null) {
+    // Pré-position off-screen droite SANS transition, force commit, puis anim vers cliqueeFinalX.
+    clickedTile.el.style.transition = 'none';
+    clickedTile.el.style.transform = `translate3d(${W + 80}px, ${targetY}px, 0)`;
+    clickedTile.el.getBoundingClientRect();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      clickedTile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+      clickedTile.el.style.transform = `translate3d(${cliqueeFinalX}px, ${targetY}px, 0)`;
+    }));
   } else {
     clickedTile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
     clickedTile.el.style.transform = `translate3d(${cliqueeFinalX}px, ${targetY}px, 0)`;
