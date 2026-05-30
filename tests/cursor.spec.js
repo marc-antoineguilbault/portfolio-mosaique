@@ -42,4 +42,18 @@ test.describe('curseur élastique', () => {
     await expect(page.locator('body')).toHaveAttribute('data-mode', 'mosaic');
     await expect(page.locator('.tile.is-focused-tile')).toHaveCount(0);
   });
+
+  test('reduced-motion : glyphe conservé mais pas d\'étirement (ni rotate ni scale)', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    await page.goto('/');
+    const inner = page.locator('.tile .tile-inner').first();
+    await inner.waitFor();
+    await inner.hover({ force: true });
+    await expect(page.locator('#cursor')).toHaveText('+');          // glyphe conservé
+    const tr = await page.evaluate(() => document.getElementById('cursor').style.transform);
+    expect(tr).not.toContain('rotate');                            // pas d'élasticité
+    expect(tr).not.toContain('scale');
+    await ctx.close();
+  });
 });
