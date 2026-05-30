@@ -233,19 +233,20 @@ function triggerRebound(direction) {                          // direction: +1 =
   if (!focusActive || REDUCED_MOTION) return;
   const SHIFT1 = direction * 30;
   const SHIFT2 = direction * 8;                               // ~27% de SHIFT1 → 2e rebond bien plus léger
-  const TICK = 120;                                           // durée d'une phase
+  const TICK1 = 120;                                          // 1er rebond rapide
+  const TICK2 = 220;                                          // 2e rebond plus lent (~2× plus mou)
   const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
   const slots = [...focusList, ...pastSlots];
-  const applyShift = (shift) => {
+  const applyShift = (shift, dur) => {
     for (const slot of slots) {
-      slot.el.style.transition = `transform ${TICK}ms ${EASE}`;
+      slot.el.style.transition = `transform ${dur}ms ${EASE}`;
       slot.el.style.transform = `translate3d(${slot.x + shift}px, ${slot.y}px, 0)`;
     }
   };
-  applyShift(SHIFT1);                                         // T+0   : grand shift
-  setTimeout(() => applyShift(0),         TICK);              // T+120 : retour
-  setTimeout(() => applyShift(SHIFT2),    TICK * 2);          // T+240 : petit shift
-  setTimeout(() => applyShift(0),         TICK * 3);          // T+360 : retour final
+  applyShift(SHIFT1, TICK1);                                  // T+0   : grand shift rapide
+  setTimeout(() => applyShift(0, TICK1),            TICK1);                  // T+120 : retour rapide
+  setTimeout(() => applyShift(SHIFT2, TICK2),       TICK1 * 2);              // T+240 : petit shift lent
+  setTimeout(() => applyShift(0, TICK2),            TICK1 * 2 + TICK2);      // T+460 : retour final lent
 }
 
 function advance() {
