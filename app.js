@@ -217,7 +217,7 @@ function advance() {
       ],
       { duration: EXIT_MS, easing: EXIT_EASE, fill: 'backwards' }
     );
-    wrapAnim.onfinish = () => { try { wrapAnim.cancel(); } catch (_) {} };
+    wrapAnim.onfinish = () => { try { wrapAnim.commitStyles(); } catch (_) {} try { wrapAnim.cancel(); } catch (_) {} };
   }
 
   // 4. State : retire l'ancienne cliquée du début, ajoute le nouveau clone à la fin.
@@ -234,13 +234,10 @@ function advance() {
     if (removed.isClone) {
       // Clone passé → ajoute à pastClones pour cleanup à exitFocus.
       pastClones.push(removed.el);
-    } else {
-      // Tuile mosaïque originale → retire is-focused-tile (CSS hide la prend maintenant) mais
-      // KEEP focused flag pour que returnTiles la restaure à sa position mosaïque à l'exit.
-      removed.el.classList.remove('is-focused-tile');
     }
-    // Marque la nouvelle cliquée si c'est userClickedTile (cycle complet retour), sinon les clones
-    // sont déjà exemptés du CSS hide par data-focus-clone.
+    // Si c'est la tuile mosaïque originale (userClickedTile) : KEEP is-focused-tile + focused flag
+    // pour que CSS hide ne la masque pas (elle doit rester visible à sa position shiftée) et que
+    // returnTiles la restaure à sa position mosaïque à l'exit.
     if (!focusList[0].isClone) focusList[0].el.classList.add('is-focused-tile');
     advancing = false;
   }, EXIT_MS + 50);
