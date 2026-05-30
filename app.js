@@ -58,7 +58,11 @@ const PADDING_RATIO = REF_FRAME_PADDING / REF_COL_WIDTH;
 let FRAME_PADDING = REF_FRAME_PADDING;
 
 // Patterns déterministes — la grille est identique à chaque reload.
-const INITIAL_OFFSETS = [-50, -320, -180, -240];   // décalage Y de départ par colonne
+// Compo initiale voulue : 2 mobiles cropées en haut (cols 2+3), tablette LP visible en
+// dessous (cols 0+1). Cols 0+1 démarrent BAS dans le viewport, cols 2+3 démarrent négatifs
+// (très haut, mobiles cropées). Le pool placement (LP M01 mobile, M02 mobile, T01 tablette…)
+// remplit cols 2/3 d'abord (les plus basses = lowest colHeights), puis tablette en cols 0+1.
+const INITIAL_OFFSETS = [150, 150, -550, -550];    // décalage Y de départ par colonne
 const GROUP_VELOCITIES = [1, 1];                   // vitesses uniformes : un parallax (vitesses divergentes) entrerait en collision avec les tuiles `fullwidth`
 const COL_STAGGER = [0, 80, 160, 240];             // wave progressive, diff entre cols adjacentes = 80. Toutes paires de cols ont diff ≥ 80 → décalage visible quelque soit la combinaison cols visibles côte-à-côte. Compensation tile.y pour tablets dans placeNext garantit gap perçu ≥ GAP_Y.
 
@@ -938,15 +942,20 @@ function placeNext(item, gapBelow = GAP_Y) {
     colHeights[i] = y + h + gapBelow;
     return { x, y, w, h, velocityMultiplier: colVelocityMultipliers[i], colIdx: i };
   } else {
-    // Alternance EXPLICITE des paires (vs best-fit colHeights) : les mobiles montent plus vite
-    // que les tablettes (h_mobile > h_tablet) → si on faisait best-fit, la paire 0+1 resterait
-    // toujours la plus basse → tablettes systématiquement à gauche. On force le ping-pong entre
-    // la paire LEFT (0+1) et la paire RIGHT (cols-2, cols-1).
-    const pairLeft = 0;
-    const pairRight = cols >= 3 ? cols - 2 : 0;
-    let bestI;
-    if (pairLeft === pairRight) bestI = 0;                    // cols=2 : une seule paire possible
-    else bestI = (lastTabletPair === pairLeft) ? pairRight : pairLeft;
+    // Alternance BIAISÉE entre paires EXTRÊMES uniquement : pour cols≥3 on considère [0, cols-2]
+    // (gauche et droite, jamais le milieu 1+2). Évite la paire du centre qui chevauche les deux
+    // côtés visuellement. Biais ALTERNATION_BIAS pénalise rester sur la dernière paire utilisée.
+    const ALTERNATION_BIAS = 500;
+    const candidates = cols >= 3 ? [0, cols - 2] : [0];
+    let bestI = candidates[0];
+    let bestScore = Infinity;
+    for (const i of candidates) {
+      const score = Math.max(colHeights[i], colHeights[i + 1]) + (i === lastTabletPair ? ALTERNATION_BIAS : 0);
+      if (score < bestScore) {
+        bestScore = score;
+        bestI = i;
+      }
+    }
     lastTabletPair = bestI;
     const x = GAP + bestI * (colWidth + GAP);
     const w = 2 * colWidth + GAP;
