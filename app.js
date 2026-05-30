@@ -206,24 +206,17 @@ function advance() {
   // Shift UNIFORME de -(cliquée.w + GAP) pour TOUS les slots, cliquée incluse + pastSlots
   // (anciennes cliquées déjà off cliquée slot). Le ruban entier ET les anciennes drift ensemble
   // → pas de pile-up à -127 après plusieurs advances.
-  // Cancel SEULEMENT les WAAPI résiduelles (pas les CSS animations comme tile-appear qui
-  // contrôle opacity + translate des .tile — si on les cancel, la cliquée devient opacity:0).
-  // CSSAnimation extends Animation mais peut être filtré via instanceof.
-  const cancelAnims = (el) => el.getAnimations().forEach((a) => {
-    if (a instanceof CSSAnimation) return;
-    try { a.cancel(); } catch (_) {}
-  });
+  // Plus de cancel WAAPI nécessaire : tous les clones utilisent CSS transitions désormais
+  // (pas WAAPI), donc pas de résiduel à canceler. Les CSS transitions s'enchaînent proprement.
   const delta = -(oldCliquee.w + GAP);
   for (let i = 0; i < focusList.length; i++) {
     const slot = focusList[i];
-    cancelAnims(slot.el);
     const newX = slot.x + delta;
     slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
     slot.el.style.transform = `translate3d(${newX}px, ${slot.y}px, 0)`;
     slot.x = newX;
   }
   for (const past of pastSlots) {
-    cancelAnims(past.el);
     const newX = past.x + delta;
     past.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
     past.el.style.transform = `translate3d(${newX}px, ${past.y}px, 0)`;
@@ -243,21 +236,21 @@ function advance() {
   const wrapStartX = Math.max(W, wrapX) + 80;
   const wrapClone = (wrapSource || oldCliquee).el.cloneNode(true);
   wrapClone.dataset.focusClone = 'true';
-  wrapClone.classList.remove('is-focused-tile');   // ne pas hériter de la classe via cloneNode
+  wrapClone.classList.remove('is-focused-tile');
   wrapClone.style.opacity = '1';
-  wrapClone.style.transform = `translate3d(${wrapX}px, ${wrapY}px, 0)`;
-  // z-index élevé : le wrap clone arrive en dernier, doit passer au-dessus de tous.
   wrapClone.style.zIndex = String(100 + focusList.length + 10);
+  // Pré-position au start (off-screen droit) + CSS transition vers target. Pas de WAAPI.
+  wrapClone.style.transition = 'none';
+  wrapClone.style.transform = `translate3d(${wrapStartX}px, ${wrapY}px, 0)`;
   document.body.appendChild(wrapClone);
   if (!REDUCED_MOTION) {
-    const wrapAnim = wrapClone.animate(
-      [
-        { transform: `translate3d(${wrapStartX}px, ${wrapY}px, 0)` },
-        { transform: `translate3d(${wrapX}px, ${wrapY}px, 0)` }
-      ],
-      { duration: EXIT_MS, easing: EXIT_EASE, fill: 'backwards' }
-    );
-    wrapAnim.onfinish = () => { try { wrapAnim.commitStyles(); } catch (_) {} try { wrapAnim.cancel(); } catch (_) {} };
+    wrapClone.getBoundingClientRect();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      wrapClone.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+      wrapClone.style.transform = `translate3d(${wrapX}px, ${wrapY}px, 0)`;
+    }));
+  } else {
+    wrapClone.style.transform = `translate3d(${wrapX}px, ${wrapY}px, 0)`;
   }
 
   // 4. State : retire l'ancienne cliquée du début, ajoute le nouveau clone à la fin.
