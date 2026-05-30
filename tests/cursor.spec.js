@@ -29,4 +29,17 @@ test.describe('curseur élastique', () => {
     await expect(page.locator('#cursor')).toHaveClass(/has-glyph/);
     await expect(page.locator('#cursor')).toHaveText('+');
   });
+
+  test('en focus : la cliquée porte ⭢, retour à + après sortie', async ({ page }) => {
+    await page.goto('/');
+    const inner = page.locator('.tile .tile-inner').first();
+    await inner.waitFor();
+    await inner.click({ force: true });                  // entre en focus (tuile animée → force)
+    await expect(page.locator('body')).toHaveAttribute('data-mode', 'focus');
+    // La tuile cliquée (source, non-clone) porte maintenant ⭢.
+    await expect(page.locator('.tile.is-focused-tile .tile-inner')).toHaveAttribute('data-cursor', '⭢');
+    await page.keyboard.press('Escape');                 // sortie focus
+    await expect(page.locator('body')).toHaveAttribute('data-mode', 'mosaic');
+    await expect(page.locator('.tile.is-focused-tile')).toHaveCount(0);
+  });
 });

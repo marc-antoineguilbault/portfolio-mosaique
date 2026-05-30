@@ -185,6 +185,17 @@ function resetBackdrop() {
   document.documentElement.style.removeProperty('--backdrop-tint');
 }
 
+// Glyphe curseur en focus : pastSlots (à gauche, clic = recule) → ⭠ ; focusList (cliquée + droite,
+// clic = avance) → ⭢. Posé sur le .tile-inner de chaque slot (écrase le "+" hérité des clones).
+function updateFocusGlyphs() {
+  for (const slot of pastSlots) {
+    slot.el.querySelector('.tile-inner')?.setAttribute('data-cursor', '⭠');
+  }
+  for (const slot of focusList) {
+    slot.el.querySelector('.tile-inner')?.setAttribute('data-cursor', '⭢');
+  }
+}
+
 function focusTile(clickedTile, forceX) {
   const vh = window.innerHeight;
   const W = window.innerWidth;
@@ -351,6 +362,7 @@ function focusTile(clickedTile, forceX) {
     leftIdx++;
   }
   pastSlots = leftSlots.slice().reverse();
+  updateFocusGlyphs();
   applyBackdrop(focusList[0].item);                          // voile monochrome → teinte du projet
 }
 
@@ -405,6 +417,7 @@ function loopToStart() {
   const allInProj = pool.filter((it) => it.project === projId);
   const idx = allInProj.findIndex((it) => it.src === focusList[0].item.src);
   showProjectLabel(projName, idx, allInProj.length);
+  updateFocusGlyphs();
   setTimeout(() => { advancing = false; }, LOOP_MS + 50);
 }
 
@@ -474,6 +487,7 @@ function advance() {
     advancing = false;
     pendingAdvanceCleanup = null;
   }, EXIT_MS + 50);
+  updateFocusGlyphs();
 }
 
 // RETREAT : inverse de advance — ramène la dernière past à l'avant. Shift uniforme à droite
@@ -515,6 +529,7 @@ function retreat() {
   const allInProj = pool.filter((it) => it.project === projId);
   const idx = allInProj.findIndex((it) => it.src === focusList[0].item.src);
   showProjectLabel(projName, idx, allInProj.length);
+  updateFocusGlyphs();
 
   pendingRetreatCleanup = setTimeout(() => { advancing = false; pendingRetreatCleanup = null; }, EXIT_MS + 50);
 }
@@ -649,6 +664,8 @@ function exitFocus() {
     // focusList est vide ici (phase 2 l'a vidé) → on utilise les snapshots pris en début d'exit.
     for (const el of focusedEls) el.classList.remove('is-focused-tile');
     for (const el of pastFocusedEls) el.classList.remove('is-focused-tile');
+    for (const el of focusedEls) el.querySelector?.('.tile-inner')?.setAttribute('data-cursor', '+');
+    for (const el of pastFocusedEls) el.querySelector?.('.tile-inner')?.setAttribute('data-cursor', '+');
     userClickedTile = null;
     returnTiles(() => { resumeMosaic(); setMode('mosaic'); });
   };
