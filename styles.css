@@ -712,6 +712,11 @@ body[data-mode="focus"] .tile-meta { opacity: 0 !important; }
   opacity: 1 !important;
   translate: 0 0 !important;
 }
+/* Au hover sur clone focus : permet glow-breathe (override l'animation: none ci-dessus).
+   Mêmes interactions que la mosaïque (tilt 3D + lumière au curseur attachés en JS). */
+.tile[data-focus-clone="true"]:hover {
+  animation: glow-breathe 2.6s ease-in-out infinite !important;
+}
 /* Sources mosaïque du projet focusé : pointer-events: none seulement.
    La sortie haut/bas est gérée par JS (cf. focusTile) — uniforme avec les autres projets,
    pas de hide opacity (qui causait un fondu visible). freezeMosaic empêche tout spawn de

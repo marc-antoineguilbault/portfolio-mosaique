@@ -178,6 +178,10 @@ function focusTile(clickedTile) {
     clone.style.transition = 'none';
     clone.style.transform = `translate3d(${startX}px, ${targetTopY}px, 0)`;
     document.body.appendChild(clone);
+    // Attache tilt 3D + glow lumineux + lumière au curseur sur le clone (cloneNode ne copie pas
+    // les event listeners). Les mêmes interactions que la mosaïque sont donc disponibles en focus.
+    const innerClone = clone.querySelector('.tile-inner');
+    if (innerClone) attachTilt(innerClone);
     if (!REDUCED_MOTION) {
       clone.getBoundingClientRect();
       const delay = (delayIdx + 1) * FOCUS_ROW_STAGGER_MS;
