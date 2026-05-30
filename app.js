@@ -61,9 +61,12 @@ const EXIT_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
 // FOCUS : la cliquée se centre verticalement (X préservé). Les autres maquettes DU MÊME projet
 // arrivent depuis la DROITE (off-screen → focus row) sous forme de CLONES. Les tuiles sources
 // (dans la mosaïque) sortent par le haut/bas comme toutes les autres. Apparaissent les unes après
-// les autres (stagger cumulatif).
+// les autres (stagger cumulatif). Click sur cliquée/clone : advance d'1 cran (ruban glisse à
+// gauche, ancien cliquée sort, nouveau clone wrap arrive de droite).
 const FOCUS_ROW_STAGGER_MS = 150;
-let focusClones = [];   // élements clonés positionnés dans la focus row, nettoyés à exitFocus
+let focusList = [];     // [{el, item, x, y, w, h, isClone}, ...] — index 0 = cliquée
+let userClickedTile = null;   // la tuile mosaïque que l'user a cliquée à l'origine (pour restauration)
+let advancing = false;
 
 function focusTile(clickedTile) {
   const vh = window.innerHeight;
@@ -122,6 +125,11 @@ function focusTile(clickedTile) {
   // maquette du projet (sauf cliquée), clone une source et glisse-la depuis la droite vers sa
   // position cible. startX cumulatif (chaque clone démarre PAST le précédent → pas de superposition
   // visible pendant la phase off-screen → no double-startX au même endroit).
+  userClickedTile = clickedTile;
+  focusList = [{
+    el: clickedTile.el, item: clickedTile.item, x: clickedTile.x, y: targetY,
+    w: clickedTile.w, h: clickedTile.h, isClone: false,
+  }];
   const allItems = pool.filter((it) => it.project === projId);
   const cliqueeIdx = allItems.findIndex((it) => it.src === clickedTile.item.src);
   const orderedItems = [];
@@ -138,23 +146,16 @@ function focusTile(clickedTile) {
     const targetX = edgeX;
     const targetTopY = (vh - source.h) / 2;
     edgeX += source.w;
-    // startX : doit être > target (motion left), > W (off-screen droit), ET > prevRightEdge + GAP
-    // (pas de superposition avec le clone précédent au démarrage).
     const startX = Math.max(W, targetX, prevRightEdge + GAP) + 80;
     prevRightEdge = startX + source.w;
     const clone = source.el.cloneNode(true);
     clone.dataset.focusClone = 'true';
-    // RESET opacity : la source vient d'être hidée (opacity:0) → le deep clone copie cette inline
-    // style. Sans reset, le clone serait invisible.
     clone.style.opacity = '1';
-    // Pose final inline d'emblée → après onfinish cancel, le clone reste à target sans flicker.
     clone.style.transform = `translate3d(${targetX}px, ${targetTopY}px, 0)`;
     document.body.appendChild(clone);
-    focusClones.push({ el: clone, targetX, targetY: targetTopY, startX });
+    focusList.push({ el: clone, item, x: targetX, y: targetTopY, w: source.w, h: source.h, isClone: true });
     if (!REDUCED_MOTION) {
       const delay = (idx + 1) * FOCUS_ROW_STAGGER_MS;
-      // WAAPI : keyframes explicites START→FINAL. fill:'backwards' applique START pendant le
-      // delay (sinon le clone serait visible à target pendant le delay puis "jump" au start).
       const anim = clone.animate(
         [
           { transform: `translate3d(${startX}px, ${targetTopY}px, 0)` },
@@ -168,17 +169,97 @@ function focusTile(clickedTile) {
   }
 }
 
-// Retire les clones de la focus row : anime hors écran droit (vers leur startX d'origine, qui
-// garantit qu'ils repartent à droite) puis remove du DOM.
-function removeFocusClones() {
-  for (const c of focusClones) {
-    if (REDUCED_MOTION) { c.el.remove(); continue; }
-    c.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
-    c.el.style.transform = `translate3d(${c.startX}px, ${c.targetY}px, 0)`;
+// ADVANCE : ruban glisse à gauche d'un cran. Cliquée sort à gauche, focus row shift left, nouveau
+// clone wrap (image de l'ancienne cliquée) arrive de droite à la dernière position. Click sur
+// cliquée OU clone déclenche un advance. Pendant l'anim (advancing=true), nouveau click bloqué.
+function advance() {
+  if (!focusActive || focusList.length < 2 || advancing) return;
+  advancing = true;
+  const vh = window.innerHeight;
+  const W = window.innerWidth;
+  const oldCliquee = focusList[0];
+  const delta = -(oldCliquee.w + GAP);
+
+  // 1. Ancienne cliquée → hors-écran gauche.
+  const exitX = -(oldCliquee.w + 100);
+  oldCliquee.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+  oldCliquee.el.style.transform = `translate3d(${exitX}px, ${oldCliquee.y}px, 0)`;
+
+  // 2. Autres slots (index 1..N-1) shiftent à gauche de delta uniforme.
+  for (let i = 1; i < focusList.length; i++) {
+    const slot = focusList[i];
+    const newX = slot.x + delta;
+    slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+    slot.el.style.transform = `translate3d(${newX}px, ${slot.y}px, 0)`;
+    slot.x = newX;
   }
-  const clones = focusClones;
-  focusClones = [];
-  setTimeout(() => { for (const c of clones) c.el.remove(); }, EXIT_MS + 50);
+
+  // 3. Nouveau clone wrap (image de l'ancienne cliquée) à la dernière position, arrive de droite.
+  const wrapItem = oldCliquee.item;
+  const wrapSource = liveTiles.find((t) => t.item && t.item.src === wrapItem.src);
+  const lastSlot = focusList[focusList.length - 1];
+  const wrapX = lastSlot.x + lastSlot.w + GAP;
+  const wrapH = wrapSource?.h ?? oldCliquee.h;
+  const wrapW = wrapSource?.w ?? oldCliquee.w;
+  const wrapY = (vh - wrapH) / 2;
+  const wrapStartX = Math.max(W, wrapX) + 80;
+  const wrapClone = (wrapSource || oldCliquee).el.cloneNode(true);
+  wrapClone.dataset.focusClone = 'true';
+  wrapClone.classList.remove('is-focused-tile');   // ne pas hériter de la classe via cloneNode
+  wrapClone.style.opacity = '1';
+  wrapClone.style.transform = `translate3d(${wrapX}px, ${wrapY}px, 0)`;
+  document.body.appendChild(wrapClone);
+  if (!REDUCED_MOTION) {
+    const wrapAnim = wrapClone.animate(
+      [
+        { transform: `translate3d(${wrapStartX}px, ${wrapY}px, 0)` },
+        { transform: `translate3d(${wrapX}px, ${wrapY}px, 0)` }
+      ],
+      { duration: EXIT_MS, easing: EXIT_EASE, fill: 'backwards' }
+    );
+    wrapAnim.onfinish = () => { try { wrapAnim.cancel(); } catch (_) {} };
+  }
+
+  // 4. State : retire l'ancienne cliquée du début, ajoute le nouveau clone à la fin.
+  const removed = focusList.shift();
+  focusList.push({ el: wrapClone, item: wrapItem, x: wrapX, y: wrapY, w: wrapW, h: wrapH, isClone: true });
+
+  // 5. focusedTile pointe maintenant sur la nouvelle cliquée (focusList[0]) pour le click handler.
+  focusedTile = { el: focusList[0].el, item: focusList[0].item };
+
+  // 6. Cleanup ancienne cliquée après l'anim.
+  setTimeout(() => {
+    if (removed.isClone) {
+      removed.el.remove();                            // c'était un clone → supprime du DOM
+    } else {
+      // C'était la tuile mosaïque originale. La retire du flow focus : drop focused flag,
+      // remove is-focused-tile (le CSS data-focus-proj hide va la cacher), reset transform/transition.
+      removed.el.classList.remove('is-focused-tile');
+      removed.el.style.transition = 'none';
+      removed.el.style.transform = '';
+      const liveTile = liveTiles.find((t) => t.el === removed.el);
+      if (liveTile) delete liveTile.focused;
+      // Marque la NOUVELLE cliquée (clone) avec is-focused-tile pour qu'elle ne soit pas hidée.
+      focusList[0].el.classList.add('is-focused-tile');
+    }
+    advancing = false;
+  }, EXIT_MS + 50);
+}
+
+// Retire tous les clones de la focusList : anime hors écran droit (à partir de leur position
+// actuelle dans la focus row) puis remove du DOM. La tuile mosaïque originale (isClone=false)
+// est ignorée — c'est returnTiles qui s'en occupe.
+function removeFocusClones() {
+  const W = window.innerWidth;
+  const cloneSlots = focusList.filter((s) => s.isClone);
+  for (const slot of cloneSlots) {
+    if (REDUCED_MOTION) { slot.el.remove(); continue; }
+    const startX = Math.max(W, slot.x) + 80;
+    slot.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
+    slot.el.style.transform = `translate3d(${startX}px, ${slot.y}px, 0)`;
+  }
+  setTimeout(() => { for (const slot of cloneSlots) slot.el.remove(); }, EXIT_MS + 50);
+  focusList = [];
 }
 
 // Retour focus : cliquée revient à sa position mosaïque, autres reviennent depuis leur sortie.
@@ -225,20 +306,29 @@ function exitFocus() {
   focusActive = false;
   // Cleanup marqueurs CSS focus-mode AVANT returnTiles (sinon les sources LP restent hidden pendant
   // l'anim de retour et apparaissent en pop à la fin).
-  if (focusedTile && focusedTile.el) focusedTile.el.classList.remove('is-focused-tile');
+  for (const slot of focusList) {
+    if (!slot.isClone) slot.el.classList.remove('is-focused-tile');
+  }
   delete document.body.dataset.focusProj;
   focusedTile = null;
+  userClickedTile = null;
   clearProjectLabel();
   removeFocusClones();
   returnTiles(() => { resumeMosaic(); setMode('mosaic'); });
 }
-// Escape OU click hors de la maquette focus → sortie.
+// Escape OU click hors d'une maquette focus → sortie. Click SUR cliquée OU clone → advance.
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && focusActive) exitFocus();
 });
 document.addEventListener('click', (e) => {
-  if (!focusActive || !focusedTile) return;
-  if (focusedTile.el.contains(e.target)) return;   // click sur la cliquée → ne ferme pas
+  if (!focusActive) return;
+  // Click sur un clone (les clones n'ont pas de handler inner → seul ce handler global les voit).
+  if (e.target.closest('[data-focus-clone="true"]')) { advance(); return; }
+  // Click sur la cliquée actuelle (descendant de focusList[0].el). Le handler inner avec
+  // stopPropagation gère le cas où la cliquée est la tuile mosaïque originale. Pour les advances
+  // suivants où la cliquée est un clone, la branche ci-dessus l'attrape.
+  if (focusList[0] && focusList[0].el.contains(e.target)) { advance(); return; }
+  // Click ailleurs → exit.
   exitFocus();
 });
 
@@ -873,6 +963,14 @@ function createTile(item, pos, label, fetchPriority = 'auto') {
     if (lockSvg && lockSvg.style.display !== 'none') {
       lockSvg.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       return; // projet verrouillé → champ mot de passe, pas de focus
+    }
+    // En mode focus : click sur la tuile mosaïque originale = advance (slider next).
+    if (mode === 'focus') {
+      if (focusActive && userClickedTile && userClickedTile.el === el) {
+        e.stopPropagation();
+        advance();
+      }
+      return;
     }
     if (mode !== 'mosaic') return;          // verrou anti-double-déclenchement
     const proj = el.dataset.project;
