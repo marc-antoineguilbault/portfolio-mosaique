@@ -118,10 +118,14 @@ function focusTile(clickedTile) {
     edgeX += source.w;
     const clone = source.el.cloneNode(true);
     clone.dataset.focusClone = 'true';
+    // Start = max(W, targetX) + 80 → garantit que start > target (donc mouvement vers la GAUCHE)
+    // ET que start > W (hors viewport droit). Critique pour les clones dont targetX > W (focus
+    // row plus large que le viewport sur tablettes).
+    const startX = Math.max(W, targetX) + 80;
     clone.style.transition = 'none';
-    clone.style.transform = `translate3d(${W + 80}px, ${targetTopY}px, 0)`;
+    clone.style.transform = `translate3d(${startX}px, ${targetTopY}px, 0)`;
     document.body.appendChild(clone);
-    focusClones.push({ el: clone, targetX, targetY: targetTopY });
+    focusClones.push({ el: clone, targetX, targetY: targetTopY, startX });
     if (!REDUCED_MOTION) {
       // Force commit du DOM attaché à l'état "off-screen droite" AVANT d'enchaîner avec final.
       clone.getBoundingClientRect();
@@ -138,13 +142,13 @@ function focusTile(clickedTile) {
   }
 }
 
-// Retire les clones de la focus row : anime hors écran droit puis remove du DOM.
+// Retire les clones de la focus row : anime hors écran droit (vers leur startX d'origine, qui
+// garantit qu'ils repartent à droite) puis remove du DOM.
 function removeFocusClones() {
-  const W = window.innerWidth;
   for (const c of focusClones) {
     if (REDUCED_MOTION) { c.el.remove(); continue; }
     c.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
-    c.el.style.transform = `translate3d(${W + 80}px, ${c.targetY}px, 0)`;
+    c.el.style.transform = `translate3d(${c.startX}px, ${c.targetY}px, 0)`;
   }
   const clones = focusClones;
   focusClones = [];
