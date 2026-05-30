@@ -328,8 +328,10 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
 
   if (entranceTargets) {
     root.getBoundingClientRect();                          // commit du DOM attaché à l'état start
-    requestAnimationFrame(() => {                          // laisse une frame pour peindre le start
-      if (!state) return;
+    let triggered = false;
+    const playFinal = () => {                              // pose final + transition (idempotent)
+      if (triggered || !state) return;
+      triggered = true;
       const W2 = window.innerWidth;
       state.slideEls.forEach((el, i) => {
         const t = entranceTargets[i];
@@ -337,7 +339,9 @@ export function openSlider({ projId, startSrc, originRect, onClosed, onFinished,
         el.style.transition = `transform ${FLIP_MS}ms ${FLIP_EASE} ${delay}ms`;
         el.style.transform = `translate(${t.finalLeft}px, ${t.finalTop}px)`;
       });
-    });
+    };
+    requestAnimationFrame(playFinal);                      // foreground : 1 frame ≈ 16ms
+    setTimeout(playFinal, 80);                             // fallback : si rAF throttled (hidden/etc.)
     setTimeout(() => {                                     // cleanup → rend la main à CSS/layout()
       if (!state) return;
       state.slideEls.forEach((el) => { el.style.transition = ''; });
