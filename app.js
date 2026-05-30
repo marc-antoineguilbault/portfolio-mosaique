@@ -478,7 +478,10 @@ function exitFocus() {
 }
 // Escape OU click hors d'une maquette focus → sortie. Click SUR cliquée OU clone → advance.
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && focusActive) exitFocus();
+  if (!focusActive) return;
+  if (e.key === 'Escape') { exitFocus(); return; }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); retreat(); return; }
+  if (e.key === 'ArrowRight') { e.preventDefault(); advance(); return; }
 });
 document.addEventListener('click', (e) => {
   if (!focusActive) return;
