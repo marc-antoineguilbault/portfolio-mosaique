@@ -460,8 +460,9 @@ function exitFocus() {
       userClickedTile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
       userClickedTile.el.style.transform = `translate3d(${userClickedTile.x}px, ${ty}px, 0)`;
     }
-    // Phase 3b démarre exactement à EXIT_MS — pile quand les clones finissent leur slide.
-    setTimeout(phase3b, EXIT_MS);
+    // Phase 3b démarre 500ms post-exit (autres projets in arrivent pendant la 2e moitié
+    // du slide des clones out).
+    setTimeout(phase3b, 500);
   };
 
   const phase2 = () => {
