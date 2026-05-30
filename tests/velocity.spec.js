@@ -68,4 +68,17 @@ test.describe('velocity tracker', () => {
     });
     expect(w).toBe(0);                     // exactement 0 → skip-write réactivé, coût nul
   });
+
+  test('warpAt : la vague verticale retarde le warp (courant > retardé pendant la montée)', async ({ page }) => {
+    await page.goto('/');
+    const r = await page.evaluate(async () => {
+      const { createVelocityTracker } = await import('/modules/velocity.js');
+      const t = createVelocityTracker({ lerp: 0.5, vMin: 200, vMax: 2500 });
+      let off = 0;
+      for (let i = 0; i < 15; i++) { off += 600; t.sample(off, 0.016); }  // montée du warp
+      return { now: t.warpAt(0), delayed: t.warpAt(10) };
+    });
+    // En montée, le warp « courant » (tuiles du haut) dépasse le warp retardé (tuiles du bas).
+    expect(r.now).toBeGreaterThan(r.delayed);
+  });
 });

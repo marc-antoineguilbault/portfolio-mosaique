@@ -1644,6 +1644,7 @@ let offset = 0;
 const velocityTracker = createVelocityTracker({ lerp: 0.15, vMin: 200, vMax: 2500 });
 const WARP_KY = 0.05;   // étirement vertical max (+5 %)
 const WARP_KX = 0.022;  // pincement horizontal max (−2,2 %)
+const WARP_WAVE_FRAMES = 10;  // retard max (frames) entre le haut et le bas de l'écran → vague verticale
 let velocity = REDUCED_MOTION ? 0 : BASE_VELOCITY;
 let lastFrameTime = 0;
 let paused = false;
@@ -1752,11 +1753,9 @@ function frame(t) {
   // Filet de sécurité : snap au floor (= première tile à ty = SCROLL_TOP_Y).
   const floor = minLiveTileY - SCROLL_TOP_Y;
   if (offset < floor) offset = floor;
-  // Warp : vélocité lissée → facteur d'étirement n∈[0,1] (REDUCED_MOTION → pas de warp).
+  // Warp : on échantillonne la vélocité (historisée dans le tracker). Le scale est appliqué
+  // PAR TUILE avec un retard ∝ position Y (vague verticale) — cf. boucle ci-dessous.
   velocityTracker.sample(offset, dt);
-  const warpN = REDUCED_MOTION ? 0 : velocityTracker.warpFactor();
-  const warpSY = 1 + warpN * WARP_KY;
-  const warpSX = 1 - warpN * WARP_KX;
   // Cycling à 3 niveaux pour permettre le scroll up (récupération depuis le cache) :
   // - VISIBLE_MARGIN : tile dans la zone d'affichage active → DOM attaché + transforms écrits
   // - DETACH_MARGIN  : tile hors viewport mais en mémoire (DOM détaché) → recouvrable au scroll up
@@ -1801,11 +1800,17 @@ function frame(t) {
     }
     // Perf #6 : skip transform write si ty inchangé (cas pause / idle / hoverPaused).
     // Évite des centaines de style writes inutiles par seconde quand le scroll ne bouge pas.
-    if (tile._lastTy !== ty || tile._lastWarp !== warpN) {
+    // Vague verticale : chaque tuile lit le warp avec un retard ∝ sa position Y à l'écran
+    // (haut = warp courant, bas = warp retardé) → le warp ne frappe pas toutes les tuiles d'un coup.
+    const wavePhase = vh > 0 ? Math.min(1, Math.max(0, ty / vh)) : 0;
+    const tileWarp = REDUCED_MOTION ? 0 : velocityTracker.warpAt(wavePhase * WARP_WAVE_FRAMES);
+    const warpSY = 1 + tileWarp * WARP_KY;
+    const warpSX = 1 - tileWarp * WARP_KX;
+    if (tile._lastTy !== ty || tile._lastWarp !== tileWarp) {
       tile.el.style.transform =
         `translate3d(${tile.x}px, ${ty}px, 0) scale(${warpSX}, ${warpSY})`;
       tile._lastTy = ty;
-      tile._lastWarp = warpN;
+      tile._lastWarp = tileWarp;
     }
     if (cursorDirty) {
       // Perf #19 : skip --cursor-x/y write si valeurs inchangées (cas mouse idle entre frames).
