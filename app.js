@@ -97,6 +97,18 @@ const EXIT_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
 // les autres (stagger cumulatif). Click sur cliquée/clone : advance d'1 cran (ruban glisse à
 // gauche, ancien cliquée sort, nouveau clone wrap arrive de droite).
 const FOCUS_ROW_STAGGER_MS = 150;
+
+// ─── Glisse continue du ruban focus à la molette ──────────────────────────────
+// En focus, la molette ne défile plus la mosaïque (gelée) : elle translate le ruban
+// horizontalement (scroll vertical → axe X, bas = maquette suivante). Au repos (débounce),
+// snap sur la maquette dont le bord gauche est le plus proche de l'ancrage. Coexiste avec
+// advance/retreat (flèches, clic) qui gardent le saut par cran sur les mêmes slot.x.
+const FOCUS_WHEEL_GAIN = 0.6;            // px de ruban par px de scroll (molette + trackpad)
+const FOCUS_SNAP_DEBOUNCE_MS = 140;      // délai sans wheel avant le snap
+const FOCUS_SNAP_MS = 450;               // durée de l'animation de snap
+const FOCUS_OVERSCROLL = 0.3;            // résistance au-delà de la 1re/dernière (overscroll élastique)
+let focusAnchorX = 0;                    // X (bord gauche) où la maquette courante s'aligne au repos
+let focusSnapTimer = null;               // débounce handle du snap
 let focusList = [];     // [{el, item, x, y, w, h, isClone}, ...] — index 0 = cliquée
 let pastSlots = [];     // [{el, x, y, isClone}, ...] — anciennes cliquées qui drift à gauche à chaque advance
 let userClickedTile = null;   // la tuile mosaïque que l'user a cliquée à l'origine (pour restauration)
@@ -200,6 +212,7 @@ function focusTile(clickedTile, forceX) {
   // forceX optionnel : override x de la cliquée (utilisé par la liste clients pour positionner
   // M01 au bord gauche). Sinon, garde sa position mosaïque originale.
   const cliqueeFinalX = forceX != null ? forceX : clickedTile.x;
+  focusAnchorX = cliqueeFinalX;             // ancrage du ruban pour la glisse molette
   clickedTile.focused = true;
 
   const projId = clickedTile.item.project;
@@ -416,13 +429,19 @@ function loopToStart() {
   setTimeout(() => { advancing = false; }, LOOP_MS + 50);
 }
 
+// Annule les cleanups post-anim en vol (advance/retreat/loop) pour qu'un nouveau geste (clic-out,
+// glisse, cran) reprenne la main sans qu'un callback écrive sur un focusList/pastSlots périmé.
+function clearPendingFocusTimeouts() {
+  if (pendingAdvanceCleanup) { clearTimeout(pendingAdvanceCleanup); pendingAdvanceCleanup = null; }
+  if (pendingRetreatCleanup) { clearTimeout(pendingRetreatCleanup); pendingRetreatCleanup = null; }
+  if (pendingLoopTimeout) { clearTimeout(pendingLoopTimeout); pendingLoopTimeout = null; }
+}
+
 function advance() {
   if (!focusActive) return;
   // Cancel les setTimeouts en flight (cleanup advance/retreat, loop pending) → permet clic
   // pendant qu'une transition tourne. CSS transitions sont auto-remplacées par browser.
-  if (pendingAdvanceCleanup) { clearTimeout(pendingAdvanceCleanup); pendingAdvanceCleanup = null; }
-  if (pendingRetreatCleanup) { clearTimeout(pendingRetreatCleanup); pendingRetreatCleanup = null; }
-  if (pendingLoopTimeout) { clearTimeout(pendingLoopTimeout); pendingLoopTimeout = null; }
+  clearPendingFocusTimeouts();
   if (focusList.length < 2) {                                 // 4/4 : avance bloquée
     if (pastSlots.length === 0) { triggerRebound(-1); return; } // 1 seule maquette, juste rebond
     advancing = true;
@@ -489,9 +508,7 @@ function advance() {
 function retreat() {
   if (!focusActive) return;
   // Cancel les setTimeouts en flight pour permettre clic pendant transition.
-  if (pendingAdvanceCleanup) { clearTimeout(pendingAdvanceCleanup); pendingAdvanceCleanup = null; }
-  if (pendingRetreatCleanup) { clearTimeout(pendingRetreatCleanup); pendingRetreatCleanup = null; }
-  if (pendingLoopTimeout) { clearTimeout(pendingLoopTimeout); pendingLoopTimeout = null; }
+  clearPendingFocusTimeouts();
   if (pastSlots.length === 0) { triggerRebound(+1); return; } // 1/4 : retreat bloqué → rebond droit
   advancing = true;
   const last = pastSlots.pop();
@@ -525,6 +542,57 @@ function retreat() {
   showProjectLabel(projName, idx, allInProj.length);
 
   pendingRetreatCleanup = setTimeout(() => { advancing = false; pendingRetreatCleanup = null; }, EXIT_MS + 50);
+}
+
+// GLISSE : la molette translate tout le ruban horizontalement (focusList + pastSlots partagent le
+// même slot.x). Au-delà de la 1re/dernière maquette → overscroll amorti. Un débounce déclenche le
+// snap au repos. REDUCED_MOTION : molette inactive en focus (nav au clavier via les flèches).
+function handleFocusWheel(e) {
+  if (!focusActive || REDUCED_MOTION) return;
+  clearPendingFocusTimeouts();                               // la glisse prime sur un cran en cours
+  advancing = false;
+  const ribbon = [...pastSlots, ...focusList];               // ordre des maquettes (x croissant)
+  if (ribbon.length === 0) return;
+  let d = -(e.deltaY + e.deltaX) * FOCUS_WHEEL_GAIN;         // bas/droite → ruban à gauche → suivante
+  const first = ribbon[0];
+  const last = ribbon[ribbon.length - 1];
+  if (d > 0 && first.x > focusAnchorX) d *= FOCUS_OVERSCROLL;   // début déjà dépassé (vers la droite)
+  if (d < 0 && last.x < focusAnchorX) d *= FOCUS_OVERSCROLL;    // fin déjà dépassée (vers la gauche)
+  for (const slot of ribbon) {
+    slot.x += d;
+    slot.el.style.transition = 'none';
+    slot.el.style.transform = `translate3d(${slot.x}px, ${slot.y}px, 0)`;
+  }
+  if (focusSnapTimer) clearTimeout(focusSnapTimer);
+  focusSnapTimer = setTimeout(() => { focusSnapTimer = null; snapRibbon(); }, FOCUS_SNAP_DEBOUNCE_MS);
+}
+
+// SNAP : aligne sur focusAnchorX la maquette dont le bord gauche en est le plus proche, anime tout
+// le ruban du même delta, puis reconstruit focusList/pastSlots autour d'elle (compat advance/retreat)
+// et rafraîchit le compteur + focusedTile.
+function snapRibbon() {
+  if (!focusActive) return;
+  const ribbon = [...pastSlots, ...focusList];
+  if (ribbon.length === 0) return;
+  let c = 0, best = Infinity;
+  for (let i = 0; i < ribbon.length; i++) {
+    const dist = Math.abs(ribbon[i].x - focusAnchorX);
+    if (dist < best) { best = dist; c = i; }
+  }
+  const delta = focusAnchorX - ribbon[c].x;
+  for (const slot of ribbon) {
+    slot.x += delta;
+    slot.el.style.transition = REDUCED_MOTION ? 'none' : `transform ${FOCUS_SNAP_MS}ms ${EXIT_EASE}`;
+    slot.el.style.transform = `translate3d(${slot.x}px, ${slot.y}px, 0)`;
+  }
+  focusList = ribbon.slice(c);
+  pastSlots = ribbon.slice(0, c);
+  focusedTile = { el: focusList[0].el, item: focusList[0].item };
+  const projId = focusList[0].item.project;
+  const projName = projectNameById.get(projId) ?? projId;
+  const allInProj = pool.filter((it) => it.project === projId);
+  const idx = allInProj.findIndex((it) => it.src === focusList[0].item.src);
+  showProjectLabel(projName, idx, allInProj.length);
 }
 
 // Retire tous les clones (focusList + pastSlots). Classification par POSITION COURANTE vs M0
@@ -620,6 +688,11 @@ function exitFocus() {
   if (!focusActive) return;
   focusActive = false;
   focusedTile = null;
+  // Clic-out possible en plein advance/retreat (verrou retiré) : on annule les cleanups en vol
+  // pour qu'ils n'accèdent pas à focusList vidé par removeFocusClones → pas de crash focusList[0].
+  clearPendingFocusTimeouts();
+  advancing = false;
+  if (focusSnapTimer) { clearTimeout(focusSnapTimer); focusSnapTimer = null; }
   clearProjectLabel();
   resetBackdrop();                                           // fond → noir pur (fondu CSS)
 
@@ -722,9 +795,8 @@ document.addEventListener('click', (e) => {
   // stopPropagation gère le cas où la cliquée est la tuile mosaïque originale. Pour les advances
   // suivants où la cliquée est un clone, la branche ci-dessus l'attrape.
   if (focusList[0] && focusList[0].el.contains(e.target)) { advance(); return; }
-  // Click ailleurs → exit, sauf si une transition est en cours (verrou anti-exit-accidentel).
-  // Les clics sur maquette restent autorisés (advance/retreat ci-dessus) — seul l'exit est lock.
-  if (advancing) return;
+  // Click ailleurs → exit immédiat, même pendant une transition (advance/retreat ou glisse) : le
+  // clic hors maquette ramène toujours à la mosaïque. Les clics sur maquette sont gérés ci-dessus.
   exitFocus();
 });
 
@@ -1713,10 +1785,15 @@ viewport.addEventListener('touchmove', (e) => {
 window.addEventListener('touchend', () => { paused = false; startMomentum(); });
 window.addEventListener('touchcancel', () => { paused = false; stopMomentum(); });
 
-viewport.addEventListener('wheel', (e) => {
-  // Scroll manuel dans la tile désactivé : le wheel défile toujours la mosaïque.
-  // (Le scroll de la tile reste possible uniquement via l'auto-scroll au hover.)
+// Listener sur window (pas viewport) : en focus, les clones du ruban vivent dans document.body,
+// hors de #viewport. Sur viewport, survoler un clone et scroller ne déclenchait pas la glisse
+// (l'event ne remontait jamais jusqu'au viewport). window capte la molette partout.
+window.addEventListener('wheel', (e) => {
   e.preventDefault();
+  // En focus : la molette pilote la glisse horizontale du ruban (la mosaïque est gelée).
+  if (focusActive) { handleFocusWheel(e); return; }
+  // Mosaïque : le wheel la défile toujours (scroll manuel dans la tile désactivé ; le scroll
+  // de la tile reste possible uniquement via l'auto-scroll au hover).
   offset += e.deltaY * WHEEL_GAIN;
   // Clamp au floor : la plus haute tile s'aligne à ty = SCROLL_TOP_Y au max scroll up.
   const floor = minLiveTileY - SCROLL_TOP_Y;
