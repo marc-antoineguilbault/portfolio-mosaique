@@ -2,7 +2,6 @@ import { pool, projects, colorFromSeed, RATIOS } from './data.js';
 import { extractGlowColors } from './modules/glow.js';
 import { splitIntoLines, splitMetaIntoLines } from './modules/split-lines.js';
 import { attachLock } from './modules/lock.js';
-import { createVelocityTracker } from './modules/velocity.js';
 
 // Préchargement hybride sans loader UI :
 // 1. Au boot : fetch HAUTE PRIORITÉ de la M01 de chaque projet (~9 images, <1 MB).
@@ -86,7 +85,6 @@ function resumeMosaic() {
   // et l'auto-scroll mosaïque resterait figé. On le réarme ici, point de reprise unique.
   hoverPaused = false;
   lastFrameTime = performance.now();
-  velocityTracker.reset(offset);   // reprise mosaïque après focus : pas de faux pic
 }
 
 const EXIT_MS = 700;
@@ -407,18 +405,6 @@ function loopToStart() {
   setTimeout(() => { advancing = false; }, LOOP_MS + 50);
 }
 
-// Warp focus : (re)lance l'anim d'étirement horizontal sur les .tile-inner des slots du ruban.
-function pulseFocusWarp() {
-  if (REDUCED_MOTION) return;
-  for (const slot of [...focusList, ...pastSlots]) {
-    const el = slot.el.querySelector('.tile-inner');
-    if (!el) continue;
-    el.classList.remove('is-warping');
-    void el.offsetWidth;              // reflow → permet de rejouer l'animation
-    el.classList.add('is-warping');
-  }
-}
-
 function advance() {
   if (!focusActive) return;
   // Cancel les setTimeouts en flight (cleanup advance/retreat, loop pending) → permet clic
@@ -434,7 +420,6 @@ function advance() {
     return;
   }
   advancing = true;
-  pulseFocusWarp();
   const vh = window.innerHeight;
   const W = window.innerWidth;
   const oldCliquee = focusList[0];
@@ -498,7 +483,6 @@ function retreat() {
   if (pendingLoopTimeout) { clearTimeout(pendingLoopTimeout); pendingLoopTimeout = null; }
   if (pastSlots.length === 0) { triggerRebound(+1); return; } // 1/4 : retreat bloqué → rebond droit
   advancing = true;
-  pulseFocusWarp();
   const last = pastSlots.pop();
   const delta = last.w + GAP;
 
@@ -600,12 +584,12 @@ function returnTiles(done) {
     delete tile.exitDir;
     delete tile.focused;
     delete tile.el.dataset.exitDir;
-    if (REDUCED_MOTION) { tile.el.style.opacity = ''; tile.el.style.transition = 'none'; tile.el.style.transform = ''; tile._lastTy = null; tile._lastWarp = null; continue; }
+    if (REDUCED_MOTION) { tile.el.style.opacity = ''; tile.el.style.transition = 'none'; tile.el.style.transform = ''; continue; }
     if (tile.detached) continue;
     const ty = tile.y - offset * tile.velocityMultiplier + (COL_STAGGER[tile.colIdx] ?? 0);
     tile.el.style.transition = `transform ${EXIT_MS}ms ${EXIT_EASE}`;
     tile.el.style.transform = `translate3d(${tile.x}px, ${ty}px, 0)`;
-    tile._lastTy = null; tile._lastWarp = null;   // invalide le cache (ty + warp) : frame() réécrit translate+scale au retour
+    tile._lastTy = null;
     animated.push(tile);
   }
   if (animated.length === 0) { done(); return; }
@@ -1640,11 +1624,6 @@ function topUpIfNeeded() {
 }
 
 let offset = 0;
-// Warp : vélocité de scroll lissée → étirement des tuiles. Constantes douces (spec).
-const velocityTracker = createVelocityTracker({ lerp: 0.15, vMin: 200, vMax: 2500 });
-const WARP_KY = 0.07;   // étirement vertical max (+7 %)
-const WARP_KX = 0.03;   // pincement horizontal max (−3 %)
-const WARP_WAVE_FRAMES = 28;  // retard max (frames) haut→bas de l'écran → vague verticale (~465 ms)
 let velocity = REDUCED_MOTION ? 0 : BASE_VELOCITY;
 let lastFrameTime = 0;
 let paused = false;
@@ -1753,9 +1732,6 @@ function frame(t) {
   // Filet de sécurité : snap au floor (= première tile à ty = SCROLL_TOP_Y).
   const floor = minLiveTileY - SCROLL_TOP_Y;
   if (offset < floor) offset = floor;
-  // Warp : on échantillonne la vélocité (historisée dans le tracker). Le scale est appliqué
-  // PAR TUILE avec un retard ∝ position Y (vague verticale) — cf. boucle ci-dessous.
-  velocityTracker.sample(offset, dt);
   // Cycling à 3 niveaux pour permettre le scroll up (récupération depuis le cache) :
   // - VISIBLE_MARGIN : tile dans la zone d'affichage active → DOM attaché + transforms écrits
   // - DETACH_MARGIN  : tile hors viewport mais en mémoire (DOM détaché) → recouvrable au scroll up
@@ -1800,17 +1776,9 @@ function frame(t) {
     }
     // Perf #6 : skip transform write si ty inchangé (cas pause / idle / hoverPaused).
     // Évite des centaines de style writes inutiles par seconde quand le scroll ne bouge pas.
-    // Vague verticale : chaque tuile lit le warp avec un retard ∝ sa position Y à l'écran
-    // (haut = warp courant, bas = warp retardé) → le warp ne frappe pas toutes les tuiles d'un coup.
-    const wavePhase = vh > 0 ? Math.min(1, Math.max(0, ty / vh)) : 0;
-    const tileWarp = REDUCED_MOTION ? 0 : velocityTracker.warpAt(wavePhase * WARP_WAVE_FRAMES);
-    const warpSY = 1 + tileWarp * WARP_KY;
-    const warpSX = 1 - tileWarp * WARP_KX;
-    if (tile._lastTy !== ty || tile._lastWarp !== tileWarp) {
-      tile.el.style.transform =
-        `translate3d(${tile.x}px, ${ty}px, 0) scale(${warpSX}, ${warpSY})`;
+    if (tile._lastTy !== ty) {
+      tile.el.style.transform = `translate3d(${tile.x}px, ${ty}px, 0)`;
       tile._lastTy = ty;
-      tile._lastWarp = tileWarp;
     }
     if (cursorDirty) {
       // Perf #19 : skip --cursor-x/y write si valeurs inchangées (cas mouse idle entre frames).
@@ -1873,7 +1841,6 @@ function rebuildLayout() {
   // hors VISIBLE_MARGIN (mais dans DETACH_MARGIN) gardent leur ancien transform et se
   // superposent visuellement quand on retourne à la taille initiale après resize.
   offset = 0;
-  velocityTracker.reset(0);   // le saut offset→0 du resize ne doit pas produire de pic de warp
   for (const tile of liveTiles) {
     const pos = placeNext(tile.item);
     tile.x = pos.x;
@@ -1889,7 +1856,7 @@ function rebuildLayout() {
     // leur ancienne position après resize → superposition au retour à la taille initiale.
     const stagger = COL_STAGGER[tile.colIdx] ?? 0;
     tile.el.style.transform = `translate3d(${tile.x}px, ${tile.y + stagger}px, 0)`;
-    tile._lastTy = null; tile._lastWarp = null;   // invalide le cache (ty + warp) : frame() réécrit translate+scale après resize
+    tile._lastTy = null;   // invalide le cache ty : frame() réécrit translate après resize
     const meta = tile.el.querySelector('.tile-meta');
     if (meta) {
       meta.style.width = `${colWidth}px`;
