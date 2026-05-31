@@ -109,9 +109,9 @@ const FOCUS_ROW_STAGGER_MS = 150;
 const FOCUS_WHEEL_GAIN = 0.6;            // px de ruban par px de scroll (molette + trackpad)
 const FOCUS_SNAP_DEBOUNCE_MS = 140;      // délai sans wheel avant le snap
 const FOCUS_SNAP_MS = 450;               // durée de l'animation de snap
-const FOCUS_OVERSCROLL = 0.3;            // résistance au-delà de la 1re/dernière (overscroll élastique)
 let focusAnchorX = 0;                    // X (bord gauche) où la maquette courante s'aligne au repos
 let focusSnapTimer = null;               // débounce handle du snap
+let focusEdgeBounced = false;            // rebond déjà joué pour le geste courant (anti-spam aux extrémités)
 let focusList = [];     // [{el, item, x, y, w, h, isClone}, ...] — index 0 = cliquée
 let pastSlots = [];     // [{el, x, y, isClone}, ...] — anciennes cliquées qui drift à gauche à chaque advance
 let userClickedTile = null;   // la tuile mosaïque que l'user a cliquée à l'origine (pour restauration)
@@ -216,6 +216,7 @@ function focusTile(clickedTile, forceX) {
   // M01 au bord gauche). Sinon, garde sa position mosaïque originale.
   const cliqueeFinalX = forceX != null ? forceX : clickedTile.x;
   focusAnchorX = cliqueeFinalX;             // ancrage du ruban pour la glisse molette
+  focusEdgeBounced = false;
   clickedTile.focused = true;
 
   const projId = clickedTile.item.project;
@@ -548,26 +549,35 @@ function retreat() {
 }
 
 // GLISSE : la molette translate tout le ruban horizontalement (focusList + pastSlots partagent le
-// même slot.x). Au-delà de la 1re/dernière maquette → overscroll amorti. Un débounce déclenche le
-// snap au repos. REDUCED_MOTION : molette inactive en focus (nav au clavier via les flèches).
+// même slot.x). Bornes dures aux extrémités (la 1re ne passe pas le début, la dernière pas la fin) ;
+// tenter de les franchir déclenche un rebond. Un débounce déclenche le snap au repos.
+// REDUCED_MOTION : molette inactive en focus (nav au clavier via les flèches).
 function handleFocusWheel(e) {
   if (!focusActive || REDUCED_MOTION) return;
   clearPendingFocusTimeouts();                               // la glisse prime sur un cran en cours
   advancing = false;
   const ribbon = [...pastSlots, ...focusList];               // ordre des maquettes (x croissant)
   if (ribbon.length === 0) return;
-  let d = -(e.deltaY + e.deltaX) * FOCUS_WHEEL_GAIN;         // bas/droite → ruban à gauche → suivante
+  const d = -(e.deltaY + e.deltaX) * FOCUS_WHEEL_GAIN;       // bas/droite → ruban à gauche → suivante
   const first = ribbon[0];
   const last = ribbon[ribbon.length - 1];
-  if (d > 0 && first.x > focusAnchorX) d *= FOCUS_OVERSCROLL;   // début déjà dépassé (vers la droite)
-  if (d < 0 && last.x < focusAnchorX) d *= FOCUS_OVERSCROLL;    // fin déjà dépassée (vers la gauche)
-  for (const slot of ribbon) {
-    slot.x += d;
-    slot.el.style.transition = 'none';
-    slot.el.style.transform = `translate3d(${slot.x}px, ${slot.y}px, 0)`;
+  // Bornes dures : la 1re maquette ne passe jamais à droite de l'ancrage (début du ruban), la
+  // dernière jamais à gauche (fin). On clampe le déplacement à la marge restante de chaque côté.
+  const maxD = Math.max(0, focusAnchorX - first.x);          // recul possible (d>0) avant le début
+  const minD = Math.min(0, focusAnchorX - last.x);           // avance possible (d<0) avant la fin
+  const cd = Math.max(minD, Math.min(maxD, d));
+  if (cd !== 0) {
+    for (const slot of ribbon) {
+      slot.x += cd;
+      slot.el.style.transition = 'none';
+      slot.el.style.transform = `translate3d(${slot.x}px, ${slot.y}px, 0)`;
+    }
   }
+  // Tenter d'aller au-delà d'une extrémité (1/N vers la gauche, N/N vers la droite) → rebond, une
+  // seule fois par geste (le flag est réinitialisé à la fin du geste par le timer ci-dessous).
+  if (cd !== d && !focusEdgeBounced) { focusEdgeBounced = true; triggerRebound(d > 0 ? +1 : -1); }
   if (focusSnapTimer) clearTimeout(focusSnapTimer);
-  focusSnapTimer = setTimeout(() => { focusSnapTimer = null; snapRibbon(); }, FOCUS_SNAP_DEBOUNCE_MS);
+  focusSnapTimer = setTimeout(() => { focusSnapTimer = null; focusEdgeBounced = false; snapRibbon(); }, FOCUS_SNAP_DEBOUNCE_MS);
 }
 
 // SNAP : aligne sur focusAnchorX la maquette dont le bord gauche en est le plus proche, anime tout
