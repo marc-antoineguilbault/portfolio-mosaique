@@ -182,6 +182,16 @@ function resetBackdrop() {
   document.documentElement.style.removeProperty('--backdrop-tint');
 }
 
+// (Re)lance une animation de squash sur le .tile-inner d'une tuile (remove → reflow → add
+// pour pouvoir rejouer l'anim). `cls` = 'is-landing' ou 'is-bump'.
+function playSquash(tileEl, cls) {
+  const inner = tileEl && tileEl.querySelector('.tile-inner');
+  if (!inner) return;
+  inner.classList.remove('is-landing', 'is-bump');
+  void inner.offsetWidth;            // reflow → rejoue l'animation
+  inner.classList.add(cls);
+}
+
 function focusTile(clickedTile, forceX) {
   const vh = window.innerHeight;
   const W = window.innerWidth;
@@ -294,6 +304,7 @@ function focusTile(clickedTile, forceX) {
     el: clickedTile.el, item: clickedTile.item, x: cliqueeFinalX, y: targetY,
     w: clickedTile.w, h: clickedTile.h, isClone: false,
   }];
+  playSquash(clickedTile.el, 'is-landing');   // squash quand la cliquée se pose au centre
 
   // 4. Helper : crée un clone d'une source et anime depuis startX vers targetX.
   const spawnClone = (item, source, targetX, targetTopY, startX, zIdx, delayIdx) => {
@@ -358,6 +369,7 @@ function focusTile(clickedTile, forceX) {
 // (focusList + pastSlots) shift ±30 → 0 → ±15 → 0 (amplitude décroissante).
 function triggerRebound(direction) {                          // direction: +1 = retreat blocked, -1 = advance blocked
   if (!focusActive || REDUCED_MOTION) return;
+  if (focusList[0]) playSquash(focusList[0].el, 'is-bump');   // squash d'impact sur la maquette qui bute
   const SHIFT1 = direction * 30;
   const SHIFT2 = direction * 8;                               // ~27% de SHIFT1 → 2e rebond bien plus léger
   const TICK1 = 120;                                          // 1er rebond rapide
