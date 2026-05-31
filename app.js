@@ -1849,7 +1849,9 @@ document.addEventListener('visibilitychange', () => {
 function init() {
   const { w, h } = getViewportSize();
   if (w === 0 || h === 0) {
-    requestAnimationFrame(init);
+    // setTimeout (et non rAF) : reste actif si l'onglet a chargé en arrière-plan (rAF y est gelé,
+    // ce qui bloquerait l'init → mosaïque vide tant que l'onglet n'est pas passé au premier plan).
+    setTimeout(init, 50);
     return;
   }
   computeLayout();
@@ -1910,10 +1912,17 @@ window.addEventListener('resize', () => {
 // Service Worker : cache-first sur les assets immuables (images + JS/CSS versionnés),
 // network-first sur le HTML. 2e visite = quasi-instantanée. Registered en window.load
 // pour ne pas concurrencer le boot critique du portfolio.
+// EN DEV (localhost) : pas de SW — son cache-first masque les changements et provoque des
+// écrans périmés/vides au fil des sessions. On désinscrit aussi tout SW déjà présent sur l'origin.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // SW pas crucial — silent fail si bloqué (file://, env de dev, etc.)
+  const isLocalDev = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+  if (isLocalDev) {
+    navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()));
+  } else {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        // SW pas crucial — silent fail si bloqué (file://, env de dev, etc.)
+      });
     });
-  });
+  }
 }
