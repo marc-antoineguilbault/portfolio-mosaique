@@ -183,11 +183,11 @@ function resetBackdrop() {
 }
 
 // (Re)lance une animation de squash sur le .tile-inner d'une tuile (remove → reflow → add
-// pour pouvoir rejouer l'anim). `cls` = 'is-landing' ou 'is-bump'.
+// pour pouvoir rejouer l'anim). `cls` = 'is-bump'.
 function playSquash(tileEl, cls) {
   const inner = tileEl && tileEl.querySelector('.tile-inner');
   if (!inner) return;
-  inner.classList.remove('is-landing', 'is-bump');
+  inner.classList.remove(cls);
   void inner.offsetWidth;            // reflow → rejoue l'animation
   inner.classList.add(cls);
 }
@@ -304,7 +304,6 @@ function focusTile(clickedTile, forceX) {
     el: clickedTile.el, item: clickedTile.item, x: cliqueeFinalX, y: targetY,
     w: clickedTile.w, h: clickedTile.h, isClone: false,
   }];
-  playSquash(clickedTile.el, 'is-landing');   // squash quand la cliquée se pose au centre
 
   // 4. Helper : crée un clone d'une source et anime depuis startX vers targetX.
   const spawnClone = (item, source, targetX, targetTopY, startX, zIdx, delayIdx) => {

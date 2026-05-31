@@ -646,18 +646,6 @@ body {
   #cursor { display: none; }
 }
 
-/* Squash "à l'arrivée" : la maquette cliquée s'écrase verticalement quand elle se pose au centre
-   (entrée en focus). Le delay = durée du déplacement (EXIT_MS = 700 ms) → joue pile à l'arrivée. */
-@keyframes squash-land {
-  0%   { transform: scaleY(1) scaleX(1); }
-  35%  { transform: scaleY(1.015) scaleX(0.99); }  /* étirement vertical (sens du déplacement) */
-  70%  { transform: scaleY(0.994) scaleX(1.003); } /* léger contre-rebond */
-  100% { transform: scaleY(1) scaleX(1); }
-}
-.tile-inner.is-landing {
-  animation: squash-land 420ms cubic-bezier(0.22, 1, 0.36, 1);
-  transform-origin: center;
-}
 
 /* Squash "d'impact" au bump : la maquette extrême se comprime horizontalement contre le « mur »
    quand on bute en focus (rebond). */
@@ -683,7 +671,7 @@ body {
     scroll-behavior: auto !important;
   }
   /* Squash explicitement désactivé (déjà neutralisé par la règle * ci-dessus, mais explicite). */
-  .tile-inner.is-landing, .tile-inner.is-bump { animation: none; }
+  .tile-inner.is-bump { animation: none; }
   /* reduced-motion : la méta reste lisible en permanence (indépendamment du survol),
      comme avant le split différé — on neutralise le masquage par opacity. */
   .tile-meta {
