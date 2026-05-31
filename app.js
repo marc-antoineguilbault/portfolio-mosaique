@@ -1733,26 +1733,28 @@ let lastTouchY = 0;
 let lastTouchTime = 0;
 let touchVelocity = 0;     // px/s, signe = direction (positif = doigt vers le haut = défilement vers le bas)
 let momentumRaf = null;
-const MOMENTUM_FRICTION = 0.94;   // décrément par frame ≈16ms (≈0.94^60 ≈ 0.024 en 1s)
-const MOMENTUM_MIN_PX_PER_S = 30; // sous ce seuil on arrête
+const MOMENTUM_FRICTION = 0.94;   // 0,94 par frame @60fps, normalisé par dt dans step() (#3)
+const MOMENTUM_START_MIN = 30;    // #7 : vélocité min pour DÉCLENCHER le momentum (sélectif)
+const MOMENTUM_STOP_MIN = 8;      // #7 : vélocité d'ARRÊT — éteint quasi à zéro → raccord doux
 
 function stopMomentum() {
   if (momentumRaf) cancelAnimationFrame(momentumRaf);
   momentumRaf = null;
   touchVelocity = 0;
+  velocity = 0; // #7 : l'auto-scroll reprend en fondu via le ramp #2
 }
 
 function startMomentum() {
-  if (Math.abs(touchVelocity) < MOMENTUM_MIN_PX_PER_S) return;
+  if (Math.abs(touchVelocity) < MOMENTUM_START_MIN) return; // #7 : déclenchement sélectif
   let lastT = performance.now();
   function step(now) {
-    const dt = (now - lastT) / 1000;
+    const dt = Math.min((now - lastT) / 1000, 0.1); // #3 : clamp dt (cohérence frame())
     lastT = now;
     offset += touchVelocity * dt;
     const floor = minLiveTileY - SCROLL_TOP_Y;
     if (offset < floor) { offset = floor; stopMomentum(); return; }
-    touchVelocity *= MOMENTUM_FRICTION;
-    if (Math.abs(touchVelocity) > MOMENTUM_MIN_PX_PER_S) {
+    touchVelocity *= Math.pow(MOMENTUM_FRICTION, dt * 60); // #3 : friction frame-rate-independent
+    if (Math.abs(touchVelocity) > MOMENTUM_STOP_MIN) {     // #7 : seuil d'arrêt bas → raccord doux
       momentumRaf = requestAnimationFrame(step);
     } else {
       stopMomentum();
