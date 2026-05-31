@@ -48,6 +48,8 @@ const GAP_Y_MOBILE = 80;
 let GAP_Y = GAP_Y_DESKTOP;
 const BASE_VELOCITY = 30;
 const WHEEL_GAIN = 0.5;
+const WHEEL_HALFLIFE = 0.09;    // #1 : demi-vie d'absorption du résidu molette (90 ms)
+const VELOCITY_HALFLIFE = 0.3;  // #2 : demi-vie du fondu d'auto-scroll (load / reprise)
 
 // Radius ancré à la grille de référence : vw=1470, 4 cols, gap=48 → colWidth=307.5, radius=32.
 const REF_COL_WIDTH = (1470 - 5 * GAP) / 4;
@@ -1708,7 +1710,9 @@ function topUpIfNeeded() {
 }
 
 let offset = 0;
-let velocity = REDUCED_MOTION ? 0 : BASE_VELOCITY;
+let velocity = 0;                                          // #2 : démarre à 0 → fondu d'entrée
+const velocityTarget = REDUCED_MOTION ? 0 : BASE_VELOCITY; // #2 : cible du ramp
+let wheelResidual = 0;                                     // #1 : dette molette à absorber
 let lastFrameTime = 0;
 let paused = false;
 // Pause de l'auto-scroll quand on survole une tile (indépendant du drag mousedown).
@@ -1786,6 +1790,15 @@ viewport.addEventListener('touchmove', (e) => {
 window.addEventListener('touchend', () => { paused = false; startMomentum(); });
 window.addEventListener('touchcancel', () => { paused = false; stopMomentum(); });
 
+// #6 : normalise deltaY (deltaMode lignes/pages → px) + clamp anti-saut (souris crantée ≈ trackpad).
+function normalizeWheel(e) {
+  let d = e.deltaY;
+  if (e.deltaMode === 1) d *= 16;                       // lignes → px
+  else if (e.deltaMode === 2) d *= window.innerHeight;  // pages → px
+  const cap = window.innerHeight * 0.5;
+  return Math.max(-cap, Math.min(cap, d));
+}
+
 // Listener sur window (pas viewport) : en focus, les clones du ruban vivent dans document.body,
 // hors de #viewport. Sur viewport, survoler un clone et scroller ne déclenchait pas la glisse
 // (l'event ne remontait jamais jusqu'au viewport). window capte la molette partout.
@@ -1795,10 +1808,8 @@ window.addEventListener('wheel', (e) => {
   if (focusActive) { handleFocusWheel(e); return; }
   // Mosaïque : le wheel la défile toujours (scroll manuel dans la tile désactivé ; le scroll
   // de la tile reste possible uniquement via l'auto-scroll au hover).
-  offset += e.deltaY * WHEEL_GAIN;
-  // Clamp au floor : la plus haute tile s'aligne à ty = SCROLL_TOP_Y au max scroll up.
-  const floor = minLiveTileY - SCROLL_TOP_Y;
-  if (offset < floor) offset = floor;
+  // #1 : on alimente un résidu absorbé exponentiellement dans frame() (au lieu d'un saut sec).
+  wheelResidual += normalizeWheel(e) * WHEEL_GAIN;
 }, { passive: false });
 
 function frame(t) {
@@ -1815,12 +1826,21 @@ function frame(t) {
     requestAnimationFrame(frame);
     return;
   }
+  // #2 : ramp de vélocité (hors gate) → fondu d'entrée au load + reprise après momentum.
+  velocity = damp(velocity, velocityTarget, VELOCITY_HALFLIFE, dt);
   if (!paused && !hoverPaused) {
     offset += velocity * dt;
   }
-  // Filet de sécurité : snap au floor (= première tile à ty = SCROLL_TOP_Y).
+  // #1 : absorption exponentielle du résidu molette (hors gate : la molette défile même en survol).
+  if (wheelResidual !== 0) {
+    const consumed = wheelResidual * (1 - 2 ** (-dt / WHEEL_HALFLIFE));
+    offset += consumed;
+    wheelResidual -= consumed;
+    if (Math.abs(wheelResidual) < 0.5) wheelResidual = 0;
+  }
+  // Filet de sécurité : snap au floor (= première tile à ty = SCROLL_TOP_Y). Couvre auto-scroll + molette.
   const floor = minLiveTileY - SCROLL_TOP_Y;
-  if (offset < floor) offset = floor;
+  if (offset < floor) { offset = floor; wheelResidual = 0; }
   // Cycling à 3 niveaux pour permettre le scroll up (récupération depuis le cache) :
   // - VISIBLE_MARGIN : tile dans la zone d'affichage active → DOM attaché + transforms écrits
   // - DETACH_MARGIN  : tile hors viewport mais en mémoire (DOM détaché) → recouvrable au scroll up
