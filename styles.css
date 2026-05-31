@@ -663,8 +663,8 @@ body {
    quand on bute en focus (rebond). */
 @keyframes squash-bump {
   0%   { transform: scaleX(1) scaleY(1); }
-  30%  { transform: scaleX(0.9) scaleY(1.05); }   /* compression horizontale (impact) */
-  65%  { transform: scaleX(1.03) scaleY(0.98); }  /* léger rebond */
+  30%  { transform: scaleX(0.985) scaleY(1.01); }  /* compression horizontale très légère (impact) */
+  65%  { transform: scaleX(1.006) scaleY(0.997); } /* rebond minime */
   100% { transform: scaleX(1) scaleY(1); }
 }
 .tile-inner.is-bump {
