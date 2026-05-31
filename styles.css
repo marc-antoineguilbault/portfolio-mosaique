@@ -263,7 +263,11 @@ body {
     width 0.4s cubic-bezier(0.4, 0, 0.4, 1),
     height 0.4s cubic-bezier(0.4, 0, 0.4, 1),
     background 0.4s ease;
-  will-change: transform, width, height, background;
+  /* will-change limité à transform : seule propriété compositable mutée en continu (mousemove).
+     width/height/background sont bien transitionnés (toggle .locked) mais NON compositables
+     (layout/paint) → les déclarer ici ne ferait que gaspiller de la mémoire GPU et créer des
+     layers inutiles, sans rien accélérer (cf. Motion "Web Animation Performance Tier List"). */
+  will-change: transform;
 }
 
 #cursor.locked {
