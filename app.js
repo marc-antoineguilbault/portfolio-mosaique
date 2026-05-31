@@ -804,10 +804,10 @@ let clientListOpen = false;
 
 // Phrase de bio affichée en bas de l'écran quand la liste des projets est ouverte
 // (reprise du statut "Lead Designer Interactif" du Portfolio Personnel).
-// Deux lignes : retour à la ligne avant "La rigueur".
+// Deux lignes : retour à la ligne avant "avec une rigueur".
 const BIO_LINES = [
-  'Je maîtrise des systèmes, les ordonne, les décline et les enrichis.',
-  'La rigueur dans chaque détail.',
+  'Je conçois, structure et enrichis des systèmes,',
+  'avec une rigueur portée jusque dans le moindre détail.',
 ];
 // Décalage entre l'apparition de deux noms consécutifs (cascade).
 const CASCADE_STEP_MS = 55;

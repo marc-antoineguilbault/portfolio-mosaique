@@ -27,7 +27,7 @@ test.describe('Bio sous la liste des projets (desktop)', () => {
 
     const bio = page.locator('.ui-bio');
     await expect(bio).toHaveCount(1);
-    await expect(bio).toContainText('Je maîtrise des systèmes');
+    await expect(bio).toContainText('Je conçois, structure et enrichis');
 
     // Configurée pour apparaître APRÈS la cascade (animation-delay > 0), de façon
     // déterministe — pas de dépendance au timing réel.
