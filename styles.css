@@ -650,8 +650,8 @@ body {
    (entrée en focus). Le delay = durée du déplacement (EXIT_MS = 700 ms) → joue pile à l'arrivée. */
 @keyframes squash-land {
   0%   { transform: scaleY(1) scaleX(1); }
-  35%  { transform: scaleY(0.985) scaleX(1.01); }  /* impact très léger : aplatissement vertical */
-  70%  { transform: scaleY(1.006) scaleX(0.997); } /* rebond minime */
+  35%  { transform: scaleY(1.015) scaleX(0.99); }  /* étirement vertical (sens du déplacement) */
+  70%  { transform: scaleY(0.994) scaleX(1.003); } /* léger contre-rebond */
   100% { transform: scaleY(1) scaleX(1); }
 }
 .tile-inner.is-landing {
