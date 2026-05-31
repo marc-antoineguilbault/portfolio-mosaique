@@ -1274,9 +1274,9 @@ window.addEventListener('mousemove', (e) => {
   cursorEl.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
 });
 
-// Smoothing du trail : par frame (≈60fps), current += (target - current) * SMOOTH.
-// 0.08 ≈ 400ms pour rattraper 98% du chemin → trail traînant, plus marqué.
-const CURSOR_LIGHT_SMOOTH = 0.08;
+// Smoothing du trail, frame-rate-independent (damp exponentiel). Demi-vie en secondes.
+// 0.14 reproduit l'ancien 0.08/frame @60fps (0.92^n = 0.5 ⟹ n ≈ 8,3 frames ≈ 0,14 s).
+const GLOW_HALFLIFE = 0.14;
 
 function attachTilt(inner) {
   const frame = inner.parentElement;
@@ -1300,11 +1300,14 @@ function attachTilt(inner) {
   // Pour séquencer "lift d'abord, tilt ensuite" : on stocke le timestamp du mouseenter.
   let liftStartTime = 0;
 
-  function tick() {
+  let lastTickT = 0;
+  function tick(now) {
+    const dt = lastTickT ? Math.min((now - lastTickT) / 1000, 0.1) : 1 / 60;
+    lastTickT = now;
     const dx = targetX - currentX;
     const dy = targetY - currentY;
-    currentX += dx * CURSOR_LIGHT_SMOOTH;
-    currentY += dy * CURSOR_LIGHT_SMOOTH;
+    currentX = damp(currentX, targetX, GLOW_HALFLIFE, dt);
+    currentY = damp(currentY, targetY, GLOW_HALFLIFE, dt);
     inner.style.setProperty('--gx', (currentX * 100) + '%');
     inner.style.setProperty('--gy', (currentY * 100) + '%');
     // Tant qu'on est en survol OU qu'il reste un delta à rattraper, on continue.
@@ -1334,6 +1337,7 @@ function attachTilt(inner) {
     inner.style.setProperty('--gx', (currentX * 100) + '%');
     inner.style.setProperty('--gy', (currentY * 100) + '%');
     active = true;
+    lastTickT = 0; // #8 : reset dt → pas de grand saut après une pause du tick
     if (rafId === null) rafId = requestAnimationFrame(tick);
   });
 
