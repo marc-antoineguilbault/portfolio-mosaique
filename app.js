@@ -2,6 +2,7 @@ import { pool, projects, colorFromSeed, RATIOS } from './data.js';
 import { extractGlowColors } from './modules/glow.js';
 import { splitIntoLines, splitMetaIntoLines } from './modules/split-lines.js';
 import { attachLock } from './modules/lock.js';
+import { damp } from './modules/smoothing.js';
 
 // Préchargement hybride sans loader UI :
 // 1. Au boot : fetch HAUTE PRIORITÉ de la M01 de chaque projet (~9 images, <1 MB).
